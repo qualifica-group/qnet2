@@ -5,8 +5,6 @@ export const aiAssistant = {
   pageDisabled: 'The AI assistant page is not enabled in this installation.',
   loadFailed: 'Unable to load the AI assistant.',
   loading: 'Loading...',
-  openButton: 'Open the AI assistant',
-  closeButton: 'Close the AI assistant',
   newConversation: 'New conversation',
   history: 'History',
   backToChat: 'Back to chat',

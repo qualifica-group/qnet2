@@ -1,6 +1,30 @@
 /** English labels (`workOrders.chat.*`) of the project work order chat (spec 0359). */
 export const workOrderChat = {
+  /** The work order's tab strip entry that opens the conversation in the dock. */
   tab: 'Chat',
+  /** The always-present chat dock at the bottom right (spec 0432). */
+  dock: {
+    label: 'Project chat',
+    bar: 'Chat',
+    channelsLabel: 'Chat channels',
+    loadError: 'Unable to load the channels.',
+    empty: 'You are not in the team of any project work order.',
+    noMessages: 'No messages',
+    lastMessage: '{{author}}: {{body}}',
+    openWorkOrder: 'Open the work order',
+    close: 'Close the chat',
+    minimize: 'Minimize',
+    expand: 'Open',
+    search: 'Search a channel',
+    filterLabel: 'Which channels',
+    filterAll: 'All',
+    filterUnread: 'Unread',
+    noResults: 'No channel found.',
+    emptyTitle: 'No channels',
+    assistantHint: 'Ask anything about QNet',
+  },
+  today: 'Today',
+  yesterday: 'Yesterday',
   unreadBadge: '{{count}} unread messages',
   loading: 'Loading chat',
   loadError: 'Unable to load the chat.',

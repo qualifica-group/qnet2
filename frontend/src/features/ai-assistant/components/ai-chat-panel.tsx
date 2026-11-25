@@ -48,7 +48,20 @@ export function AiChatPanel({ className, ...props }: AiChatPanelProps) {
     content = <AiChatBody config={configQuery.data} {...props} />
   }
 
-  return <div className={cn('flex min-h-0 flex-1 flex-col bg-background', className)}>{content}</div>
+  // The widget lives in the chat dock's card (spec 0432): it sits on the card and its
+  // bubbles and composer move to the tints above it (`group-data-[variant=widget]/ai-chat:`).
+  return (
+    <div
+      data-variant={props.variant}
+      className={cn(
+        'group/ai-chat flex min-h-0 flex-1 flex-col',
+        props.variant === 'widget' ? 'bg-card' : 'bg-background',
+        className,
+      )}
+    >
+      {content}
+    </div>
+  )
 }
 
 function AiChatBody({

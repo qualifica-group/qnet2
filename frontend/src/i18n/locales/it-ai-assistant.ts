@@ -5,8 +5,6 @@ export const aiAssistant = {
   pageDisabled: 'La pagina dell\'assistente AI non è attiva in questa installazione.',
   loadFailed: 'Impossibile caricare l\'assistente AI.',
   loading: 'Caricamento...',
-  openButton: 'Apri l\'assistente AI',
-  closeButton: 'Chiudi l\'assistente AI',
   newConversation: 'Nuova conversazione',
   history: 'Cronologia',
   backToChat: 'Torna alla chat',

@@ -1,6 +1,30 @@
 /** Etichette italiane (`workOrders.chat.*`) della chat delle commesse di progetto (spec 0359). */
 export const workOrderChat = {
+  /** The work order's tab strip entry that opens the conversation in the dock. */
   tab: 'Chat',
+  /** The always-present chat dock at the bottom right (spec 0432). */
+  dock: {
+    label: 'Chat dei progetti',
+    bar: 'Chat',
+    channelsLabel: 'Canali della chat',
+    loadError: 'Impossibile caricare i canali.',
+    empty: 'Non fai parte del team di nessuna commessa di progetto.',
+    noMessages: 'Nessun messaggio',
+    lastMessage: '{{author}}: {{body}}',
+    openWorkOrder: 'Apri la commessa',
+    close: 'Chiudi la chat',
+    minimize: 'Riduci',
+    expand: 'Apri',
+    search: 'Cerca un canale',
+    filterLabel: 'Quali canali',
+    filterAll: 'Tutti',
+    filterUnread: 'Non letti',
+    noResults: 'Nessun canale trovato.',
+    emptyTitle: 'Nessun canale',
+    assistantHint: 'Chiedi qualcosa su QNet',
+  },
+  today: 'Oggi',
+  yesterday: 'Ieri',
   unreadBadge: '{{count}} messaggi non letti',
   loading: 'Caricamento della chat',
   loadError: 'Impossibile caricare la chat.',

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\LocaleEnum;
+use App\Services\WorkOrders\Chat\WorkOrderChatAccess;
 
 /**
  * Assembles the payload for the PUBLIC bootstrap endpoint GET /api/config.
@@ -38,6 +39,7 @@ class ConfigService
             'enums' => $this->enums(),
             'localization' => $this->localization(),
             'treasury' => $this->treasury(),
+            'features' => $this->features(),
         ];
     }
 
@@ -70,6 +72,19 @@ class ConfigService
      *
      * @return array{write_off_suggest_threshold: string}
      */
+    /**
+     * Installation-wide feature switches the client needs to shape its chrome
+     * (spec 0432: the project chat, CHAT_ENABLED). SECURITY: static booleans
+     * from server config, safe on this PUBLIC endpoint; the API enforces them
+     * on its own (404 when off).
+     *
+     * @return array{chat: bool}
+     */
+    private function features(): array
+    {
+        return ['chat' => WorkOrderChatAccess::isEnabled()];
+    }
+
     private function treasury(): array
     {
         return ['write_off_suggest_threshold' => (string) config('treasury.write_off_suggest_threshold')];

@@ -14,7 +14,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo con sotto il nome dell'azienda cliente, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
+          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo con sotto il nome dell'azienda cliente, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Appunti** (solo commesse di progetto), **Email** e **Attività** dove previste. Nelle commesse di progetto, in fondo alla riga, la voce **Chat** con il pallino dei non letti apre la conversazione nella barra **Chat** in basso a destra. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
         },
         {
           type: 'paragraph',
@@ -458,7 +458,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "La pagina **Commesse** mostra solo le commesse di **Lavorazione**. Le commesse di tipo **Progetto** stanno in **Commesse di Progetto** (stesso gruppo **Lavorazioni**), con la colonna **Non letti** e la tab **Chat** nel dettaglio: vedi la guida **Commesse di Progetto**. Sono due moduli distinti, ognuno con i **suoi permessi di visualizzazione**: puoi vedere uno senza l'altro.",
+          text: "La pagina **Commesse** mostra solo le commesse di **Lavorazione**. Le commesse di tipo **Progetto** stanno in **Commesse di Progetto** (stesso gruppo **Lavorazioni**), con la colonna **Non letti** e la **Chat** (barra in basso a destra): vedi la guida **Commesse di Progetto**. Sono due moduli distinti, ognuno con i **suoi permessi di visualizzazione**: puoi vedere uno senza l'altro.",
         },
         {
           type: 'paragraph',
@@ -466,7 +466,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La tab **Chat** esiste solo sulle commesse di progetto: nelle commesse di lavorazione non c'è.",
+          text: "La **Chat** esiste solo sulle commesse di progetto: le commesse di lavorazione non hanno un canale.",
         },
       ],
     },

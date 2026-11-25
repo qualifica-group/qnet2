@@ -88,7 +88,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every project work order has a **Chat** tab in its detail, to exchange messages with the team. It is visible to, and writable by, the **Supervisors** and **Participants** of the work order and the **administrators**. Anyone who sees the work order for other reasons (for example because they can view all work orders) does **not** see the chat.',
+          text: "Every project work order has a **chat** to exchange messages with the team. It is not a tab of the detail: it lives in the **Chat** bar at the bottom right, present on every page whenever there is someone to talk to: at least one project where you are a Supervisor or Participant, or the AI assistant. With neither, the bar does not appear. The administrator can also switch the chat off for the whole installation: the bar then shows only the AI assistant (if active) and the **Unread** column disappears; the **Workspace notes** stay. Opening it shows the **AI assistant** on top, then the **channels**: the project work orders where you are a Supervisor or Participant, with the client, the last message and the unread count, the most recent on top. It is visible to, and writable by, the **Supervisors** and **Participants** of the work order and the **administrators**. Anyone who sees the work order for other reasons (for example because they can view all work orders) does **not** see the chat.",
         },
         {
           type: 'list',
@@ -96,14 +96,16 @@ const guide: HelpGuide = {
             'Messages are **text only**, up to **2,000 characters**.',
             'New messages appear **in real time**, without reloading the page.',
             'When there are many messages, **Load earlier messages** shows the older ones.',
+            'At the top of the list you can **search** a channel by title, code or client and pick **Unread** to see only those with new messages.',
+            'You can keep up to **3** conversations open side by side: opening a fourth closes the oldest. Clicking the title minimizes or reopens it, the **X** closes it and the icon next to it opens the work order. On a phone the open window fills the screen.',
           ],
         },
         {
           type: 'steps',
           items: [
-            'Open the work order and choose the **Chat** tab.',
+            'Click the **Chat** bar at the bottom right and then the channel of the work order, or, from the work order detail, the **Chat** entry at the end of the tab row (with the unread dot): its conversation opens.',
             'Type in the **Write a message** field.',
-            'Press **Send**.',
+            'Press **Enter** or the **Send** button (the arrow). **Shift+Enter** starts a new line.',
           ],
         },
         {
@@ -142,11 +144,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'chat-badge',
-      title: 'The number on the Chat tab',
+      title: 'The unread counts',
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Chat** tab shows a number with the unread messages, which updates even while you look at another tab of the work order. It **resets to zero** when you open the Chat tab with the page in the foreground: the messages are marked as read and the **Unread** column updates accordingly. Your own messages never count as unread.',
+          text: 'The **Chat** bar shows the total unread messages of all your channels, each channel has its own count in the list and the work order detail shows a dot on the **Chat** entry: they update in real time, whatever page you are on. A channel count **resets to zero** when you open its conversation with the page in the foreground: the messages are marked as read and the **Unread** column updates accordingly. Your own messages never count as unread.',
         },
       ],
     },
@@ -156,7 +158,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every project work order also has a **Workspace notes** tab, right after the Chat: a **page shared by the team**, made of blocks, to keep text, lists, tasks and polls together. It is seen and edited by the same people who use the chat (Managers, Participants and administrators). It is not the work order **Notes** tab, which stays as it was.',
+          text: 'Every project work order also has a **Workspace notes** tab, right after the **Notes** tab: a **page shared by the team**, made of blocks, to keep text, lists, tasks and polls together. It is seen and edited by the same people who use the chat (Managers, Participants and administrators). It is not the work order **Notes** tab, which stays as it was.',
         },
         {
           type: 'list',
@@ -203,7 +205,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'note',
-          text: 'Chat messages **do not generate notifications** (no bell) **or emails**. To know whether there is news, look at the **Unread** column and the number on the **Chat** tab.',
+          text: 'Chat messages **do not generate notifications** (no bell) **or emails**. To know whether there is news, look at the **Unread** column and the counts on the **Chat** bar.',
         },
       ],
     },

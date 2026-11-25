@@ -24,9 +24,10 @@ interface WorkOrderDetailViewProps {
  * Detail of a single work order (AC-075), laid out like the legacy "Gestione
  * commessa" (user directive 2026-11-16): the identity band with its KPI strip
  * on top, then ONE card of tabs (Info | Task | Documenti | Amministrazione |
- * Note | Chat | Email | Attivita', each with its own gate) with the work order
- * title set apart at the end of the strip; a metadata footer last. The Info
- * tab carries the record sections.
+ * Note | Appunti | Email | Attivita', each with its own gate) with the work
+ * order title set apart at the end of the strip; a metadata footer last. The
+ * Info tab carries the record sections. The chat is no tab: it lives in the
+ * app-wide chat dock (spec 0432).
  *
  * There is no edit page (spec 0195 applied to Commesse, user directive
  * 2026-10-06): the sections' fields edit IN PLACE, one at a time

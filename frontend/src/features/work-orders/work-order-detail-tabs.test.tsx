@@ -11,10 +11,12 @@ import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/type
 /**
  * The work order detail's tab card laid out like the legacy "Gestione
  * commessa" (user directive 2026-11-16): Info first and open, Task, Documenti
- * and Amministrazione as groups, Note, then Chat/Email/Attivita'; the title
+ * and Amministrazione as groups, Note, then Appunti/Email/Attivita'; the title
  * "tab" set apart brings back Info. REQUIREMENT CHANGED: it replaces the
  * former Task/Costi/Proforma/Chat card (`WorkOrderDetailWorkTabs`) and the
- * collaboration side column.
+ * collaboration side column. REQUIREMENT CHANGED (user directive 2026-11-25):
+ * the Chat left the strip for the app-wide chat dock (spec 0432), so Appunti
+ * follows Notes.
  */
 
 /** Renders inside a router at `url` (the list by default, i.e. the modal Sheet case); the probe prints the current URL. */
@@ -61,12 +63,8 @@ vi.mock('@/features/work-order-invoices/work-order-invoices-section', () => ({
   WorkOrderInvoicesSection: ({ kind }: { kind: string }) => <div>invoices-section {kind}</div>,
 }))
 
-vi.mock('@/features/work-order-chat/work-order-chat-tab-label', () => ({
-  WorkOrderChatTabLabel: () => <>Chat</>,
-}))
-
-vi.mock('@/features/work-order-chat/work-order-chat-panel', () => ({
-  WorkOrderChatPanel: ({ canWriteAction }: { canWriteAction: boolean }) => <div>chat-panel write:{String(canWriteAction)}</div>,
+vi.mock('@/features/work-order-chat/work-order-chat-tab-button', () => ({
+  WorkOrderChatTabButton: () => <button type="button">chat-tab-button</button>,
 }))
 
 vi.mock('@/features/work-order-page/work-order-page-panel', () => ({
@@ -223,27 +221,29 @@ describe('WorkOrderDetailTabs', () => {
     expect(screen.getByText('documents-section registry')).toBeInTheDocument()
   })
 
-  it('adds the Chat tab with view_chat and passes write_chat to the panel (spec 0359 AC-017)', () => {
+  it('never lists the Chat among the tabs, even when granted (spec 0432 AC-006: chat dock)', () => {
     renderTabs({ view_chat: true, write_chat: true })
-
-    expect(topTabs()).toContain('Chat')
-
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Chat' }))
-
-    expect(screen.getByText('chat-panel write:true')).toBeInTheDocument()
-  })
-
-  it('has no Chat tab without view_chat (spec 0359 AC-017)', () => {
-    renderTabs({ view_costs: true, write_chat: true })
 
     expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument()
   })
 
-  it('adds the Workspace notes tab right after the Chat with view_page and passes edit_page (spec 0420 AC-001)', () => {
-    renderTabs({ view_chat: true, view_page: true, edit_page: true })
+  it('puts the Chat button after the tabs with view_chat, which opens the dock (2026-11-25)', () => {
+    renderTabs({ view_chat: true, write_chat: true })
+
+    expect(screen.getByRole('button', { name: 'chat-tab-button' })).toBeInTheDocument()
+  })
+
+  it('has no Chat button without view_chat (chat switched off or outside the team)', () => {
+    renderTabs({ view_costs: true })
+
+    expect(screen.queryByRole('button', { name: 'chat-tab-button' })).not.toBeInTheDocument()
+  })
+
+  it('adds the Workspace notes tab right after Notes with view_page and passes edit_page (spec 0420 AC-001)', () => {
+    renderTabs({ view_chat: true, view_page: true, edit_page: true, view_activity: true })
 
     const tabs = topTabs()
-    expect(tabs.indexOf('Workspace notes')).toBe(tabs.indexOf('Chat') + 1)
+    expect(tabs.indexOf('Workspace notes')).toBe(tabs.indexOf('Notes') + 1)
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Workspace notes' }))
 

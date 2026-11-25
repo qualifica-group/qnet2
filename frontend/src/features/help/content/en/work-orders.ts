@@ -14,7 +14,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "The work order detail is organised in tabs as in the old QNet. Under the header (title with the client company's name below it, status, indicators) there is a row of tabs: **Info**, **Tasks**, **Documents** (Work order documents and Registry documents), **Administration** (Costs, Active proforma and Passive proforma), **Notes**, then **Chat**, **Email** and **Activity log** where available. Each tab appears only if you may see it; when a group has a single item available, the tab shows that item directly. Tabs behave like pages: entering the work order opens **Info**; reloading the page keeps you on the tab you were on, and a save inside a tab does not bring you back to Info. At the end of the row, set a little apart, is the **work order title**: clicking it takes you back to Info.",
+          text: "The work order detail is organised in tabs as in the old QNet. Under the header (title with the client company's name below it, status, indicators) there is a row of tabs: **Info**, **Tasks**, **Documents** (Work order documents and Registry documents), **Administration** (Costs, Active proforma and Passive proforma), **Notes**, then **Workspace notes** (project work orders only), **Email** and **Activity log** where available. On project work orders, at the end of the row, the **Chat** entry with the unread dot opens the conversation in the **Chat** bar at the bottom right. Each tab appears only if you may see it; when a group has a single item available, the tab shows that item directly. Tabs behave like pages: entering the work order opens **Info**; reloading the page keeps you on the tab you were on, and a save inside a tab does not bring you back to Info. At the end of the row, set a little apart, is the **work order title**: clicking it takes you back to Info.",
         },
         {
           type: 'paragraph',
@@ -458,7 +458,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Work Orders** page shows only **Processing** work orders. Work orders of type **Project** live in **Project Work Orders** (same **Operations** group), with the **Unread** column and the **Chat** tab in the detail: see the **Project Work Orders** guide. They are two separate modules, each with **its own viewing permissions**: you may see one without the other.',
+          text: 'The **Work Orders** page shows only **Processing** work orders. Work orders of type **Project** live in **Project Work Orders** (same **Operations** group), with the **Unread** column and the **Chat** (bar at the bottom right): see the **Project Work Orders** guide. They are two separate modules, each with **its own viewing permissions**: you may see one without the other.',
         },
         {
           type: 'paragraph',
@@ -466,7 +466,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The **Chat** tab exists only on project work orders: processing work orders do not have it.",
+          text: "The **Chat** exists only on project work orders: processing work orders have no channel.",
         },
       ],
     },

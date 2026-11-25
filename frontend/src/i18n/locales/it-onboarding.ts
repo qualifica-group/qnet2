@@ -57,7 +57,7 @@ export const onboarding = {
     },
     'ai-assistant': {
       title: 'L’assistente AI',
-      body: 'Il pulsante in basso a destra apre l’assistente AI, a cui puoi fare domande senza lasciare la pagina.',
+      body: 'La barra Chat in basso a destra raccoglie le conversazioni: in cima c’è l’assistente AI, a cui puoi fare domande senza lasciare la pagina, poi i canali dei tuoi progetti.',
     },
     finish: {
       title: 'Tutto pronto',

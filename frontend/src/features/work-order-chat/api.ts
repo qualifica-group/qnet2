@@ -1,6 +1,12 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import type { ChatListParams, ChatMessage, ChatReadResult, ChatThread } from '@/features/work-order-chat/types'
+import type {
+  ChatChannel,
+  ChatListParams,
+  ChatMessage,
+  ChatReadResult,
+  ChatThread,
+} from '@/features/work-order-chat/types'
 
 const chatPath = (workOrderId: number) => `/work-orders/${workOrderId}/chat`
 
@@ -31,5 +37,11 @@ export async function markChatRead(workOrderId: number, lastMessageId: number): 
   const { data } = await apiClient.post<ApiResponse<ChatReadResult>>(`${chatPath(workOrderId)}/read`, {
     last_message_id: lastMessageId,
   })
+  return data.data
+}
+
+/** The chat dock's channels (spec 0432): the actor's project work orders, newest message first. */
+export async function fetchChatChannels(): Promise<ChatChannel[]> {
+  const { data } = await apiClient.get<ApiResponse<ChatChannel[]>>('/work-order-chat/channels')
   return data.data
 }

@@ -22,6 +22,17 @@ use Illuminate\Support\Facades\Gate;
  */
 final class WorkOrderChatAccess
 {
+    /**
+     * The chat is switched on for the installation (CHAT_ENABLED, spec 0432).
+     * Checked only where the CHAT itself is reached (its routes, actions,
+     * channel, column): canRead()/canWrite() stay the team rule the workspace
+     * notes share (spec 0420 D-2), which the switch must not hide.
+     */
+    public static function isEnabled(): bool
+    {
+        return (bool) config('chat.enabled');
+    }
+
     /** Project work order, visible to the user, and the user is in its team or is a super-admin. */
     public function canRead(User $user, WorkOrder $workOrder): bool
     {

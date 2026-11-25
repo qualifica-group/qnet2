@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0432-project-work-order-chat-dock" status="approved" owner="nicola" date="2026-11-25">
+
+  <goal>
+    La chat delle Commesse di Progetto (spec 0359) diventa un dock globale in basso a destra, come quello di Reezl:
+    una barra "Chat" con i non letti apre l'elenco dei canali (le commesse di progetto in cui l'utente e' Responsabile
+    o Partecipante); cliccando un canale si apre la sua conversazione in una finestra flottante. La chat non e' piu'
+    un tab del dettaglio commessa; gli Appunti (spec 0420) restano un tab.
+  </goal>
+
+  <context>
+    Richieste utente 2026-11-25: "chat bassa e float come su Reezl, con i colori di QNet e come la chat dell'IA";
+    "Appunti come tab"; "la chat con tutti i canali (i progetti) dove sono presente io come partecipante o
+    responsabile; cliccando un canale entro in quella chat".
+
+    Decisioni:
+    D-1 Canale = commessa `type = project` in cui l'attore e' in `work_order_supervisor` o `work_order_participant`.
+        Il super-admin fuori dal team NON vede quei canali nell'elenco (la richiesta dice "dove sono presente io");
+        le regole di lettura/scrittura del singolo canale restano `WorkOrderChatAccess` (spec 0359).
+    D-2 Senza il permesso di visualizzazione delle Commesse di Progetto l'elenco e' vuoto (un membro del team e' sempre
+        nel perimetro: `WorkOrderPolicy::view` = permesso + perimetro).
+    D-3 Ordine: ultimo messaggio piu' recente prima; i canali senza messaggi dopo, per codice decrescente.
+    D-4 Anteprima dell'ultimo messaggio troncata lato server (`PREVIEW_LENGTH`); un messaggio cancellato ha anteprima null
+        e `is_deleted` true.
+    D-5 Realtime: il dock ascolta il canale privato di ogni commessa dell'elenco (nome ricevuto dall'API, mai
+        ricostruito) e rilegge l'elenco a ogni evento; le finestre aperte aggiornano la conversazione come prima.
+    D-6 Una query per l'elenco (sottoquery correlate per non letti e ultimo messaggio), nessuna query per riga.
+    D-7 UI: barra `fixed bottom-0` (posizione e livello in D-11); finestre affiancate, al massimo
+        `MAX_OPEN_WINDOWS` = 3 (aprendone una quarta si chiude la piu' vecchia); sotto `sm` pannello e finestra a tutto
+        schermo, una finestra alla volta. Presenza del dock: vedi D-13 (supera il "sempre presente").
+    D-8 Stile come la chat dell'IA (superfici `bg-background`/`bg-surface`/`bg-card`, bolle proprie `bg-primary`,
+        Invio invia, Maiusc+Invio a capo).
+    D-9 (richiesta utente 2026-11-25, "come i migliori CRM", "altezza minima come Reezl") Barra e intestazioni alte
+        32px (`h-8`); pannello e finestre con corpo ad altezza FISSA come Reezl (`h-[60vh] max-h-[36rem]` da `sm`),
+        anche con pochi canali o messaggi. Pannello: ricerca locale (titolo, codice, cliente, senza accenti) e filtro
+        Tutti / Non letti. Righe con avatar del progetto, orario relativo (ora oggi, Ieri, giorno della settimana, data),
+        cliente, anteprima e non letti. Conversazione: separatori di giorno (Oggi, Ieri, data), messaggi dello stesso
+        autore entro 5 minuti raggruppati (avatar, nome e ora una volta), azioni Modifica/Elimina al passaggio del mouse
+        (sempre visibili sugli schermi touch).
+    D-10 (richiesta utente 2026-11-25) Pannello e finestre hanno la STESSA intestazione (`DockHeader`, riga `h-8`).
+    D-11 (richiesta utente 2026-11-25) L'assistente AI diventa una conversazione del dock: niente piu' pulsante tondo
+        (`FloatingAiAssistant` rimosso). E' la prima voce fissata in cima all'elenco, con le stesse regole del pulsante
+        (`ai-assistant.use`, interruttore `floating_enabled`, nascosta sulla pagina `/ai-assistant`); la sua finestra
+        (`AiDockWindow`, caricata alla prima apertura) ha nuova conversazione, cronologia e pagina intera, e resta
+        montata da ridotta (risposta in corso e bozza sopravvivono). Il dock si sposta a `right-4`, `z-40`.
+    D-12 (richiesta utente 2026-11-25, "i colori non si devono sovrapporre col resto di QNet") Scatole su `bg-card`,
+        un gradino sopra ogni superficie di pagina (`background` elenchi, `surface` record); intestazioni nel blu del
+        marchio (`bg-primary`, come la barra laterale). Dentro la card solo tinte: bolle altrui e fascia del composer
+        su `bg-muted`, pulsanti secondari `outline` con riempimento in tinta (`--secondary` e' bianco come la card).
+        La chat IA del dock (variante `widget`) segue la stessa regola via `group-data-[variant=widget]/ai-chat:`; la
+        pagina intera dell'IA resta invariata.
+    D-13 (richieste utente 2026-11-25) `CHAT_ENABLED` (config/chat.php, default true): spenta, le API della chat
+        rispondono 404 (`EnsureWorkOrderChatEnabled`), `view_chat`/`write_chat` falsi, il canale realtime rifiuta
+        l'ingresso, sparisce la colonna Non letti, `GET /api/config` espone `features.chat=false` e il dock non chiede
+        canali. Gli Appunti (spec 0420) NON dipendono dall'interruttore: `WorkOrderChatAccess::canRead` resta la regola
+        di team e l'interruttore si controlla solo nei punti propri della chat. SUPERA "sempre presente" di D-7: il
+        dock compare solo se c'e' almeno un canale (chat accesa) oppure l'assistente AI; altrimenti sparisce.
+    D-14 (richiesta utente 2026-11-25) Nel dettaglio commessa, dopo la riga dei tab, una voce "Chat" (stile dei tab,
+        pallino dei non letti come Note, `WorkOrderChatTabButton`) apre la conversazione nel dock: lo stato delle
+        finestre sta in `ChatDockProvider` (layout). Se la commessa non e' fra i canali dell'utente (super-admin fuori
+        dal team, spec 0359 D-4) il canale viene costruito dal dettaglio e la finestra si apre lo stesso (senza
+        realtime della lista). Chiude il punto aperto sull'accesso del super-admin.
+  </context>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/work-order-chat/channels">
+      <request>Nessun parametro. `auth:sanctum`, nessun throttle.</request>
+      <response>
+        200, envelope del progetto, `data` = array di:
+        { work_order_id: int, code: string, title: string|null, registry_name: string|null,
+          unread_count: int, can_write: bool, channel: string,
+          last_message: { author_name: string|null, body_preview: string|null, is_deleted: bool,
+                          created_at: ISO-8601 } | null }
+      </response>
+      <errors>401 senza autenticazione.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    AC-001 L'elenco contiene solo le commesse di progetto in cui l'attore e' Responsabile o Partecipante; non le
+           commesse di lavorazione, non quelle di progetto fuori dal suo team, nemmeno per il super-admin.
+    AC-002 Senza il permesso di visualizzazione delle Commesse di Progetto l'elenco e' vuoto.
+    AC-003 `unread_count` conta i messaggi altrui non cancellati dopo il segno di lettura (come la colonna Non letti).
+    AC-004 `last_message` e' l'ultimo messaggio (anche cancellato, con anteprima null); null senza messaggi; ordine D-3.
+    AC-005 `can_write` false su commessa chiusa/annullata/disdetta.
+    AC-006 Il dettaglio commessa non ha piu' il tab Chat; il tab Appunti segue Note.
+    AC-007 Il dock mostra il totale dei non letti; cliccando un canale apre la sua finestra (pannello del canale montato
+           solo da aperto); minimizza/chiudi; al massimo 3 finestre.
+  </acceptance>
+
+  <microtasks>
+    M-1 backend: `WorkOrderChatChannels` (query) + `WorkOrderChatChannelResource` + rotta + Pest (AC-001..005).
+    M-2 frontend: api/types/query-key, `useChatChannels` (+ realtime), `ChatDock` globale in `app-layout`, finestre,
+        Vitest (AC-006, AC-007).
+    M-3 guide in-app IT/EN, manuale, HANDOFF.
+  </microtasks>
+</spec>

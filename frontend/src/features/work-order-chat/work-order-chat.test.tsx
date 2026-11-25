@@ -5,9 +5,11 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import i18n from '@/i18n'
 import { chatMessage, chatThread, OPEN_WINDOW, OWN_AUTHOR } from '@/features/work-order-chat/chat-fixtures'
 import { CHAT_MESSAGE_MAX_LENGTH } from '@/features/work-order-chat/chat-schema'
-import type { ChatEventPayload, ChatThread } from '@/features/work-order-chat/types'
+import type { ChatChannel, ChatEventPayload, ChatThread } from '@/features/work-order-chat/types'
 import { WorkOrderChatPanel } from '@/features/work-order-chat/work-order-chat-panel'
-import { WorkOrderChatTabLabel } from '@/features/work-order-chat/work-order-chat-tab-label'
+import { ChatUnreadBadge } from '@/features/work-order-chat/dock/chat-unread-badge'
+import { useChatChannelsLive } from '@/features/work-order-chat/dock/use-chat-channels-live'
+import { useWorkOrderChat } from '@/features/work-order-chat/use-work-order-chat'
 
 const fetchMock = vi.fn<(id: number, params?: unknown) => Promise<ChatThread>>()
 const sendMock = vi.fn()
@@ -19,6 +21,7 @@ vi.mock('@/features/work-order-chat/api', () => ({
   editChatMessage: vi.fn(),
   deleteChatMessage: (...args: unknown[]) => deleteMock(...args),
   markChatRead: (...args: unknown[]) => readMock(...args),
+  fetchChatChannels: vi.fn(),
 }))
 
 vi.mock('@/features/auth/use-auth', () => ({ useAuth: () => ({ user: { id: 1 } }) }))
@@ -47,12 +50,36 @@ vi.mock('@/lib/echo', () => ({
   },
 }))
 
+/**
+ * What the chat dock mounts around a window (spec 0432): the channel
+ * subscription and the thread's unread badge. REQUIREMENT CHANGED: it
+ * replaces the former tab label, which owned both.
+ */
+function DockHarness() {
+  useChatChannelsLive(LIVE_CHANNELS)
+  const { data } = useWorkOrderChat(4)
+  return <ChatUnreadBadge count={data?.unread_count ?? 0} />
+}
+
+const LIVE_CHANNELS: ChatChannel[] = [
+  {
+    work_order_id: 4,
+    code: 'COM-0004',
+    title: 'Project',
+    registry_name: null,
+    unread_count: 2,
+    can_write: true,
+    channel: 'work-orders.4.chat',
+    last_message: null,
+  },
+]
+
 function renderChat(writeChat = true) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
-        <WorkOrderChatTabLabel workOrderId={4} />
+        <DockHarness />
         <WorkOrderChatPanel workOrderId={4} canWriteAction={writeChat} />
       </ConfirmDialogProvider>
     </QueryClientProvider>,
@@ -236,6 +263,24 @@ describe('composer (AC-021)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('2000')
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
+  })
+
+  it('sends on Enter and keeps Shift+Enter for a new line, like the assistant (2026-11-25)', async () => {
+    sendMock.mockResolvedValue(chatMessage({ id: 12, author: OWN_AUTHOR, body: 'via enter' }))
+    renderChat()
+    await screen.findByText('message 11')
+    const input = screen.getByRole('textbox', { name: 'Write a message' })
+
+    fireEvent.change(input, { target: { value: 'via enter' } })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled())
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
+
+    expect(sendMock).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => expect(sendMock).toHaveBeenCalledWith(4, 'via enter'))
+    await waitFor(() => expect(input).toHaveValue(''))
   })
 })
 

@@ -6,16 +6,32 @@ import type { ApiErrorResponse } from '@/api/types'
 import {
   deleteChatMessage,
   editChatMessage,
+  fetchChatChannels,
   fetchChatMessages,
   markChatRead,
   sendChatMessage,
 } from '@/features/work-order-chat/api'
 import { applyChatEvent, applyReadResult, prependOlder } from '@/features/work-order-chat/chat-cache'
 import { workOrderChatKeys } from '@/features/work-order-chat/query-keys'
-import type { ChatEventAction, ChatMessage, ChatReadResult, ChatThread } from '@/features/work-order-chat/types'
+import type {
+  ChatChannel,
+  ChatEventAction,
+  ChatMessage,
+  ChatReadResult,
+  ChatThread,
+} from '@/features/work-order-chat/types'
 import { useAuth } from '@/features/auth/use-auth'
 
 type ChatError = AxiosError<ApiErrorResponse>
+
+/** The chat dock's channels (spec 0432); not asked with the chat switched off. */
+export function useChatChannels(enabled = true) {
+  return useQuery<ChatChannel[], ChatError>({
+    queryKey: workOrderChatKeys.channels(),
+    queryFn: fetchChatChannels,
+    enabled,
+  })
+}
 
 /** Latest page of the thread plus the permission flags and the unread counter. */
 export function useWorkOrderChat(workOrderId: number) {
@@ -52,6 +68,8 @@ function useWriteMutation<TVariables>(
       queryClient.setQueryData<ChatThread>(workOrderChatKeys.thread(workOrderId), (thread) =>
         thread ? applyChatEvent(thread, { action, message }, user?.id ?? null) : thread,
       )
+      // The dock's last-message preview and order follow the write.
+      void queryClient.invalidateQueries({ queryKey: workOrderChatKeys.channels() })
     },
     onError: (error) => {
       toast.error(error.response?.data?.message ?? t('workOrders.chat.actionError'))
@@ -81,6 +99,8 @@ export function useMarkChatRead(workOrderId: number) {
       queryClient.setQueryData<ChatThread>(workOrderChatKeys.thread(workOrderId), (thread) =>
         thread ? applyReadResult(thread, result) : thread,
       )
+      // The dock's unread badges follow the read mark.
+      void queryClient.invalidateQueries({ queryKey: workOrderChatKeys.channels() })
     },
   })
 }

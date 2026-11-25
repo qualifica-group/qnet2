@@ -57,7 +57,7 @@ export const onboarding = {
     },
     'ai-assistant': {
       title: 'The AI assistant',
-      body: 'The button at the bottom right opens the AI assistant, which you can ask questions without leaving the page.',
+      body: 'The Chat bar at the bottom right gathers your conversations: the AI assistant on top, which you can ask questions without leaving the page, then the channels of your projects.',
     },
     finish: {
       title: 'All set',

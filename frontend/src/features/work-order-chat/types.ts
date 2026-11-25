@@ -48,3 +48,25 @@ export interface ChatReadResult {
   last_read_message_id: number
   unread_count: number
 }
+
+/** `last_message` of a dock channel (spec 0432): a preview, never the whole body. */
+export interface ChatChannelLastMessage {
+  author_name: string | null
+  /** Null when the message was deleted. */
+  body_preview: string | null
+  is_deleted: boolean
+  created_at: string
+}
+
+/** One entry of `GET /work-order-chat/channels` (spec 0432): a project work order of the actor's team. */
+export interface ChatChannel {
+  work_order_id: number
+  code: string
+  title: string | null
+  registry_name: string | null
+  unread_count: number
+  can_write: boolean
+  /** Channel name without the `private-` prefix: used as received, never rebuilt. */
+  channel: string
+  last_message: ChatChannelLastMessage | null
+}

@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MessagesSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/use-auth'
 import { canManageMessage } from '@/features/work-order-chat/chat-cache'
+import { buildChatTimeline, formatChatDay } from '@/features/work-order-chat/chat-timeline'
 import { useChatMarkRead } from '@/features/work-order-chat/use-chat-mark-read'
 import { useNow } from '@/features/work-order-chat/use-now'
 import {
@@ -15,6 +17,7 @@ import {
 } from '@/features/work-order-chat/use-work-order-chat'
 import { WorkOrderChatComposer } from '@/features/work-order-chat/work-order-chat-composer'
 import { WorkOrderChatMessage } from '@/features/work-order-chat/work-order-chat-message'
+import { CHAT_DOCK_SOFT_BUTTON_CLASS } from '@/features/work-order-chat/dock/dock-styles'
 
 interface WorkOrderChatPanelProps {
   workOrderId: number
@@ -23,13 +26,14 @@ interface WorkOrderChatPanelProps {
 }
 
 /**
- * Body of the "Chat" tab: chronological messages, older-page loader, composer.
- * Live updates are NOT subscribed here: `WorkOrderChatTabLabel` owns the channel
- * so the badge stays live while another tab is open. Mounting this panel marks
- * the thread read (spec 0359 AC-022).
+ * Body of a conversation window of the chat dock, laid out like the assistant's chat:
+ * scrolling messages (older-page loader on top) above the composer, filling the
+ * window. Live updates are NOT subscribed here: the chat dock owns every
+ * channel (`useChatChannelsLive`, spec 0432). Mounting this panel (opening
+ * the window) marks the thread read (spec 0359 AC-022).
  */
 export function WorkOrderChatPanel({ workOrderId, canWriteAction }: WorkOrderChatPanelProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const now = useNow()
   const chat = useWorkOrderChat(workOrderId)
@@ -64,7 +68,7 @@ export function WorkOrderChatPanel({ workOrderId, canWriteAction }: WorkOrderCha
     return (
       <div role="alert" className="flex flex-col items-start gap-2 p-3 text-sm">
         <span>{t('workOrders.chat.loadError')}</span>
-        <Button type="button" size="xs" variant="outline" onClick={() => void chat.refetch()}>
+        <Button type="button" size="xs" variant="outline" className={CHAT_DOCK_SOFT_BUTTON_CLASS} onClick={() => void chat.refetch()}>
           {t('workOrders.chat.retry')}
         </Button>
       </div>
@@ -76,33 +80,51 @@ export function WorkOrderChatPanel({ workOrderId, canWriteAction }: WorkOrderCha
   const oldestId = thread.messages[0]?.id
 
   return (
-    <div className="flex flex-col gap-2 p-3">
-      {thread.has_more && oldestId !== undefined ? (
-        <Button
-          type="button"
-          size="xs"
-          variant="outline"
-          className="self-center"
-          disabled={loadOlder.isPending}
-          onClick={() => loadOlder.mutate(oldestId)}
-        >
-          {t('workOrders.chat.loadPrevious')}
-        </Button>
-      ) : null}
-      {thread.messages.length === 0 ? (
-        <p className="py-4 text-center text-xs text-muted-foreground">{t('workOrders.chat.empty')}</p>
-      ) : (
-        <ul
-          ref={listRef}
-          aria-label={t('workOrders.chat.messagesLabel')}
-          className="flex max-h-96 min-h-24 flex-col gap-2 overflow-y-auto rounded-lg bg-surface p-2"
-        >
-          {thread.messages.map((message) => (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <ul
+        ref={listRef}
+        aria-label={t('workOrders.chat.messagesLabel')}
+        className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-3 py-2"
+      >
+        {thread.has_more && oldestId !== undefined ? (
+          <li className="mb-2 self-center">
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              className={CHAT_DOCK_SOFT_BUTTON_CLASS}
+              disabled={loadOlder.isPending}
+              onClick={() => loadOlder.mutate(oldestId)}
+            >
+              {t('workOrders.chat.loadPrevious')}
+            </Button>
+          </li>
+        ) : null}
+        {thread.messages.length === 0 ? (
+          <li className="m-auto flex flex-col items-center gap-2 py-6 text-center">
+            <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <MessagesSquare className="size-4" aria-hidden="true" />
+            </span>
+            <span className="text-xs text-muted-foreground">{t('workOrders.chat.empty')}</span>
+          </li>
+        ) : null}
+        {buildChatTimeline(thread.messages).map((item) =>
+          item.kind === 'day' ? (
+            <li key={`day-${item.key}`} className="my-2 flex items-center gap-2 text-[0.7rem] text-muted-foreground first:mt-0">
+              <span className="h-px flex-1 bg-border" aria-hidden="true" />
+              {formatChatDay(item.date, now, i18n.language, {
+                today: t('workOrders.chat.today'),
+                yesterday: t('workOrders.chat.yesterday'),
+              })}
+              <span className="h-px flex-1 bg-border" aria-hidden="true" />
+            </li>
+          ) : (
             <WorkOrderChatMessage
-              key={message.id}
-              message={message}
-              isOwn={message.author?.id === currentUserId}
-              canManage={canManageMessage(message, {
+              key={item.message.id}
+              message={item.message}
+              isOwn={item.message.author?.id === currentUserId}
+              startsGroup={item.startsGroup}
+              canManage={canManageMessage(item.message, {
                 canWrite,
                 canModerate: thread.can_moderate,
                 currentUserId,
@@ -112,20 +134,22 @@ export function WorkOrderChatPanel({ workOrderId, canWriteAction }: WorkOrderCha
               onEdit={(messageId, body) => edit.mutateAsync({ messageId, body })}
               onDelete={(messageId) => remove.mutate(messageId)}
             />
-          ))}
-        </ul>
-      )}
-      {canWrite ? (
-        <WorkOrderChatComposer
-          isPending={send.isPending}
-          submitLabel={t('workOrders.chat.send')}
-          onSubmit={(body) => send.mutateAsync(body)}
-        />
-      ) : (
-        <p role="status" className="rounded-md border bg-surface px-2.5 py-1.5 text-xs text-muted-foreground">
-          {t('workOrders.chat.readOnly')}
-        </p>
-      )}
+          ),
+        )}
+      </ul>
+      <div className="border-t border-border bg-muted/40 p-2">
+        {canWrite ? (
+          <WorkOrderChatComposer
+            isPending={send.isPending}
+            submitLabel={t('workOrders.chat.send')}
+            onSubmit={(body) => send.mutateAsync(body)}
+          />
+        ) : (
+          <p role="status" className="px-1 py-0.5 text-xs text-muted-foreground">
+            {t('workOrders.chat.readOnly')}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

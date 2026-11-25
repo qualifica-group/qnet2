@@ -67,7 +67,7 @@ export function AiComposer({ composer, allowedModules }: Props) {
         event.preventDefault()
         void composer.submit()
       }}
-      className="relative flex flex-col gap-1.5 border-t border-border bg-surface p-2"
+      className="relative flex flex-col gap-1.5 border-t border-border bg-surface p-2 group-data-[variant=widget]/ai-chat:bg-muted/40"
       noValidate
     >
       {failure ? (

@@ -26,8 +26,9 @@ final class WorkOrderChatChannel
         return str_replace('{workOrder}', (string) $id, self::PATTERN);
     }
 
+    /** No channel at all with CHAT_ENABLED off (spec 0432). */
     public function join(User $user, WorkOrder $workOrder): bool
     {
-        return $this->access->canRead($user, $workOrder);
+        return WorkOrderChatAccess::isEnabled() && $this->access->canRead($user, $workOrder);
     }
 }

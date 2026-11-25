@@ -88,7 +88,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni commessa di progetto ha una tab **Chat** nel dettaglio, per scambiare messaggi con il team. La vedono e ci scrivono i **Responsabili** e i **Partecipanti** della commessa e gli **amministratori**. Chi vede la commessa per altri motivi (per esempio perché ha il permesso di vedere tutte le commesse) **non** vede la chat.',
+          text: "Ogni commessa di progetto ha una **chat** per scambiare messaggi con il team. Non è una scheda del dettaglio: sta nella barra **Chat** in basso a destra, presente in ogni pagina quando hai qualcuno con cui parlare: almeno un progetto in cui sei Responsabile o Partecipante, oppure l'Assistente AI. Se non hai né l'uno né l'altro la barra non compare. L'amministratore può anche spegnere la chat per tutta l'installazione: allora la barra mostra solo l'Assistente AI (se attivo) e la colonna **Non letti** sparisce; gli **Appunti** restano. Aprendola vedi in cima l'**Assistente AI** e poi i **canali**: le commesse di progetto in cui sei Responsabile o Partecipante, con il cliente, l'ultimo messaggio e i non letti, la più recente in alto. La vedono e ci scrivono i **Responsabili** e i **Partecipanti** della commessa e gli **amministratori**. Chi vede la commessa per altri motivi (per esempio perché ha il permesso di vedere tutte le commesse) **non** vede la chat.",
         },
         {
           type: 'list',
@@ -96,14 +96,16 @@ const guide: HelpGuide = {
             'I messaggi sono **solo testo**, fino a **2.000 caratteri**.',
             'I messaggi nuovi compaiono **in tempo reale**, senza ricaricare la pagina.',
             'Se i messaggi sono tanti, **Carica messaggi precedenti** mostra quelli più vecchi.',
+            "In cima all'elenco puoi **cercare** un canale per titolo, codice o cliente e scegliere **Non letti** per vedere solo quelli con messaggi nuovi.",
+            "Puoi tenere aperte fino a **3** conversazioni affiancate: aprendone una quarta si chiude la più vecchia. Cliccando il titolo la riduci o la riapri, la **X** la chiude e l'icona accanto apre la commessa. Su telefono la finestra aperta occupa tutto lo schermo.",
           ],
         },
         {
           type: 'steps',
           items: [
-            'Apri la commessa e scegli la tab **Chat**.',
+            'Clicca la barra **Chat** in basso a destra e poi il canale della commessa, oppure, dal dettaglio della commessa, la voce **Chat** in fondo alla riga delle schede (con il pallino dei messaggi non letti): si apre la sua conversazione.',
             'Scrivi nel campo **Scrivi un messaggio**.',
-            'Premi **Invia**.',
+            'Premi **Invio** oppure il pulsante **Invia** (la freccia). Con **Maiusc+Invio** vai a capo.',
           ],
         },
         {
@@ -142,11 +144,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'chat-badge',
-      title: 'Il numero sulla tab Chat',
+      title: 'I numeri dei messaggi non letti',
       blocks: [
         {
           type: 'paragraph',
-          text: "Sulla tab **Chat** compare un numero con i messaggi non letti, che si aggiorna anche mentre guardi un'altra tab della commessa. Si **azzera** quando apri la tab Chat con la pagina in primo piano: i messaggi risultano letti e la colonna **Non letti** si aggiorna di conseguenza. I tuoi messaggi non contano come non letti.",
+          text: "Sulla barra **Chat** compare il totale dei messaggi non letti di tutti i tuoi canali, nell'elenco ogni canale ha il suo numero e nel dettaglio della commessa il pallino sulla voce **Chat**: si aggiornano in tempo reale, in qualunque pagina tu sia. Il numero di un canale si **azzera** quando apri la sua conversazione con la pagina in primo piano: i messaggi risultano letti e la colonna **Non letti** si aggiorna di conseguenza. I tuoi messaggi non contano come non letti.",
         },
       ],
     },
@@ -156,7 +158,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Ogni commessa di progetto ha anche una scheda **Appunti**, subito dopo la Chat: una **pagina condivisa dal team**, fatta di blocchi, per tenere insieme testo, elenchi, task e sondaggi. La vedono e la modificano le stesse persone che usano la chat (Responsabili, Partecipanti e amministratori). Non è la scheda **Note** della commessa, che resta com'era.",
+          text: "Ogni commessa di progetto ha anche una scheda **Appunti**, subito dopo la scheda **Note**: una **pagina condivisa dal team**, fatta di blocchi, per tenere insieme testo, elenchi, task e sondaggi. La vedono e la modificano le stesse persone che usano la chat (Responsabili, Partecipanti e amministratori). Non è la scheda **Note** della commessa, che resta com'era.",
         },
         {
           type: 'list',
@@ -203,7 +205,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'note',
-          text: 'I messaggi della chat **non generano notifiche** (nessuna campanella) **né email**. Per sapere se ci sono novità guarda la colonna **Non letti** e il numero sulla tab **Chat**.',
+          text: 'I messaggi della chat **non generano notifiche** (nessuna campanella) **né email**. Per sapere se ci sono novità guarda la colonna **Non letti** e i numeri sulla barra **Chat**.',
         },
       ],
     },

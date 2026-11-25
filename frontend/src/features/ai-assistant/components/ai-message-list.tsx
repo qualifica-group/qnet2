@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { AiMarkdown } from '@/features/ai-assistant/components/ai-markdown'
 import { AiMessageBubble, BubbleAvatar } from '@/features/ai-assistant/components/ai-message-bubble'
+import { AI_WIDGET_REPLY_CLASS } from '@/features/ai-assistant/components/ai-widget-styles'
 import { useStickToBottom } from '@/features/ai-assistant/hooks/use-stick-to-bottom'
 import type { AiMessage } from '@/features/ai-assistant/types'
+import { cn } from '@/lib/utils'
 
 interface Props {
   messages: AiMessage[]
@@ -33,7 +35,7 @@ export function AiMessageList({ messages, isSending, streamingText }: Props) {
         {showStreaming ? (
           <li className="flex gap-2">
             <BubbleAvatar isUser={false} />
-            <div className="min-w-0 max-w-[85%] rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground">
+            <div className={cn('min-w-0 max-w-[85%] rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground', AI_WIDGET_REPLY_CLASS)}>
               {streamingText ? (
                 <AiMarkdown content={streamingText} />
               ) : (

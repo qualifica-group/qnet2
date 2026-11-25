@@ -27,14 +27,15 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'The round button with the sparkles at the bottom right opens a chat window over the page you are working on (full screen on a phone). Here the assistant uses the guide of the current page.',
+            'Open the **Chat** bar at the bottom right: the **AI assistant** is the first conversation of the list, above the project channels. Clicking it opens its window over the page you are working on (full screen on a phone). Here the assistant uses the guide of the current page.',
+            '**Minimize** turns the window into a low bar: the ongoing answer and what you were typing stay. The **X** closes it.',
             'In the window, **Open full page** takes you to the **AI assistant** page of the side menu, with the conversation list next to the chat. On that page the assistant uses the general guide.',
             '**New conversation** starts a fresh discussion; **History** shows the saved conversations.',
           ],
         },
         {
           type: 'warning',
-          text: 'The button and the page only appear if your role is allowed to use the assistant and the administrator has switched them on for your installation: the chat window and the page are switched on separately and are off to begin with. If the page is off, the menu item does not appear and the window has no **Open full page**. If the administrator has not configured the assistant yet, the chat shows **Assistant not configured** and does not let you write.',
+          text: 'The conversation in the Chat bar and the page only appear if your role is allowed to use the assistant and the administrator has switched them on for your installation: the chat window and the page are switched on separately and are off to begin with. If the page is off, the menu item does not appear and the window has no **Open full page**. If the administrator has not configured the assistant yet, the chat shows **Assistant not configured** and does not let you write.',
         },
       ],
     },

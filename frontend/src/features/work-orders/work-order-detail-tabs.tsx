@@ -13,6 +13,7 @@ import {
 } from '@/features/work-orders/use-work-order-detail-tabs'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 import { useWorkOrderActiveTab } from '@/features/work-orders/use-work-order-active-tab'
+import { WorkOrderChatTabButton } from '@/features/work-order-chat/work-order-chat-tab-button'
 
 /** Padding of the collaboration sections, which leave it to their host. */
 const PADDED_CONTENT_CLASS = 'p-4'
@@ -86,7 +87,8 @@ interface WorkOrderDetailTabsProps {
 /**
  * The work order's tab card, below the identity band, laid out like the
  * legacy "Gestione commessa" (user directive 2026-11-16): Info | Task |
- * Documenti | Amministrazione | Note (+ Chat, Email, Attivita'), then the
+ * Documenti | Amministrazione | Note (+ Appunti, Email, Attivita'), then
+ * "Chat", which opens the conversation in the chat dock (spec 0432), and the
  * title "tab" set apart. Info opens by default; on the work order's page the
  * open tab follows the URL like a page (`useWorkOrderActiveTab`). The active tab's header
  * actions (the Task board's) are portaled into the slot on the right of the
@@ -114,6 +116,7 @@ export function WorkOrderDetailTabs({ workOrder, info, initialTab }: WorkOrderDe
           <TabsList className="w-auto" aria-label={t('workOrders.detail.tabs.label')}>
             <TabTriggers tabs={tabs} />
           </TabsList>
+          {workOrder.permissions.actions.view_chat ? <WorkOrderChatTabButton workOrder={workOrder} /> : null}
           <WorkOrderTitleTab title={workOrder.title} onSelect={() => setActiveTab(WORK_ORDER_INFO_TAB)} />
           <div ref={setActionsContainer} className="ml-auto flex items-center gap-1.5" />
         </div>

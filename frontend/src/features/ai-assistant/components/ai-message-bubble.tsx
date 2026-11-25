@@ -4,6 +4,7 @@ import { Bot, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AiAttachmentChip } from '@/features/ai-assistant/components/ai-attachment-chip'
 import { AiMarkdown } from '@/features/ai-assistant/components/ai-markdown'
+import { AI_WIDGET_REPLY_CLASS } from '@/features/ai-assistant/components/ai-widget-styles'
 import { getAiMentionModule } from '@/features/ai-assistant/mention-modules'
 import type { AiMessage } from '@/features/ai-assistant/types'
 
@@ -24,7 +25,7 @@ export const AiMessageBubble = memo(function AiMessageBubble({ message }: Props)
         <div
           className={cn(
             'rounded-lg px-3 py-2 text-sm',
-            isUser ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-card-foreground',
+            isUser ? 'bg-primary text-primary-foreground' : cn('border border-border bg-card text-card-foreground', AI_WIDGET_REPLY_CLASS),
           )}
         >
           {isUser ? <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.content}</p> : <AiMarkdown content={message.content} />}

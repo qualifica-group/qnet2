@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, FileCheck2, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText } from 'lucide-react'
+import { Euro, FileCheck2, Info, ListChecks, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -11,8 +11,6 @@ import { NotesTabCount } from '@/features/notes/notes-tab-count'
 import { DocumentRequestsSection } from '@/features/document-requests/document-requests-section'
 import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
-import { WorkOrderChatPanel } from '@/features/work-order-chat/work-order-chat-panel'
-import { WorkOrderChatTabLabel } from '@/features/work-order-chat/work-order-chat-tab-label'
 import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-costs-section'
 import { WorkOrderPagePanel } from '@/features/work-order-page/work-order-page-panel'
 import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-order-invoices-section'
@@ -28,7 +26,7 @@ export const WORK_ORDER_INFO_TAB = 'info'
 /**
  * One tab of the work order detail. `padded`: the content is a collaboration
  * section that expects the host to pad it (notes, documents, email, activity);
- * the others (Info, Task, Costi, Proforma, Chat) bring their own padding.
+ * the others (Info, Task, Costi, Proforma, Appunti) bring their own padding.
  * `subTabs`: a group tab (Documenti, Amministrazione) that switches between
  * its own sub-tabs.
  */
@@ -73,7 +71,9 @@ interface UseWorkOrderDetailTabsArgs {
 /**
  * The work order detail's tabs in the legacy order (user directive
  * 2026-11-16): Info | Task | Documenti | Amministrazione (the legacy "€") |
- * Note, then the tabs the legacy did not have (Chat, Email, Attivita'). Info
+ * Note, then the tabs the legacy did not have (Appunti, Email, Attivita'). The
+ * Chat is not a tab: it lives in the app-wide chat dock (`ChatDock`, spec
+ * 0432). Info
  * is always there and open by default; every other tab keeps its OWN
  * authorization gate and is absent when unauthorized (spec 0134 D-3, 0146,
  * 0173, 0175, 0190, 0282, 0359).
@@ -222,16 +222,7 @@ export function useWorkOrderDetailTabs({
     })
   }
 
-  // Step 6: the tabs the legacy did not have. The chat label loads the thread for the unread badge.
-  if (actions.view_chat) {
-    tabs.push({
-      value: 'chat',
-      label: <WorkOrderChatTabLabel workOrderId={workOrder.id} />,
-      icon: <MessageSquare className="size-3.5" aria-hidden="true" />,
-      content: <WorkOrderChatPanel workOrderId={workOrder.id} canWriteAction={actions.write_chat === true} />,
-    })
-  }
-  // Workspace notes page (spec 0420): right after the chat, same access rule.
+  // Step 6: the tabs the legacy did not have. Workspace notes (spec 0420) first, same access rule as the chat.
   if (actions.view_page) {
     tabs.push({
       value: 'page',

@@ -27,14 +27,15 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Il pulsante tondo con le stelline in basso a destra apre una finestra di chat sopra la pagina in cui stai lavorando (a tutto schermo su telefono). Qui l\'assistente usa la guida della pagina corrente.',
+            'Apri la barra **Chat** in basso a destra: l\'**Assistente AI** è la prima conversazione dell\'elenco, sopra i canali dei progetti. Cliccandola si apre la sua finestra sopra la pagina in cui stai lavorando (a tutto schermo su telefono). Qui l\'assistente usa la guida della pagina corrente.',
+            'Con **Riduci** la finestra diventa una barra bassa: la risposta in corso e quello che stavi scrivendo restano. Con la **X** la chiudi.',
             'Nella finestra, **Apri a pagina intera** porta alla pagina **Assistente AI** del menu laterale, con l\'elenco delle conversazioni a fianco della chat. In quella pagina l\'assistente usa la guida generale.',
             '**Nuova conversazione** inizia un discorso da zero; **Cronologia** mostra le conversazioni salvate.',
           ],
         },
         {
           type: 'warning',
-          text: 'Il pulsante e la pagina compaiono solo se il tuo ruolo ha il permesso di usare l\'assistente e se l\'amministratore li ha attivati per la tua installazione: la finestra di chat e la pagina si attivano separatamente e di partenza sono spente. Se la pagina non è attiva, la voce di menu non compare e nella finestra manca **Apri a pagina intera**. Se l\'assistente non è ancora stato configurato dall\'amministratore, la chat mostra **Assistente non configurato** e non permette di scrivere.',
+          text: 'La conversazione nella barra Chat e la pagina compaiono solo se il tuo ruolo ha il permesso di usare l\'assistente e se l\'amministratore li ha attivati per la tua installazione: la finestra di chat e la pagina si attivano separatamente e di partenza sono spente. Se la pagina non è attiva, la voce di menu non compare e nella finestra manca **Apri a pagina intera**. Se l\'assistente non è ancora stato configurato dall\'amministratore, la chat mostra **Assistente non configurato** e non permette di scrivere.',
         },
       ],
     },

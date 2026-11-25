@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AiAssistantPageView } from '@/features/ai-assistant/components/ai-assistant-page-view'
 import { AiChatPanel } from '@/features/ai-assistant/components/ai-chat-panel'
 import { buildAiConfig, renderWithProviders } from '@/features/ai-assistant/components/ai-test-support'
-import FloatingAiPanel from '@/features/ai-assistant/components/floating-ai-panel'
+import AiDockWindow from '@/features/ai-assistant/components/ai-dock-window'
 import type { AiAssistantConfig, AiConversationDetail, AiMessage } from '@/features/ai-assistant/types'
 
 vi.mock('@/features/ai-assistant/api', () => ({
@@ -129,7 +129,7 @@ describe('guide forwarded to the assistant (AC-024)', () => {
 
   it('the widget follows the guide of the current page', async () => {
     vi.mocked(fetchAiAssistantConfig).mockResolvedValue(buildAiConfig())
-    renderWithProviders(<FloatingAiPanel open onClose={vi.fn()} />, '/companies')
+    renderWithProviders(<AiDockWindow minimized={false} onToggleMinimized={vi.fn()} onClose={vi.fn()} />, '/companies')
 
     await screen.findByRole('textbox', { name: 'Scrivi un messaggio' })
 

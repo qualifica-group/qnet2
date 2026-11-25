@@ -40,4 +40,6 @@ export interface AppConfig {
   localization: AppLocalization
   /** Spec 0361: decimal string; a residual within it proposes "write off" (absent on older backends). */
   treasury?: { write_off_suggest_threshold: string }
+  /** Installation-wide switches (spec 0432): `chat` = CHAT_ENABLED, the project work order chat. */
+  features?: { chat: boolean }
 }

@@ -8,7 +8,8 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { useNotificationTitle } from '@/features/notifications/use-notification-title'
 import { WorkspaceLauncher } from '@/features/workspaces/components/workspace-launcher'
-import { FloatingAiAssistant } from '@/features/ai-assistant/components/floating-ai-assistant'
+import { ChatDock } from '@/features/work-order-chat/dock/chat-dock'
+import { ChatDockProvider } from '@/features/work-order-chat/dock/chat-dock-provider'
 import { HelpButton } from '@/features/help/components/help-button'
 import { SupportRequestButton } from '@/features/support-requests/support-request-button'
 import { usePresenceHeartbeat } from '@/features/system-health/use-presence-heartbeat'
@@ -83,14 +84,18 @@ export function AppLayout() {
               </div>
             </header>
             <OnboardingProvider>
-              <main className="flex flex-1 flex-col gap-4 p-4">
-                {/* Without this boundary a lazy page suspends up to App's full-screen
-                    loader, which hides the sidebar and header until it arrives. */}
-                <Suspense fallback={<PageLoader />}>
-                  <Outlet />
-                </Suspense>
-              </main>
-              <FloatingAiAssistant />
+              {/* The dock's windows are shared, so a page (a work order's Chat tab) can open one (spec 0432). */}
+              <ChatDockProvider>
+                <main className="flex flex-1 flex-col gap-4 p-4">
+                  {/* Without this boundary a lazy page suspends up to App's full-screen
+                      loader, which hides the sidebar and header until it arrives. */}
+                  <Suspense fallback={<PageLoader />}>
+                    <Outlet />
+                  </Suspense>
+                </main>
+                {/* The AI assistant and the project chat channels, when there is any (spec 0432). */}
+                <ChatDock />
+              </ChatDockProvider>
             </OnboardingProvider>
           </SidebarInset>
         </SidebarProvider>
