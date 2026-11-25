@@ -31,6 +31,7 @@ final readonly class CreateAttributeData
         public ?array $config = null,
         public ?array $relationTarget = null,
         public ?array $options = null,
+        public ?int $currentAttributeId = null,
     ) {}
 
     /**
@@ -51,6 +52,7 @@ final readonly class CreateAttributeData
             config: $data['config'] ?? null,
             relationTarget: $data['relation_target'] ?? null,
             options: array_key_exists('options', $data) ? (array) $data['options'] : null,
+            currentAttributeId: isset($data['current_attribute_id']) ? (int) $data['current_attribute_id'] : null,
         );
     }
 

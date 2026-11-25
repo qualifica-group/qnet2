@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Prunable;
 /**
  * One execution of the catalogue sync (or of a webhook/link refresh).
  */
-#[Fillable(['trigger', 'outcome', 'started_at', 'finished_at', 'classes_synced', 'work_orders_updated', 'error_message', 'warning_message'])]
+#[Fillable(['trigger', 'outcome', 'started_at', 'finished_at', 'classes_synced', 'work_orders_updated', 'classes_removed', 'error_message', 'warning_message'])]
 class FormalabSyncRun extends Model
 {
     use Prunable;
@@ -35,6 +35,7 @@ class FormalabSyncRun extends Model
             'finished_at' => 'datetime',
             'classes_synced' => 'integer',
             'work_orders_updated' => 'integer',
+            'classes_removed' => 'integer',
         ];
     }
 

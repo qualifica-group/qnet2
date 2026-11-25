@@ -23,10 +23,13 @@ const ROLES_DOMAIN = 'roles'
 /** The privileged system role that can never be edited or deleted. */
 const SYSTEM_ROLE = 'super-admin'
 
+/** Row actions never offered on the system role. */
+const SYSTEM_ROLE_HIDDEN_ACTIONS = new Set(['delete', 'duplicate'])
+
 /**
  * Thin Roles adapter over the generic table. It mounts `<TableView>` with the
  * `roles` domain, its custom cell renderers and a row-action handler, and
- * delegates the open mode (modal Sheet vs dedicated page) of view/create
+ * delegates the open mode (modal Sheet vs dedicated page) of view/create/duplicate
  * to `useModuleOpener`, resolved from the user's preference (spec 0042). It
  * still owns the delete flow (confirm + toast + grid refresh) and the SSRM
  * grid refresh after every mutation. Permission gating is an affordance only;
@@ -48,7 +51,7 @@ export function RolesTable() {
     refreshGrid()
   }, [refreshGrid])
 
-  const { openCreate, openView, sheet } = useModuleOpener(ROLES_DOMAIN, { onSaved })
+  const { openCreate, openView, openDuplicate, sheet } = useModuleOpener(ROLES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -75,6 +78,9 @@ export function RolesTable() {
         case 'delete':
           void runDelete(row)
           break
+        case 'duplicate':
+          openDuplicate(row)
+          break
         case 'activity':
           setActivityRow(row)
           break
@@ -82,17 +88,18 @@ export function RolesTable() {
           break
       }
     },
-    [openView, runDelete],
+    [openView, openDuplicate, runDelete],
   )
 
-  // Hide delete on the protected super-admin system role (mutations are
-  // forbidden server-side; this avoids offering dead-end actions). The backend
-  // already omits them, this is a belt-and-braces affordance.
+  // Hide delete and duplicate on the protected super-admin system role
+  // (mutations are forbidden server-side, and its powers do not come from its
+  // stored permissions, so a copy would mislead). The backend already omits
+  // them, this is a belt-and-braces affordance.
   const decorateRow = useCallback((row: TableRow): TableRow => {
     if (row.name === SYSTEM_ROLE) {
       return {
         ...row,
-        actions: row.actions.filter((key) => key !== 'delete'),
+        actions: row.actions.filter((key) => !SYSTEM_ROLE_HIDDEN_ACTIONS.has(key)),
       }
     }
     return row

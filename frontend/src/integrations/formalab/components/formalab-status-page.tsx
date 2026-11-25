@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, Plug } from 'lucide-react'
+import { Plug } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -7,6 +7,7 @@ import { TableView } from '@/features/table/table-view'
 import NotFoundPage from '@/pages/not-found-page'
 import { FORMALAB_CALL_LOGS_DOMAIN } from '@/integrations/formalab/api'
 import { StatusCard } from '@/integrations/formalab/components/status-card'
+import { SyncButton } from '@/integrations/formalab/components/sync-button'
 import { useFormalabActions } from '@/integrations/formalab/use-formalab-actions'
 import { useFormalabStatus } from '@/integrations/formalab/use-formalab-status'
 import { FORMALAB_KEY } from '@/integrations/formalab/definition-key'
@@ -34,17 +35,14 @@ export default function FormalabStatusPage() {
 function StatusContent() {
   const { t } = useTranslation('formalab')
   const { data, isLoading, isError } = useFormalabStatus()
-  const { sync, testConnection } = useFormalabActions()
+  const { testConnection } = useFormalabActions()
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
       <PageHeader
         actions={
           <>
-            <Button size="sm" variant="secondary" disabled={sync.isPending} onClick={() => sync.mutate()}>
-              <RefreshCw className="size-3.5" aria-hidden />
-              {t('actions.sync')}
-            </Button>
+            <SyncButton />
             <Button size="sm" variant="secondary" disabled={testConnection.isPending} onClick={() => testConnection.mutate()}>
               <Plug className="size-3.5" aria-hidden />
               {t('actions.testConnection')}

@@ -1,4 +1,4 @@
-import { BooleanBadgeCell, CodeBadgeCell, DateCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { BooleanBadgeCell, CodeBadgeCell, CurrencyCell, DateCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
@@ -39,6 +39,8 @@ import { WorkOrderProformaCell, type ProformaTarget } from '@/features/work-orde
  * (the "€" column, spec 0407) likewise opens the proforma request dialog.
  * `line_payment_statuses` ("Stato pagamento") lists the products' payment
  * statuses, each with its Consulenza/Ente typology badge.
+ * `consultancy_amount`/`total_revenue` (legacy "Importo consulenza"/"Totale
+ * ricavi") are money, like the Offerte's `revenue_net`.
  */
 export function buildWorkOrderColumnRenderers(
   openProgress: (workOrderId: number) => void,
@@ -57,6 +59,8 @@ export function buildWorkOrderColumnRenderers(
     completion_percentage: (params) => <WorkOrderProgressCell {...params} onOpen={openProgress} />,
     proforma_status: (params) => <WorkOrderProformaCell {...params} onOpen={openProforma} />,
     line_payment_statuses: (params) => <LinePaymentStatusesCell {...params} />,
+    consultancy_amount: (params) => <CurrencyCell {...params} />,
+    total_revenue: (params) => <CurrencyCell {...params} />,
     chat_unread_count: (params) => <ChatUnreadCell {...params} />,
     renewal_number: (params) => <RenewalPeriodCell {...params} />,
     created_at: (params) => <DateTimeCell {...params} />,

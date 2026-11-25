@@ -30,6 +30,12 @@ class AttributeResource extends JsonResource
             'icon' => $this->icon,
             'config' => $this->config,
             'relation_target' => $this->relation_target,
+            'current_attribute_id' => $this->current_attribute_id,
+            'current_attribute' => $this->whenLoaded('currentAttribute', fn (): ?array => $this->currentAttribute === null ? null : [
+                'id' => $this->currentAttribute->id,
+                'code' => $this->currentAttribute->code,
+                'name' => $this->currentAttribute->name,
+            ]),
             'options' => $this->options->map(fn (AttributeOption $option): array => [
                 'id' => $option->id,
                 'value' => $option->value,

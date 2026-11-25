@@ -9,6 +9,7 @@ use App\Exceptions\Tasks\TaskBulkIncompatibleException;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\Notifications\TaskNotifier;
 use App\Services\Tasks\TaskBulkActionExecutor;
 use App\Services\Tasks\TaskBulkTimeEntrySplitter;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -42,6 +43,7 @@ final class TaskBulkActionService
     public function __construct(
         private readonly TaskBulkActionExecutor $executor,
         private readonly TaskBulkTimeEntrySplitter $splitter,
+        private readonly TaskNotifier $notifier,
     ) {}
 
     /**
@@ -53,7 +55,8 @@ final class TaskBulkActionService
         $this->assertEveryTaskIsARootOf($workOrder, $data->taskIds);
 
         if ($data->action === 'complete') {
-            return $this->completeAllOrNothing($data, $actor);
+            // Spec 0428: one summary per recipient for the whole batch.
+            return $this->notifier->summarizingClosures(fn (): array => $this->completeAllOrNothing($data, $actor));
         }
 
         $results = [];

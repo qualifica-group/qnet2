@@ -27,6 +27,12 @@ it('never offers the technical user as a recipient of a notes thread', function 
     [$client] = createApiClientWithKey();
     $superAdmin = User::factory()->create()->assignRole(Role::findOrCreate('super-admin', 'web'));
 
+    // REQUIREMENT CHANGED (spec 0134 D-2 rev. 2026-11-24): a commessa offers its team only,
+    // so both sit in it -- the technical user must stay out even as a Partecipante.
+    if ($record instanceof WorkOrder) {
+        $record->participants()->attach([$superAdmin->id => ['position' => 1], $client->service_user_id => ['position' => 2]]);
+    }
+
     $ids = $notable->mentionableUsersQuery($record)->pluck('users.id')->all();
 
     expect($ids)->toContain($superAdmin->id)->not->toContain($client->service_user_id);

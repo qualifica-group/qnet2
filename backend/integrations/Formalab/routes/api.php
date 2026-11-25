@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Integrations\Formalab\Http\Controllers\CategorySettingsController;
 use Integrations\Formalab\Http\Controllers\ClassForSelectController;
 use Integrations\Formalab\Http\Controllers\FormalabAdminController;
+use Integrations\Formalab\Http\Controllers\LearnerStatementController;
 use Integrations\Formalab\Http\Controllers\WebhookController;
 use Integrations\Formalab\Http\Controllers\WorkOrderLinkController;
 use Integrations\Formalab\Http\Middleware\InboundWebhookGuard;
@@ -17,6 +18,7 @@ Route::prefix('api/integrations/formalab')->middleware('api')->group(function ()
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::middleware('super-admin')->group(function (): void {
             Route::get('status', [FormalabAdminController::class, 'status']);
+            Route::get('sync-state', [FormalabAdminController::class, 'syncState']);
             Route::post('sync', [FormalabAdminController::class, 'sync']);
             Route::post('test-connection', [FormalabAdminController::class, 'testConnection']);
         });
@@ -26,6 +28,14 @@ Route::prefix('api/integrations/formalab')->middleware('api')->group(function ()
 
         Route::get('work-orders/{workOrder}', [WorkOrderLinkController::class, 'show']);
         Route::post('work-orders/{workOrder}/sync', [WorkOrderLinkController::class, 'sync']);
+
+        // "Prospetto contabile discenti" (spec 0427).
+        Route::prefix('work-orders/{workOrder}/learner-statement')->group(function (): void {
+            Route::get('/', [LearnerStatementController::class, 'show']);
+            Route::get('export', [LearnerStatementController::class, 'export']);
+            Route::put('learners/{taxCode}/commission', [LearnerStatementController::class, 'updateCommission']);
+            Route::put('partners/supplier', [LearnerStatementController::class, 'updatePartnerSupplier']);
+        });
 
         Route::get('product-categories/{productCategory}', [CategorySettingsController::class, 'show']);
         Route::put('product-categories/{productCategory}', [CategorySettingsController::class, 'update']);

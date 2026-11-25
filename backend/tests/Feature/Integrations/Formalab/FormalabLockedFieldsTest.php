@@ -2,8 +2,6 @@
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
-use Integrations\Formalab\Services\ClassCatalogSync;
-use Integrations\Formalab\Support\Trigger;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -33,7 +31,7 @@ it('shows the mapped fields of a linked category as locked, the course name exce
 it('refuses a user change to a locked field and accepts the class select, other fields and an unchanged resend', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(5), formalabClassPayload(6)]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
     $workOrder = formalabGolWorkOrder(['gol_corso' => 5]);
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
     $url = '/api/work-orders/'.$workOrder->id;

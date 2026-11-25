@@ -125,6 +125,25 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'current-attribute',
+      title: 'Current field',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'An old field (for example those of the [OLD] ISO categories) can point to the **Current field** that continues it. In the Offers, Work orders and Contracts grids, when both are in the same list, the two fields share one column, the current field\'s: on new records it shows the new field\'s value, on old records the old field\'s. Filter, sort, value list and export work on both; editing the cell writes the field that record has.',
+        },
+        {
+          type: 'list',
+          items: [
+            'The Current field is chosen, changed or removed from its row on the field page; the search finds by name or by code.',
+            'Only fields of the same kind can be linked: dates with dates, date-times with date-times, texts with texts, numbers with numbers, yes/no with yes/no. Option lists and tables cannot be linked and keep separate columns.',
+            'A field cannot be linked to itself, and links do not chain: the current field cannot have a current field of its own.',
+            'The link does not move or copy values: removing it splits the two columns again.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'duplicate-attribute',
       title: 'Duplicating an attribute',
       blocks: [

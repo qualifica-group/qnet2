@@ -5,9 +5,9 @@ import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-
 import type { WorkOrderCostRowValues } from '@/features/work-order-costs/work-order-costs-schema'
 
 /**
- * The values a picked COST product precompiles on a row: the product's VAT
- * rate and unit, quantity defaulting to 1 only when still empty. A product
- * with suppliers sets the default supplier and its cost as unit price (spec
+ * The values a picked COST product precompiles on a row: the product's unit
+ * and the 0% cost VAT (costs carry no VAT, user decision 2026-11-24), quantity
+ * defaulting to 1 only when still empty. A product with suppliers sets the default supplier and its cost as unit price (spec
  * 0320 D-9, amends 0190 D-8); one without keeps `products.cost` as unit price
  * and leaves the row's supplier untouched. The product's supplier options ride
  * the row's display for the select. The cost type follows the product's
@@ -37,8 +37,8 @@ export function costRowPatchFromProduct(
       product_name: item.label,
       product_category: item.subtitle ?? null,
       unit_symbol: item.meta.unit_of_measure?.symbol ?? null,
-      vat_name: item.meta.vat_rate_name,
-      vat_percent: item.meta.vat_rate === null ? null : Number(item.meta.vat_rate),
+      vat_name: item.meta.cost_vat_rate?.name ?? null,
+      vat_percent: item.meta.cost_vat_rate ? Number(item.meta.cost_vat_rate.rate) : null,
     },
   }
 }

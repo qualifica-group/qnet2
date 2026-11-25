@@ -55,6 +55,7 @@ const PRODUCT_ITEM = {
     unit_of_measure: { id: 1, name: 'Giorno', symbol: 'gg' },
     product_typology: null,
     cost_type: { id: 6, name: 'Travel', color: 'blue' },
+    cost_vat_rate: { id: 4, name: 'IVA al 0%', rate: '0.00' },
   },
 }
 
@@ -245,7 +246,7 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
           product_id: 9,
           quantity: 1,
           unit_price: 12.5,
-          vat_rate_id: 3,
+          vat_rate_id: 4,
           quote_line_id: null,
           cost_type_id: 6,
           incurred_on: todayIsoDate(),

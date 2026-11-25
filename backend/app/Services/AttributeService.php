@@ -43,13 +43,14 @@ class AttributeService
                 'icon' => $data->icon,
                 'config' => $data->config,
                 'relation_target' => $data->relationTarget,
+                'current_attribute_id' => $data->currentAttributeId,
             ]);
 
             if ($data->type === 'enum' && $data->hasOptions()) {
                 $this->replaceOptions($attribute, $data->options);
             }
 
-            return $attribute->fresh('options');
+            return $attribute->fresh(['options', 'currentAttribute']);
         });
     }
 
@@ -85,7 +86,7 @@ class AttributeService
 
             $this->guardRelationHasTarget($finalType, $finalRelationTarget);
 
-            return $attribute->fresh('options');
+            return $attribute->fresh(['options', 'currentAttribute']);
         });
     }
 

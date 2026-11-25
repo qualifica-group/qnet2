@@ -9,6 +9,7 @@ use App\Exceptions\Tasks\TaskBulkIncompatibleException;
 use App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Notifications\TaskNotifier;
 use App\Services\TaskService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,7 @@ final class TaskCascadeCompletionService
         private readonly TaskOpenSubtree $openSubtree,
         private readonly TaskBulkTimeEntrySplitter $splitter,
         private readonly TaskService $taskService,
+        private readonly TaskNotifier $notifier,
     ) {}
 
     /**
@@ -50,7 +52,8 @@ final class TaskCascadeCompletionService
             return $this->completion->complete($task, CompleteTaskData::fromValidated($validated, $task->id), $actor);
         }
 
-        DB::transaction(function () use ($task, $subtasks, $validated, $actor): void {
+        // Spec 0428: the parent and its sub-tasks reach each recipient as one summary.
+        $this->notifier->summarizingClosures(fn () => DB::transaction(function () use ($task, $subtasks, $validated, $actor): void {
             // Step 1: one time entry per task, out of the total
             $timeEntries = $this->splitTimeEntry($task, $subtasks, $validated);
 
@@ -62,7 +65,7 @@ final class TaskCascadeCompletionService
                 $this->payloadFor($validated, $timeEntries[$task->id] ?? null, true),
                 $task->id,
             ), $actor);
-        });
+        }));
 
         return $this->taskService->loadDetail($task->fresh());
     }

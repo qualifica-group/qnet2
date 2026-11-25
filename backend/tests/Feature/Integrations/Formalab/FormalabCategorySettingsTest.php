@@ -8,8 +8,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Integrations\Formalab\Models\FormalabCategorySetting;
 use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
-use Integrations\Formalab\Services\ClassCatalogSync;
-use Integrations\Formalab\Support\Trigger;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -146,7 +144,7 @@ it('authorizes with the category policy', function () {
 it('writes only the mapped fields, into the attributes the category chose', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(5, ['data_esame' => '2026-07-10'])]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
     $workOrder = formalabGolWorkOrder(['gol_corso' => 5, 'gol_notice' => 'keep me'], linkCategory: false);
     $category = $workOrder->quoteLines->first()->product->category;
     Sanctum::actingAs(workOrderUserWith(['view', 'update']));
@@ -169,13 +167,13 @@ it('writes only the mapped fields, into the attributes the category chose', func
 it('records a sync error and writes nothing when the category was unlinked after the link', function () {
     formalabEnable();
     $catalog = formalabFakeApi([formalabClassPayload(5)]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
     // REQUIREMENT CHANGED (spec 0426 D-5): choosing the class links and writes the fields at once
     $workOrder = formalabGolWorkOrder(['gol_corso' => 5]);
     $category = $workOrder->quoteLines->first()->product->category;
     formalabLinkCategory($category, formalabSuggestedMap(), enabled: false);
     $catalog['classes'] = [formalabClassPayload(5, ['stato_corso' => ['name' => 'Concluso']])];
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
 
     $link = FormalabWorkOrderLink::query()->first();
     expect($link->sync_error)->not->toBeNull()
@@ -189,7 +187,7 @@ it('links only the work orders of a linked category, by the class chosen in the 
     $linked = formalabGolWorkOrder(['gol_corso' => 1]);
     $notLinked = formalabGolWorkOrder(['gol_corso' => 1], linkCategory: false);
 
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
 
     expect(FormalabWorkOrderLink::query()->pluck('work_order_id')->all())->toBe([$linked->id])
         ->and(FormalabWorkOrderLink::query()->where('work_order_id', $notLinked->id)->exists())->toBeFalse()

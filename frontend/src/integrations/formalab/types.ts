@@ -11,9 +11,18 @@ export interface FormalabSyncRun {
   finished_at: string | null
   classes_synced: number
   work_orders_updated: number
+  /** Classes removed because Formalab no longer has them (spec 0426 D-12). */
+  classes_removed: number
   error_message: string | null
   /** Set on a run that succeeded with a caveat, e.g. course fields whose attribute code no longer exists. */
   warning_message: string | null
+}
+
+/** `GET /sync-state`: the cheap part of the status, polled while a sync runs. */
+export interface FormalabSyncState {
+  /** A catalogue sync is queued or running: another one is refused (409) until it ends. */
+  sync_in_progress: boolean
+  last_sync: FormalabSyncRun | null
 }
 
 export interface FormalabStatus {
@@ -21,6 +30,8 @@ export interface FormalabStatus {
   credentials_configured: boolean
   inbound_enabled: boolean
   sync_interval_minutes: number
+  /** A catalogue sync is queued or running: another one is refused (409) until it ends. */
+  sync_in_progress: boolean
   last_sync: FormalabSyncRun | null
   classes_count: number
   linked_work_orders_count: number

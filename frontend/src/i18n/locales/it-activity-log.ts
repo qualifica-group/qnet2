@@ -73,6 +73,7 @@ export const activityLog = {
     icon: 'Icona',
     config: 'Configurazione',
     relation_target: 'Entità collegata',
+    current_attribute_id: 'Campo attuale',
     entity_type: 'Modulo',
     key: 'Chiave',
     label: 'Etichetta',

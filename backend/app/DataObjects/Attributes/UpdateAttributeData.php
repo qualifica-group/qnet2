@@ -41,6 +41,8 @@ final readonly class UpdateAttributeData
         public ?array $relationTarget = null,
         public bool $relationTargetSubmitted = false,
         public ?array $options = null,
+        public ?int $currentAttributeId = null,
+        public bool $currentAttributeIdSubmitted = false,
     ) {}
 
     /**
@@ -67,6 +69,8 @@ final readonly class UpdateAttributeData
             relationTarget: $data['relation_target'] ?? null,
             relationTargetSubmitted: array_key_exists('relation_target', $data),
             options: array_key_exists('options', $data) ? (array) $data['options'] : null,
+            currentAttributeId: isset($data['current_attribute_id']) ? (int) $data['current_attribute_id'] : null,
+            currentAttributeIdSubmitted: array_key_exists('current_attribute_id', $data),
         );
     }
 
@@ -122,6 +126,10 @@ final readonly class UpdateAttributeData
 
         if ($this->relationTargetSubmitted) {
             $attributes['relation_target'] = $this->relationTarget;
+        }
+
+        if ($this->currentAttributeIdSubmitted) {
+            $attributes['current_attribute_id'] = $this->currentAttributeId;
         }
 
         return $attributes;

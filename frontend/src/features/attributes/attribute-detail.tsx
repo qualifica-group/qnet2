@@ -84,6 +84,7 @@ function AttributeDetailContent({ attribute, onChanged }: AttributeDetailViewPro
               inline={inline}
               creating={false}
               canEdit={attribute.permissions.resource.update}
+              attributeId={attribute.id}
             />
           </RecordSectionsGrid>
         </Form>

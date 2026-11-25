@@ -133,6 +133,7 @@ use App\Models\Workspace;
 use App\Services\AiAssistant\Drivers\AiChatDriverManager;
 use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\Graph\GraphMailClient;
+use App\Services\Notifications\TaskNotifier;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
@@ -209,6 +210,13 @@ class AppServiceProvider extends ServiceProvider
         // row; scoped, not singleton, so a changed competence is never
         // shadowed on a long-running worker.
         $this->app->scoped(ActorCompetenceReach::class);
+
+        // Scoped so a bulk Task operation and the TaskCompletionService it
+        // drives share ONE TaskNotifier (spec 0428): the closures the
+        // operation causes are collected on it and sent as one summary per
+        // recipient. Scoped, not singleton: the buffer must not outlive the
+        // request or the queued job.
+        $this->app->scoped(TaskNotifier::class);
 
         // Scoped so an import run resolves each DISTINCT campaign code once
         // (spec 0108): StagedRowBuilder resolves every recognizer through the

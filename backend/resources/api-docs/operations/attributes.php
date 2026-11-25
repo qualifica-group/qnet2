@@ -5,13 +5,17 @@ return [
         'summary' => 'Create a product attribute',
         'description' => 'Creates a dynamic attribute that product categories can assign to products, quotes and work orders. code is unique, lowercase letters, digits and underscores; type is one of text, textarea, integer, decimal, boolean, enum, relation, date, datetime, time, email, url, color, table. An enum needs at least one option with unique values; a relation needs relation_target with entity_type, cardinality one or many and for_select_resource; a table needs a valid config (422 otherwise). Returns 201 with the attribute, its options and the permissions block. Requires attributes.create.',
     ],
+    'GET /attributes/for-select' => [
+        'summary' => 'List attributes for the current-field picker',
+        'description' => 'Paginated id and label ("Name (code)") of the attributes that can be a current field, that is those with no current field of their own. search matches name or code; exclude_id leaves out the attribute being edited; ids[] are appended for hydration. Requires authentication only.',
+    ],
     'GET /attributes/{attribute}' => [
         'summary' => 'Get a product attribute',
-        'description' => 'Returns the attribute definition (code, name, type, help text, placeholder, icon, config, relation target) with its enum options and the actor\'s permissions block. Requires attributes.view.',
+        'description' => 'Returns the attribute definition (code, name, type, help text, placeholder, icon, config, relation target, current_attribute) with its enum options and the actor\'s permissions block. Requires attributes.view.',
     ],
     'PUT /attributes/{attribute}' => [
         'summary' => 'Update a product attribute',
-        'description' => 'Partially updates the attribute; when options is sent it fully replaces the existing option list. The type rules of create are checked against the resulting values (e.g. switching to enum without options already stored answers 422). Returns the updated attribute with options and the permissions block. Requires attributes.update.',
+        'description' => 'Partially updates the attribute; when options is sent it fully replaces the existing option list. current_attribute_id links a legacy attribute to the current one it continues, so the grids show both in one column: not to itself, not chained, only between types sharing a column family (422 otherwise). The type rules of create are checked against the resulting values (e.g. switching to enum without options already stored answers 422). Returns the updated attribute with options and the permissions block. Requires attributes.update.',
     ],
     'DELETE /attributes/{attribute}' => [
         'summary' => 'Delete a product attribute',

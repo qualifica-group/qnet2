@@ -65,6 +65,13 @@ it('schedules the sync and the prune only when enabled', function () {
         ->and($events->has('formalab:prune'))->toBeTrue();
 });
 
+// REQUIREMENT CHANGED (user request 2026-11-23): the default is every hour, at minute 0
+it('syncs every hour by default, and hourly for any interval of an hour or more', function (?int $minutes) {
+    formalabEnable($minutes === null ? [] : ['sync_interval_minutes' => $minutes]);
+
+    expect(collect(app(Schedule::class)->events())->keyBy('description')->get('formalab:sync-classes')->expression)->toBe('0 * * * *');
+})->with(['default' => [null], 'one hour' => [60], 'two hours' => [120]]);
+
 it('keeps the registry empty by default and de-duplicates activations', function () {
     $registry = new IntegrationRegistry;
     $registry->activate('a');

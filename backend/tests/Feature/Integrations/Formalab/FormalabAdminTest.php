@@ -25,8 +25,9 @@ it('serves the status page data to a super-admin without any secret', function (
 
     $response = $this->getJson('/api/integrations/formalab/status')->assertOk();
 
+    // REQUIREMENT CHANGED (user request 2026-11-23): default interval 60 minutes (was 10)
     $response->assertJsonPath('data.base_url', 'https://formalab.test')->assertJsonPath('data.credentials_configured', true)
-        ->assertJsonPath('data.inbound_enabled', true)->assertJsonPath('data.sync_interval_minutes', 10)
+        ->assertJsonPath('data.inbound_enabled', true)->assertJsonPath('data.sync_interval_minutes', 60)
         ->assertJsonPath('data.classes_count', 1)->assertJsonPath('data.linked_work_orders_count', 0)
         ->assertJsonPath('data.last_sync.outcome', 'success')->assertJsonPath('data.last_sync.warning_message', null)
         ->assertJsonPath('data.missing_course_fields', ['gol_corso'])

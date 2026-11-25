@@ -256,13 +256,16 @@ trait AppendsCategoryAttributeColumns
     }
 
     /**
-     * The effective attributes of the selected categories, deduplicated by code (spec 0374, D-10).
+     * The effective attributes of the selected categories, deduplicated by code
+     * (spec 0374, D-10), a legacy field folded into its linked current one (spec 0429, D-3).
      *
      * @return Collection<int, array<string, mixed>>
      */
     private function categoryAttributes(): Collection
     {
-        return $this->categoryAttributesMemo ??= $this->attributeColumns->forCategories($this->attributeCategories);
+        return $this->categoryAttributesMemo ??= $this->attributeColumns->linked()->fold(
+            $this->attributeColumns->forCategories($this->attributeCategories),
+        );
     }
 
     /**
@@ -284,7 +287,9 @@ trait AppendsCategoryAttributeColumns
     /** @return Collection<int, array<string, mixed>> the set a filter, sort or distinct request resolves its column in */
     private function lookupAttributes(): Collection
     {
-        return $this->lookupInUnion ? $this->attributeColumns->union() : $this->categoryAttributes();
+        return $this->lookupInUnion
+            ? $this->attributeColumns->linked()->enrich($this->attributeColumns->union())
+            : $this->categoryAttributes();
     }
 
     private function isAttributeColumn(string $columnId): bool

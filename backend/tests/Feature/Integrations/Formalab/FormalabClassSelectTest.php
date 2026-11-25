@@ -8,8 +8,6 @@ use Illuminate\Support\Facades\DB;
 use Integrations\Formalab\Models\FormalabClass;
 use Integrations\Formalab\Models\FormalabWorkOrderLink;
 use Integrations\Formalab\Seeders\ClassSelectSeeder;
-use Integrations\Formalab\Services\ClassCatalogSync;
-use Integrations\Formalab\Support\Trigger;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -21,7 +19,7 @@ it('stores every synced class with its edition id as id', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(2477), formalabClassPayload(12)]);
 
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
 
     expect(FormalabClass::query()->orderBy('id')->pluck('edition_id', 'id')->all())->toBe([12 => 12, 2477 => 2477]);
 });
@@ -46,7 +44,7 @@ it('offers the classes to the select: id = edition id, search by code, title or 
         formalabClassPayload(20, ['codice' => 'GOL-B', 'start_dt' => '2026-05-10', 'corso' => ['title' => 'Cucina']]),
         formalabClassPayload(30, ['codice' => 'XYZ', 'start_dt' => '2026-03-10', 'corso' => ['title' => 'Inglese']]),
     ]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
     Sanctum::actingAs(User::factory()->create());
 
     $all = $this->getJson(FORMALAB_FOR_SELECT_URL)->assertOk();
@@ -85,7 +83,7 @@ it('registers the classes as a relation target only while the integration is on'
 it('shows the class table to a super-admin only, read-only', function () {
     formalabEnable();
     formalabFakeApi([formalabClassPayload(5)]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
 
     $admin = formalabSuperAdmin();
     Sanctum::actingAs(User::factory()->create());
@@ -108,7 +106,7 @@ it('converts the course name into the class select and its text values into edit
         formalabClassPayload(2, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
         formalabClassPayload(3, ['codice' => 'BBB', 'corso' => ['title' => 'Twin']]),
     ]);
-    app(ClassCatalogSync::class)->handle(Trigger::Manual);
+    formalabSync();
     $byLabel = formalabGolWorkOrder();
     $byLink = formalabGolWorkOrder();
     $twin = formalabGolWorkOrder();

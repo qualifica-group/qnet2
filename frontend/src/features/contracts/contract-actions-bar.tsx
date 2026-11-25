@@ -6,6 +6,7 @@ import { BadgeCheck, CalendarClock, RefreshCw, RotateCcw, Shuffle, XOctagon } fr
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { ContractValidateDialog } from '@/features/contracts/contract-validate-dialog'
 import { ContractProgramDialog } from '@/features/contracts/contract-program-dialog'
 import { ContractRenewDialog } from '@/features/contracts/contract-renew-dialog'
@@ -156,43 +157,49 @@ export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: 
         </Button>
       ) : null}
 
-      <ContractValidateDialog
-        open={openDialog === 'validate'}
-        onOpenChange={(open) => setOpenDialog(open ? 'validate' : 'none')}
-        contract={contract}
-        onValidated={(updated) => onChanged({ ...contract, ...updated })}
-      />
-      <ContractProgramDialog
-        open={openDialog === 'program'}
-        onOpenChange={(open) => setOpenDialog(open ? 'program' : 'none')}
-        contractId={contract.id}
-        renewalNumber={contract.renewal_number}
-        onCreated={onWorkOrderCreated}
-      />
-      <ContractRenewDialog
-        open={openDialog === 'renew'}
-        onOpenChange={(open) => setOpenDialog(open ? 'renew' : 'none')}
-        contract={contract}
-        onRenewed={(updated) => onChanged({ ...contract, ...updated })}
-      />
-      <ContractTerminateDialog
-        open={openDialog === 'terminate'}
-        onOpenChange={(open) => setOpenDialog(open ? 'terminate' : 'none')}
-        contract={contract}
-        onTerminated={(updated) => onChanged({ ...contract, ...updated })}
-      />
-      <ContractReactivateDialog
-        open={openDialog === 'reactivate'}
-        onOpenChange={(open) => setOpenDialog(open ? 'reactivate' : 'none')}
-        contract={contract}
-        onReactivated={(updated) => onChanged({ ...contract, ...updated })}
-      />
-      <ContractChangeStatusDialog
-        open={openDialog === 'change-status'}
-        onOpenChange={(open) => setOpenDialog(open ? 'change-status' : 'none')}
-        contract={contract}
-        onChanged={(updated) => onChanged({ ...contract, ...updated })}
-      />
+      {/* The dialogs are authorized by their action (the button above and the
+          server endpoint), not by the record's PATCH field permissions: without
+          `contracts.update` the `contract_status_id` field is read-only and would
+          lock every action's status picker (segnalazione utente 2026-11-24). */}
+      <ResourcePermissionsProvider permissions={null}>
+        <ContractValidateDialog
+          open={openDialog === 'validate'}
+          onOpenChange={(open) => setOpenDialog(open ? 'validate' : 'none')}
+          contract={contract}
+          onValidated={(updated) => onChanged({ ...contract, ...updated })}
+        />
+        <ContractProgramDialog
+          open={openDialog === 'program'}
+          onOpenChange={(open) => setOpenDialog(open ? 'program' : 'none')}
+          contractId={contract.id}
+          renewalNumber={contract.renewal_number}
+          onCreated={onWorkOrderCreated}
+        />
+        <ContractRenewDialog
+          open={openDialog === 'renew'}
+          onOpenChange={(open) => setOpenDialog(open ? 'renew' : 'none')}
+          contract={contract}
+          onRenewed={(updated) => onChanged({ ...contract, ...updated })}
+        />
+        <ContractTerminateDialog
+          open={openDialog === 'terminate'}
+          onOpenChange={(open) => setOpenDialog(open ? 'terminate' : 'none')}
+          contract={contract}
+          onTerminated={(updated) => onChanged({ ...contract, ...updated })}
+        />
+        <ContractReactivateDialog
+          open={openDialog === 'reactivate'}
+          onOpenChange={(open) => setOpenDialog(open ? 'reactivate' : 'none')}
+          contract={contract}
+          onReactivated={(updated) => onChanged({ ...contract, ...updated })}
+        />
+        <ContractChangeStatusDialog
+          open={openDialog === 'change-status'}
+          onOpenChange={(open) => setOpenDialog(open ? 'change-status' : 'none')}
+          contract={contract}
+          onChanged={(updated) => onChanged({ ...contract, ...updated })}
+        />
+      </ResourcePermissionsProvider>
     </div>
   )
 }

@@ -48,7 +48,7 @@ class AttributeController extends BaseApiController
             $this->authorize('view', $attribute);
 
             return $this->okWithPermissions(
-                new AttributeResource($attribute->loadMissing('options')),
+                new AttributeResource($attribute->loadMissing(['options', 'currentAttribute'])),
                 $this->buildPermissions($request->user(), $attribute),
             );
         } catch (Throwable $exception) {
