@@ -6,6 +6,9 @@ import { integrationDevRoutes } from '@/integrations'
 
 const MigrationsPage = lazyRoute(() => import('@/features/migrations/migrations-page'))
 const SystemHealthPage = lazyRoute(() => import('@/features/system-health/system-health-page'))
+const AiAssistantSettingsPage = lazyRoute(
+  () => import('@/features/ai-assistant-settings/ai-assistant-settings-page'),
+)
 const ApiIntegrationsPage = lazyRoute(
   () => import('@/features/api-integrations/api-integrations-page'),
 )
@@ -26,6 +29,7 @@ export const devRoutes: RouteObject[] = [
       { path: 'dev/migrations', element: <MigrationsPage /> },
       { path: 'dev/system-health', element: <SystemHealthPage /> },
       { path: 'dev/workspaces', element: <WorkspacesPage /> },
+      { path: 'dev/ai-assistant-settings', element: <AiAssistantSettingsPage /> },
       ...integrationDevRoutes,
     ],
   },

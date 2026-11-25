@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AiAssistant\AiAssistantConfigController;
+use App\Http\Controllers\AiAssistant\AiAssistantModelCatalogController;
+use App\Http\Controllers\AiAssistant\AiAssistantSettingsController;
 use App\Http\Controllers\AiAssistant\AiAttachmentController;
 use App\Http\Controllers\AiAssistant\AiConversationController;
 use App\Http\Controllers\AiAssistant\AiMessageController;
@@ -20,6 +22,15 @@ use Illuminate\Support\Facades\Route;
 | everything else answers 404 while both surfaces are off.
 |
 */
+
+// Spec 0433: settings and model lists for the `super-admin` only (no assignable permission);
+// they do not depend on the surface switches, so the admin can fix them while the assistant is off.
+Route::prefix('ai-assistant')->middleware('super-admin')->group(function () {
+    Route::get('settings', [AiAssistantSettingsController::class, 'show']);
+    Route::put('settings', [AiAssistantSettingsController::class, 'update']);
+    Route::get('models', [AiAssistantModelCatalogController::class, 'index']);
+    Route::get('models/providers', [AiAssistantModelCatalogController::class, 'providers']);
+});
 
 Route::prefix('ai-assistant')->middleware('can:'.AiConversationPolicy::PERMISSION)->group(function () {
     Route::get('config', AiAssistantConfigController::class);
