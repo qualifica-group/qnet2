@@ -38,6 +38,7 @@ const guide: HelpGuide = {
           'Rules for a specific recipient win over rules valid for the whole role.',
           'All else equal, a rule on a Product wins over a rule on a Category.',
           'A rule on a Category also applies to all its subcategories, and it can sit on a parent category too (for example ISO). When several category rules cover the product, the one on the category closest to the product wins.',
+          'Old and current categories stay separate: a rule on **ISO** does not apply to the products of **[OLD] ISO**, and vice versa. The picker also lists inactive categories (such as the [OLD] ones), so they can get a rule of their own.',
           'If several rules remain on the same category or product, the highest **Rule priority** wins; if tied, the most recent start date.',
         ] },
       ],

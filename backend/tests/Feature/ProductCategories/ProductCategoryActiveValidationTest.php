@@ -193,12 +193,20 @@ function activeValidationCommissionPayload(array $overrides): array
     ];
 }
 
-it('AC-011: commission configuration rejects an inactive category and a product of an inactive category', function () {
+// REQUIREMENT CHANGED (user decision 2026-11-25): a commission rule may point at
+// an inactive category (the [OLD] ones keep rules of their own); a product of an
+// inactive category is still rejected.
+it('AC-011: commission configuration accepts an inactive category, rejects a product of an inactive category', function () {
     Sanctum::actingAs(activeValidationActor(['commission-configurations.create']));
 
     $this->postJson('/api/commission-configurations', activeValidationCommissionPayload([
         'application_scope' => 'PRODUCT_CATEGORY',
         'product_category_id' => ProductCategory::factory()->create(['is_active' => false])->id,
+    ]))->assertCreated();
+
+    $this->postJson('/api/commission-configurations', activeValidationCommissionPayload([
+        'application_scope' => 'PRODUCT_CATEGORY',
+        'product_category_id' => 999999,
     ]))->assertStatus(422)->assertJsonValidationErrors('product_category_id');
 
     $product = Product::factory()->create(['category_id' => activeValidationInactiveChild()->id]);

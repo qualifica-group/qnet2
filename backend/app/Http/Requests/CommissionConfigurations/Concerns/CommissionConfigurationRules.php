@@ -13,7 +13,6 @@ use App\Enums\SupplierCommissionDirection;
 use App\Models\CommissionConfiguration;
 use App\Models\User;
 use App\Rules\ActiveProduct;
-use App\Rules\ActiveProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -35,9 +34,11 @@ trait CommissionConfigurationRules
             'recipient_role' => [...$required, Rule::enum(CommissionRecipientRole::class)],
             'application_scope' => [...$required, Rule::enum(CommissionApplicationScope::class)],
             'product_category_id' => [
-                // Spec 0223 D-5: any ACTIVE category, containers included — the
+                // Spec 0223 D-5: any category, containers included — the
                 // resolver applies a category rule to its whole branch (D-1).
-                'nullable', 'integer', new ActiveProductCategory($this->exemptProductCategoryIds()),
+                // Inactive ones too (user decision 2026-11-25): the [OLD]
+                // categories are inactive and keep rules of their own.
+                'nullable', 'integer', Rule::exists('product_categories', 'id'),
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::ProductCategory->value),
                 Rule::prohibitedIf(fn () => $this->scopeExcludesCategory()),
             ],
@@ -92,21 +93,6 @@ trait CommissionConfigurationRules
         if ($direction === null) {
             $validator->errors()->add('supplier_commission_direction', __('commission_configurations.direction_required'));
         }
-    }
-
-    /**
-     * The category already persisted on the configuration being updated,
-     * exempt from the inactive check (spec 0208 D-2). Empty on create.
-     *
-     * @return array<int, int>
-     */
-    protected function exemptProductCategoryIds(): array
-    {
-        $configuration = $this->route('commissionConfiguration');
-
-        return $configuration instanceof CommissionConfiguration && $configuration->product_category_id !== null
-            ? [(int) $configuration->product_category_id]
-            : [];
     }
 
     /**

@@ -9,6 +9,14 @@
 - Da eseguire in produzione: `php artisan db:seed --class=QualificaAvvalimentiTenderFieldsSeeder`. Provato sul DB locale in transazione annullata: 43 -> 12 campi Offerta, 31 Commessa, 4 sezioni Commessa.
 - Verdi: Pest `tests/Feature/Seeding/QualificaAvvalimentiTenderFieldsSeederTest.php` (4), Pint. Manuale: nessun impatto (configurazione dati).
 
+## Commissioni: categorie non attive ([OLD]) sceglibili nel Configuratore (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Nelle commissioni vecchie e nuove sono gia' separate (il resolver non segue `current_category_id`), ma selettore e validazione accettavano solo categorie attive: le [OLD] (180 su 189 inattive) non si potevano scegliere. Ora `ProductCategoryForSelectResolver::resolveNodes` usa `includeInactive: true` e `CommissionConfigurationRules` valida `product_category_id` con `Rule::exists` (tolti `ActiveProductCategory` ed `exemptProductCategoryIds`). Prodotti invariati (`ActiveProduct`). Spec 0223 D-5 rev.
+- Test cambiati (REQUIREMENT CHANGED): `ProductCategoryNodeForSelectTest` (lista anche le inattive), `ProductCategoryActiveValidationTest` AC-011 (categoria inattiva accettata, prodotto di categoria inattiva ancora 422). Pest commissioni + categorie 81 verdi; Pint ok; guida in-app `commission-configurations` IT/EN (nuova voce nelle regole di calcolo); Vitest help+commissioni 250 verdi; `tsc -b --force` EXIT 0.
+- Fallimenti NON legati, gia' presenti: `ApiDocsDescriptionsTest` (operazioni senza descrizione: attachments/read, merge, work-orders page...), `SupplierCommissionDirectionTest` AC-004 (drop FK per nome su SQLite).
+- Verifica su dati reali: il selettore restituisce 190 categorie con "OLD", compresa id 246 "[OLD] Ente_Iso".
+- Prossimo (piano approvato dall'utente, da fare): regola commissione su PIU' categorie / PIU' prodotti (tabelle pivot, `product_category_ids[]`/`product_ids[]`, selettore multiplo). I dati esistenti restano come sono (niente accorpamento delle 2.441 regole). Serve ok esplicito per `php artisan migrate` su qnet2.
+
 ## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, NON COMMITTATO
 
 - Azione di riga `duplicate` su `/roles`, stesso schema di attributi/workflow preventivi: `RolesTableDefinition` (`actions()` + `actionsFor`, gate `create` su `Role::class`, mai sul `super-admin`), `roles-table.tsx` (`openDuplicate`, `SYSTEM_ROLE_HIDDEN_ACTIONS`), `roles-screens.tsx` (`RoleDuplicateLoader` rilegge il ruolo), `RoleFormMode` `duplicate` in `use-role-form.ts` (`source` passa da `RoleForm` -> `RoleFormBody` -> `useRoleForm`). Nessun endpoint nuovo: salva via `POST /roles`.
