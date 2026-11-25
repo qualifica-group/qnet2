@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Stato legacy 1002 "X _ RICHIESTA PENALI" = chiusura negativa (segnalazione utente su COM-9831, 2026-11-25, spec 0324 D-11) — VERDE, APPLICATO AL DB LOCALE, NON COMMITTATO
+
+- Causa: COM-9831 Chiusa nel legacy con stato 1002, che D-2 classificava `in_progress`; D-10 la portava sulla chiave `completed` ("8.b", esito positivo).
+- Fix SOLO nel legacy: `../qnet/app/Support/Migration/LegacyWorkOrderStatusRoles.php`, 1002 aggiunto a `CLOSED_GROUP_IDS` (verificato con tinker sul feed `work-order-workflows`, `php -l`). qnet-2 nessun codice: il re-run riallinea il gruppo (D-4). Test qnet-2 delle sorgenti verdi (39).
+- DB locale: run 453 `work-order-workflows` (stato 32 -> `closed`), run 454 `work-order-workflow-statuses` con aggiorna esistenti: 321 aggiornate (43 per le penali + le commesse il cui stato legacy era diverso da qnet-2), 592 fallite note (550 orfani legacy, 42 commesse non migrate). COM-9841 resta su "Chiusa con esito negativo" (modificata in qnet-2).
+- **Produzione**: deploy del legacy, poi in qnet-2 rilanciare `work-order-workflows` e `work-order-workflow-statuses` con "aggiorna esistenti".
+
 ## Layout preventivo "PREVENTIVO SIC_HACCP" (id 7, `qualifica_quote_safety_haccp`) sostituito con la revisione 19.11.2026 (richiesta utente 2026-11-25) — VERDE MIRATO, NON COMMITTATO, NON APPLICATO AL DB LOCALE
 
 - Fonte: `Template preventivo _SIC_HACCP Rev. 19.11.2026.docx`. Novita': informativa privacy clienti per la consulenza salute e sicurezza (paragrafi 1-10, 3 tabelle statiche, elenco destinatari con prefisso "• ", dichiarazione di presa visione e consenso); sparisce la clausola "Ai sensi degli art. 1341-1342". Testata, tabella prodotti, totali e condizioni di pagamento invariati (blocchi fino a `text-18` copiati tali e quali; diff dell'asset = solo aggiunta + clausola tolta). Carta intestata identica (md5 = `letterhead-75cb7b747891.png`).
