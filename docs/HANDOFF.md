@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assistente AI, ticket 03: collegamento aperto dalla sessione (ADR 0020) - VERDE, COMMITTATO NEL RAMO `assistente/03-collegamento-sessione`
+
+- Backend, modulo MCP: `AssistantLinkService::credentialFor(User, PersonalAccessToken): string` apre (o riusa) il collegamento del client API del connettore (`mcp-link.assistant_client_id`, env `MCP_LINK_ASSISTANT_CLIENT_ID`, da aggiungere a `.env.example`) con etichetta `mcp-link.assistant_mcp_client` (`qnet2-assistant`). Nessuna rotta. Tabella `assistant_links` (user, mcp_link unique, token Sanctum nullable unique `nullOnDelete`, `credential` cifrata col cast `encrypted`, nascosta).
+- Caduta: `McpLink::isAliveFor` e lo scambio controllano anche il token legato (assente, `expires_at` passata, oltre `SANCTUM_EXPIRATION`): scambio rifiutato con `session_ended`, token gia' emessi respinti da `EnforceMcpLinkLife`. Vale anche per cancellazioni in blocco e rinnovo (`AuthService::refresh`). Al turno dopo, `credentialFor` ritira i collegamenti caduti della persona (marca `session_ended`, cancella token e riga) e ne apre uno nuovo.
+- Test: `tests/Feature/McpLinks/AssistantLinkTest.php`. Serve `APP_KEY` nell'ambiente di test (cast `encrypted`). Manuale: nessun impatto.
+
 ## Assistente AI che agisce, spec 0433 (richiesta committente 2026-11-26) - SOLO SPEC, COMMITTATA NEL RAMO `assistente/01-spec-xml`
 
 - Spec: `docs/specs/0433-ai-assistant-agent.xml` (contratti congelati, nessun codice). Fonti nel repository del connettore: `.scratch/assistente-ai/spec.md`, `intervista.md` (decisioni Q1-Q21), ADR 0019-0021. SUPERA 0347 su: assistente che non interroga i dati, scelta del modello dall'interfaccia, dashboard costi/tetti (piu' SSE, coda, finestra di 20 messaggi: vedi `<supersedes>`).
