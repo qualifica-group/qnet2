@@ -9,7 +9,9 @@ use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\RequestAttributeResolver;
+use App\Services\Table\FilterApplier;
 use App\Tables\CategoryTabs\AttributeGridTarget;
+use App\Tables\CategoryTabs\LinkedAttributeColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -58,6 +60,8 @@ final class AttributeGridColumns
         private readonly AttributeSummaryDateColumn $summaryDateColumn,
         private readonly AuthorizationRegistry $authorizationRegistry,
         private readonly RequestAttributeResolver $attributesResolver,
+        private readonly FilterApplier $filterApplier,
+        private readonly LinkedAttributeColumns $linkedColumns,
         ?AttributeGridTarget $target = null,
     ) {
         $this->target = $target ?? AttributeGridTarget::quote();
@@ -77,8 +81,19 @@ final class AttributeGridColumns
             $this->summaryDateColumn,
             $this->authorizationRegistry,
             $this->attributesResolver,
+            $this->filterApplier,
+            $this->linkedColumns,
             $target,
         );
+    }
+
+    /**
+     * The legacy/current field links (spec 0429): folds a shown set into one
+     * column per current field and picks the code a cell write lands on.
+     */
+    public function linked(): LinkedAttributeColumns
+    {
+        return $this->linkedColumns;
     }
 
     /**
@@ -218,7 +233,7 @@ final class AttributeGridColumns
         $mapped = [];
 
         foreach ($attributes as $attributeRow) {
-            $stored = $values[$attributeRow['code']] ?? null;
+            $stored = $this->linkedColumns->firstFilled($values, $attributeRow);
             $mapped[$this->columnBuilder->id($attributeRow)] = $this->summaryDateColumn->applies($attributeRow)
                 ? $this->summaryDateColumn->value($stored)
                 : $stored;
@@ -242,6 +257,18 @@ final class AttributeGridColumns
      */
     public function applyFilter(Builder $query, array $attributeRow, array $filter): void
     {
+        if ($this->linkedColumns->isMerged($attributeRow)) {
+            $this->linkedColumns->applyFilter(
+                $query,
+                $this->target->valuesColumn,
+                $attributeRow,
+                $filter,
+                fn (Builder $nested, array $row, array $rowFilter) => $this->applyFilter($nested, $row, $rowFilter),
+            );
+
+            return;
+        }
+
         if (in_array($attributeRow['type'], self::DATE_TYPES, true)) {
             $this->dateFilterApplier->apply(
                 $query,
@@ -265,7 +292,31 @@ final class AttributeGridColumns
             return;
         }
 
+        // A text/number column is an agMultiColumnFilter: its payload arrives
+        // wrapped as `multi` (filterModels[]) or as combined `{operator,
+        // conditions[]}`, which the per-type handler (flat shape only) drops
+        // silently. Same delegation as CustomFieldAwareTableDefinition.
+        if (($filter['filterType'] ?? null) === 'multi' || isset($filter['conditions'])) {
+            $this->filterApplier->apply($query, $this->target->valuesColumn.'->'.$attributeRow['code'], $this->filterConfig($attributeRow), $filter);
+
+            return;
+        }
+
         $this->columnBuilder->handlerFor($attributeRow)->applyFilter($query, $this->target->valuesColumn, $attributeRow['code'], $filter);
+    }
+
+    /**
+     * The contract type/filterType FilterApplier reads (blank semantics, typed
+     * branch); no `options`, so a Set sub-filter accepts the column's own values.
+     *
+     * @param  array<string, mixed>  $attributeRow
+     * @return array{type: mixed, filterType: mixed}
+     */
+    private function filterConfig(array $attributeRow): array
+    {
+        $column = $this->columnBuilder->resolved($attributeRow, 0, false);
+
+        return ['type' => $column['type'], 'filterType' => $column['filterType']];
     }
 
     /**
@@ -274,6 +325,12 @@ final class AttributeGridColumns
      */
     public function applySort(Builder $query, array $attributeRow, string $direction): void
     {
+        if ($this->linkedColumns->isMerged($attributeRow)) {
+            $this->linkedColumns->applySort($query, $this->target->valuesColumn, $attributeRow, $direction);
+
+            return;
+        }
+
         $this->columnBuilder->handlerFor($attributeRow)->applySort($query, $this->target->valuesColumn, $attributeRow['code'], $direction);
     }
 
@@ -288,10 +345,18 @@ final class AttributeGridColumns
      */
     public function distinctValues(Builder $query, array $attributeRow, ?string $search, int $limit): array
     {
+        if ($this->linkedColumns->isMerged($attributeRow)) {
+            return $this->mergedDistinctValues($query, $attributeRow, $search, $limit);
+        }
+
         $values = match (true) {
             $this->summaryDateColumn->applies($attributeRow) => $this->summaryDateColumn->summaryValues($query, $this->target->valuesColumn, $attributeRow),
             $attributeRow['type'] === self::TABLE_TYPE => $this->tableFilterApplier->distinctValues($query, $this->target->valuesColumn, $attributeRow),
-            default => $this->columnBuilder->handlerFor($attributeRow)->distinctValues($query, $this->target->valuesColumn, $attributeRow['code']),
+            default => $this->columnBuilder->handlerFor($attributeRow)->distinctValues(
+                $this->filterApplier->narrowedBySearch($query, $this->target->valuesColumn.'->'.$attributeRow['code'], $search),
+                $this->target->valuesColumn,
+                $attributeRow['code'],
+            ),
         };
 
         if ($search !== null && $search !== '') {
@@ -301,6 +366,28 @@ final class AttributeGridColumns
                 static fn (mixed $value): bool => str_contains(mb_strtolower((string) $value), $needle),
             ));
         }
+
+        return array_slice($values, 0, $limit);
+    }
+
+    /**
+     * The distinct values of every code of a merged column (spec 0429 D-4).
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $attributeRow
+     * @return array<int, string>
+     */
+    private function mergedDistinctValues(Builder $query, array $attributeRow, ?string $search, int $limit): array
+    {
+        $values = [];
+
+        foreach ($this->linkedColumns->codes($attributeRow) as $code) {
+            $single = $this->linkedColumns->single($attributeRow, $code);
+            $values = [...$values, ...$this->distinctValues(clone $query, $single, $search, $limit)];
+        }
+
+        $values = array_values(array_unique($values, SORT_REGULAR));
+        sort($values);
 
         return array_slice($values, 0, $limit);
     }

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
 import FormalabStatusPage from '@/integrations/formalab/components/formalab-status-page'
 import { createWrapper } from '@/integrations/formalab/test-support'
 import type { FormalabStatus } from '@/integrations/formalab/types'
 
 const fetchStatusMock = vi.fn()
+const fetchSyncStateMock = vi.fn()
 const syncMock = vi.fn()
 const testMock = vi.fn()
 const activeMock = vi.fn()
@@ -15,6 +17,7 @@ const toastError = vi.fn()
 vi.mock('@/integrations/formalab/api', () => ({
   FORMALAB_CALL_LOGS_DOMAIN: 'formalab-call-logs',
   fetchFormalabStatus: () => fetchStatusMock(),
+  fetchFormalabSyncState: () => fetchSyncStateMock(),
   startFormalabSync: () => syncMock(),
   testFormalabConnection: () => testMock(),
 }))
@@ -33,6 +36,7 @@ const status: FormalabStatus = {
   credentials_configured: true,
   inbound_enabled: false,
   sync_interval_minutes: 10,
+  sync_in_progress: false,
   last_sync: {
     id: 1,
     trigger: 'manual',
@@ -41,6 +45,7 @@ const status: FormalabStatus = {
     finished_at: '2026-11-20T10:00:05Z',
     classes_synced: 0,
     work_orders_updated: 0,
+    classes_removed: 2,
     error_message: 'Formalab non raggiungibile',
     warning_message: null,
   },
@@ -57,6 +62,7 @@ describe('FormalabStatusPage', () => {
     vi.clearAllMocks()
     activeMock.mockReturnValue({ isActive: true, isLoading: false })
     fetchStatusMock.mockResolvedValue(status)
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: false, last_sync: status.last_sync })
   })
 
   it('renders nothing of the integration when it is not active', () => {
@@ -77,6 +83,7 @@ describe('FormalabStatusPage', () => {
     expect(await screen.findByText('https://formalab.example.test')).toBeInTheDocument()
     expect(screen.getByText('1395')).toBeInTheDocument()
     expect(screen.getByText('Fallita')).toBeInTheDocument()
+    expect(screen.getByText("Classi rimosse (non piu' su Formalab)").nextSibling).toHaveTextContent('2')
     expect(screen.getByRole('alert')).toHaveTextContent('Formalab non raggiungibile')
     expect(screen.getByText('table:formalab-call-logs')).toBeInTheDocument()
   })
@@ -121,6 +128,46 @@ describe('FormalabStatusPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sincronizza ora' }))
 
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Sincronizzazione avviata.'))
+  })
+
+  // User request 2026-11-23: never two syncs together
+  it('disables the sync while one is running', async () => {
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: true, last_sync: null })
+    const { Wrapper } = createWrapper()
+
+    render(<FormalabStatusPage />, { wrapper: Wrapper })
+
+    expect(await screen.findByRole('button', { name: 'Sincronizzazione in corso' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Sincronizza ora' })).not.toBeInTheDocument()
+  })
+
+  it('shows the server reason when the sync is refused, and rereads the sync state', async () => {
+    syncMock.mockRejectedValue(
+      new AxiosError('Conflict', '409', undefined, undefined, {
+        status: 409,
+        data: { success: false, message: 'Sincronizzazione gia in corso' },
+      } as AxiosResponse),
+    )
+    const { Wrapper } = createWrapper()
+    render(<FormalabStatusPage />, { wrapper: Wrapper })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sincronizza ora' }))
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Sincronizzazione gia in corso'))
+    await waitFor(() => expect(fetchSyncStateMock).toHaveBeenCalledTimes(2))
+  })
+
+  it('rereads the full status once when the running sync ends', async () => {
+    fetchSyncStateMock.mockResolvedValueOnce({ sync_in_progress: true, last_sync: null })
+    fetchSyncStateMock.mockResolvedValue({ sync_in_progress: false, last_sync: status.last_sync })
+    const { Wrapper, client } = createWrapper()
+    render(<FormalabStatusPage />, { wrapper: Wrapper })
+
+    expect(await screen.findByRole('button', { name: 'Sincronizzazione in corso' })).toBeDisabled()
+    await client.refetchQueries({ queryKey: ['formalab', 'sync-state'] })
+
+    expect(await screen.findByRole('button', { name: 'Sincronizza ora' })).toBeEnabled()
+    await waitFor(() => expect(fetchStatusMock).toHaveBeenCalledTimes(2))
   })
 
   it('reports the connection latency, or the failure', async () => {

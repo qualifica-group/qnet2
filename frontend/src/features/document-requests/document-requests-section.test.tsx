@@ -74,13 +74,41 @@ describe('DocumentRequestsSection', () => {
     expect(within(failed).getByRole('alert')).toHaveTextContent('Invio non riuscito: Checklist non trovata')
   })
 
+  it('shows a closed request collapsed and toggles it with one click, while an open one stays expanded', async () => {
+    fetchListMock.mockResolvedValue({
+      requests: [
+        buildRequest({ id: 31, title: 'Aperta' }),
+        buildRequest({ id: 32, title: 'Chiusa', status: 'completed' }),
+      ],
+      canCreate: false,
+    })
+    renderSection()
+
+    const closed = await screen.findByRole('article', { name: 'Chiusa' })
+    const toggle = within(closed).getByRole('button', { name: 'Chiusa' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(within(closed).getByText('1 / 2 voci')).toBeInTheDocument()
+    expect(within(closed).queryByText('Visura camerale')).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(within(closed).getByText('Visura camerale')).toBeInTheDocument()
+
+    fireEvent.click(toggle)
+    expect(within(closed).queryByText('Visura camerale')).not.toBeInTheDocument()
+
+    const open = screen.getByRole('article', { name: 'Aperta' })
+    expect(within(open).queryByRole('button', { name: 'Aperta' })).not.toBeInTheDocument()
+    expect(within(open).getByText('Visura camerale')).toBeInTheDocument()
+  })
+
   it('offers the actions allowed by the state and the permissions (AC-017)', async () => {
     fetchListMock.mockResolvedValue({
       requests: [
         buildRequest({ id: 21, title: 'Aperta' }),
         buildRequest({ id: 22, title: 'Completata', status: 'completed' }),
         buildRequest({ id: 23, title: 'Bozza', status: 'draft' }),
-        buildRequest({ id: 24, title: 'Sola lettura', permissions: { update: false, remind: false, cancel: false } }),
+        buildRequest({ id: 24, title: 'Sola lettura', permissions: { update: false, remind: false, cancel: false, review: false, complete: false } }),
       ],
       canCreate: false,
     })
@@ -92,6 +120,7 @@ describe('DocumentRequestsSection', () => {
     }
 
     const completed = screen.getByRole('article', { name: 'Completata' })
+    fireEvent.click(within(completed).getByRole('button', { name: 'Completata' }))
     expect(within(completed).queryByRole('button', { name: 'Modifica' })).not.toBeInTheDocument()
     expect(within(completed).queryByRole('button', { name: 'Sollecita' })).not.toBeInTheDocument()
     expect(within(completed).queryByRole('button', { name: 'Annulla richiesta' })).not.toBeInTheDocument()

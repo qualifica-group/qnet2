@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Boolean filter mirrored from App\Services\Table\FilterApplier::applyBoolean.
+ *
+ * The Set Filter round-trips the values its list was fed, which come back from
+ * a JSON column as strings ("true"/"false", "1"/"0"): they are read as
+ * booleans here. A `null` is AG Grid's blank entry ("(Vuoti)").
  */
 trait AppliesBooleanFilter
 {
@@ -18,21 +22,26 @@ trait AppliesBooleanFilter
      */
     public function applyFilter(Builder $query, string $column, string $jsonKey, array $filter): void
     {
-        $values = $this->booleanValues($filter);
+        $values = $this->booleanValues($filter) ?? [];
+        $matchesBlank = is_array($filter['values'] ?? null) && in_array(null, $filter['values'], true);
 
-        if ($values === null || $values === []) {
+        if ($values === [] && ! $matchesBlank) {
             return;
         }
 
         $path = $this->jsonColumn($column, $jsonKey);
 
-        if (count($values) === 1) {
-            $query->where($path, '=', $values[0]);
+        // One `where` per value, never `whereIn`: only `where` compiles a bound
+        // boolean against a JSON path as a JSON true/false.
+        $query->where(static function (Builder $group) use ($path, $values, $matchesBlank): void {
+            foreach ($values as $value) {
+                $group->orWhere($path, '=', $value);
+            }
 
-            return;
-        }
-
-        $query->whereIn($path, $values);
+            if ($matchesBlank) {
+                $group->orWhereNull($path);
+            }
+        });
     }
 
     /**
@@ -47,24 +56,28 @@ trait AppliesBooleanFilter
             $clean = [];
 
             foreach ($values as $value) {
-                if (is_bool($value) && ! in_array($value, $clean, true)) {
-                    $clean[] = $value;
+                $boolean = $this->toBoolean($value);
+
+                if ($boolean !== null && ! in_array($boolean, $clean, true)) {
+                    $clean[] = $boolean;
                 }
             }
 
             return $clean === [] ? null : $clean;
         }
 
-        $single = $filter['filter'] ?? ($filter['type'] ?? null);
+        $single = $this->toBoolean($filter['filter'] ?? ($filter['type'] ?? null));
 
-        if (is_bool($single)) {
-            return [$single];
-        }
+        return $single === null ? null : [$single];
+    }
 
-        if (is_string($single) && in_array($single, ['true', 'false'], true)) {
-            return [$single === 'true'];
-        }
-
-        return null;
+    private function toBoolean(mixed $value): ?bool
+    {
+        return match (true) {
+            is_bool($value) => $value,
+            $value === 1, $value === '1', $value === 'true' => true,
+            $value === 0, $value === '0', $value === 'false' => false,
+            default => null,
+        };
     }
 }

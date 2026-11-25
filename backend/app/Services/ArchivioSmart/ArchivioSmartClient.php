@@ -92,6 +92,38 @@ class ArchivioSmartClient
     }
 
     /**
+     * Manual approval or rejection of an item (spec 0429, D-2). The note and the
+     * reviewer name travel only in the body.
+     *
+     * @throws ConnectionException
+     */
+    public function reviewItem(ArchivioSmartSetting $setting, string $externalId, int $itemId, string $decision, ?string $note, string $reviewerName): Response
+    {
+        return $this->request($setting)->post(
+            $this->requestPath($externalId).'/items/'.$itemId.'/'.$decision,
+            ['note' => $note, 'reviewer_name' => $reviewerName],
+        );
+    }
+
+    /**
+     * @throws ConnectionException
+     */
+    public function completeRequest(ArchivioSmartSetting $setting, string $externalId): Response
+    {
+        return $this->request($setting)->post($this->requestPath($externalId).'/complete');
+    }
+
+    /**
+     * Asks for the temporary URL of an uploaded file (spec 0429, D-1).
+     *
+     * @throws ConnectionException
+     */
+    public function documentDownloadUrl(ArchivioSmartSetting $setting, string $externalId, int $documentId): Response
+    {
+        return $this->request($setting)->get($this->requestPath($externalId).'/documents/'.$documentId.'/download');
+    }
+
+    /**
      * @throws ConnectionException
      */
     public function me(ArchivioSmartSetting $setting): Response

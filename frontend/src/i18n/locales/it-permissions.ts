@@ -57,6 +57,8 @@ export const permissions = {
     // diretta del campo protetto "Fonte" di Gestione Richieste su
     // ciascuno dei suoi tre canali di scrittura (RequestManagementPolicy,
     // generato come `request-management.updateSource`).
+    // Spec 0429: manual approval/rejection of document request items.
+    review: 'Revisionare',
     manage: 'Gestire',
     updateSource: 'Modificare la Fonte',
     // Spec 0116: matrice per ruolo sul record del modulo Task. `manageAll` e'

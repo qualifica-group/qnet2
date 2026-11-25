@@ -33,7 +33,7 @@ class QualificaQuoteLayoutRevisionSeeder extends Seeder
 
     public function run(): void
     {
-        foreach (self::REVISED_LAYOUTS as $key) {
+        foreach (static::REVISED_LAYOUTS as $key) {
             $code = QuoteDocumentLayoutCatalogue::CODE_PREFIX.$key;
             $layout = DocumentLayout::query()->where('code', $code)->first();
 

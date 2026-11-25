@@ -19,6 +19,8 @@ export interface IntegrationDefinition {
   key: string
   /** Extra tabs of the work order detail; called unconditionally on every render. */
   useWorkOrderTabs?: (args: IntegrationWorkOrderTabsArgs) => WorkOrderDetailTab[]
+  /** Extra actions on top of the work order's Amministrazione > Costi, rendered only while the integration is active. */
+  WorkOrderAccountingActions?: ComponentType<{ workOrder: WorkOrderDetailWithPermissions }>
   /** Extra full-width section of the product category detail, rendered only while the integration is active. */
   ProductCategorySection?: ComponentType<{ categoryId: number }>
   /** Extra routes of the "Develop" menu section. */

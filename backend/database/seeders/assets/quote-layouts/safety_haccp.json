@@ -564,20 +564,2539 @@
    {
     "id": "text-19",
     "type": "text",
-    "align": "left",
+    "align": "center",
     "space_before": 0,
-    "space_after": 160,
-    "line_height": 1.08,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
     "runs": [
      {
-      "text": "Ai sensi degli art. 1341 – 1342 del Codice Civile, il sottoscritto conferma in maniera specifica le obbligazioni di cui agli articoli sopracitati, compreso art. 9 e 11, e acconsente espressamente al trattamento dei dati personali ad opera del Qualifica Group srl, e suoi affiliati ai sensi del ai sensi del D.Lgs 196/03 \"Codice in materia di protezione dei dati personali”.",
+      "text": "INFORMATIVA SUL TRATTAMENTO DEI DATI PERSONALI DEI CLIENTI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Ai sensi degli artt. 13 e 14 del Regolamento (UE) 2016/679 (di seguito \"Regolamento\" o \"GDPR\") e del D.Lgs. 196/2003, come modificato dal D.Lgs. 101/2018 (di seguito \"Codice Privacy\"), Qualifica Group S.r.l. fornisce le informazioni relative al trattamento dei dati personali delle persone fisiche che entrano in relazione con essa nell'ambito dei servizi di consulenza in materia di salute e sicurezza nei luoghi di lavoro (D.Lgs. 81/2008), oggetto dell'Offerta economica e del Contratto sottoscritti con la Società cliente, comprensivi, a seconda dei servizi richiesti, della predisposizione della documentazione, dei corsi di formazione, dei sopralluoghi, della nomina del Medico Competente e delle visite mediche, e dell'incarico di RSPP esterno: clienti persone fisiche (ditte individuali e professionisti), legali rappresentanti, datori di lavoro, referenti, dipendenti e collaboratori della società Committente (di seguito, congiuntamente, \"Interessati\").",
       "field": null,
       "bold": false,
       "italic": false,
       "underline": false,
       "font": null,
-      "size": 6,
-      "color": "262626"
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il trattamento sarà improntato ai principi di liceità, correttezza, trasparenza, limitazione della finalità, minimizzazione dei dati, esattezza, limitazione della conservazione, integrità e riservatezza, nonché di tutela dei diritti degli Interessati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "1. TITOLARE DEL TRATTAMENTO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il Titolare del trattamento è Qualifica Group S.r.l. (di seguito \"Società\" o \"Titolare\"), con sede legale in Via di Vermicino, 186 - 00133 Roma (RM), P.IVA 09537471212, PEC: qualificagroup@pec.it, sito web: https://www.qualificagroup.it/",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "2. AMBITO DELLA PRESENTE INFORMATIVA",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "La presente informativa riguarda i trattamenti che la Società effettua in qualità di Titolare per instaurare e gestire il rapporto contrattuale con la Committente relativo ai servizi di consulenza in materia di salute e sicurezza sul lavoro e per le ulteriori finalità indicate al paragrafo 4.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Diversamente, i dati personali dei lavoratori, dei collaboratori, dei partecipanti ai corsi e di eventuali terzi contenuti nella documentazione e nelle informazioni che la Committente mette a disposizione per la predisposizione del Documento di Valutazione dei Rischi e degli altri documenti della sicurezza, per la nomina delle figure della sicurezza, per l'organizzazione e l'erogazione dei corsi di formazione, per i sopralluoghi e, ove richiesto, per l'espletamento dell'incarico di RSPP (quali, a titolo esemplificativo, organigrammi, elenchi del personale e delle mansioni, registri infortuni, piani di emergenza e nomine, elenchi dei partecipanti ai corsi e relativi attestati) sono trattati dalla Società per conto della Committente, in qualità di Responsabile del trattamento ai sensi dell'art. 28 del GDPR, secondo quanto previsto dall'art. 10 del Contratto e dal relativo accordo stipulato tra le parti. Per tali trattamenti il Titolare è la Committente, alla quale gli Interessati possono rivolgersi per ricevere le informazioni dovute e per esercitare i propri diritti.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il Medico Competente, nell'ambito della sorveglianza sanitaria, tratta i dati sanitari dei lavoratori in piena autonomia professionale, in qualità di autonomo Titolare del trattamento, con la propria informativa; la Società non ha accesso alle cartelle sanitarie e di rischio e riceve, per conto della Committente, i soli dati strettamente necessari alla programmazione delle visite e alla gestione dei giudizi di idoneità.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-33",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "3. CATEGORIE DI DATI TRATTATI E FONTE DEI DATI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-34",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "La Società tratta, a titolo esemplificativo, le seguenti categorie di dati personali:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "table-1",
+    "type": "table",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "columns": [
+     {
+      "width_pct": 28
+     },
+     {
+      "width_pct": 72
+     }
+    ],
+    "rows": [
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-35",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Categoria",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-36",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Descrizione",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-37",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati identificativi e anagrafici",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-38",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "nome e cognome, data e luogo di nascita, codice fiscale, partita IVA (per ditte individuali e professionisti), indirizzo di residenza o di sede, firma",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-39",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati di contatto",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-40",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "indirizzo e-mail, PEC, numero di telefono fisso e mobile, anche aziendali",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-41",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati professionali",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-42",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "organizzazione di appartenenza, ruolo, funzione, qualifica, mansione, poteri di rappresentanza; nominativo del datore di lavoro, dei dirigenti, dei preposti, del RLS e degli addetti alle emergenze; titoli di studio e formativi, attestati di formazione e relativa scadenza",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-43",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati economici e di pagamento",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-44",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "dati di fatturazione, coordinate bancarie, modalità e storico dei pagamenti (proforma mensili), eventuali insoluti",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-45",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati relativi alle comunicazioni",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-46",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "corrispondenza, comunicazioni via e-mail o PEC, appunti, verbali e report dei sopralluoghi, esiti dei check-up aziendali",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "text-47",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-48",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Per le finalità di cui alla presente informativa la Società non tratta, in qualità di Titolare, categorie particolari di dati personali (art. 9 GDPR) né dati relativi a condanne penali e reati (art. 10 GDPR). Qualora tali dati siano presenti nella documentazione della Committente (ad esempio dati relativi alla salute nell'ambito dei giudizi di idoneità alla mansione, dei registri degli infortuni o della valutazione di rischi specifici, o dati giudiziari relativi a procedimenti in materia di sicurezza sul lavoro), essi sono trattati esclusivamente in qualità di Responsabile del trattamento, secondo quanto indicato al paragrafo 2 e dall'art. 10.4 del Contratto, nei limiti strettamente necessari.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-49",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "I dati sono raccolti direttamente presso l'Interessato oppure, nel caso di legali rappresentanti, datori di lavoro, referenti, dipendenti e collaboratori, sono comunicati dalla Committente in occasione della conclusione e dell'esecuzione del contratto, ovvero rilevati nel corso dei sopralluoghi. I dati possono inoltre essere acquisiti da registri ed elenchi pubblici (ad esempio Registro delle Imprese e visure camerali), al fine di verificare i dati societari e i poteri di rappresentanza.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-50",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-51",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "4. FINALITÀ E BASE GIURIDICA DEI TRATTAMENTI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-52",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "I dati personali sono trattati per le seguenti finalità, sulla base delle condizioni di liceità di seguito indicate:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "table-2",
+    "type": "table",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "columns": [
+     {
+      "width_pct": 49
+     },
+     {
+      "width_pct": 51
+     }
+    ],
+    "rows": [
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-53",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Finalità",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-54",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Base giuridica",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-55",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "a) Gestione delle attività precontrattuali (richieste di informazioni, progetto tecnico, offerta economica) ed esecuzione del contratto di consulenza in materia di salute e sicurezza sul lavoro, ivi compresi la predisposizione e l'aggiornamento della documentazione, la programmazione ed erogazione dei corsi di formazione, lo svolgimento dei sopralluoghi periodici, il coordinamento con il Medico Competente, l'eventuale incarico di RSPP esterno e le comunicazioni operative",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-56",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Esecuzione del contratto o di misure precontrattuali (art. 6, par. 1, lett. b GDPR), per i clienti persone fisiche che sono parte del contratto.",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         },
+         {
+          "id": "text-57",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Legittimo interesse del Titolare a instaurare e gestire il rapporto contrattuale con la Committente (art. 6, par. 1, lett. f GDPR), per legali rappresentanti, datori di lavoro, referenti, dipendenti e collaboratori della Committente",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-58",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "b) Adempimento degli obblighi di legge amministrativi, contabili e fiscali (fatturazione, tenuta delle scritture contabili) e degli obblighi connessi all'erogazione e alla registrazione dei corsi di formazione",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-59",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Obbligo legale (art. 6, par. 1, lett. c GDPR)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-60",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "c) Gestione amministrativa del rapporto, dei pagamenti (proforma mensili), dei solleciti e del recupero dei crediti",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-61",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Esecuzione del contratto (art. 6, par. 1, lett. b GDPR) e legittimo interesse del Titolare (art. 6, par. 1, lett. f GDPR)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-62",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "d) Accertamento, esercizio o difesa di un diritto in sede giudiziale o stragiudiziale",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-63",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Legittimo interesse del Titolare (art. 6, par. 1, lett. f GDPR)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-64",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "e) Invio, all'indirizzo e-mail fornito nel contesto del rapporto, di comunicazioni commerciali relative a servizi analoghi a quelli già acquistati",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-65",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Legittimo interesse del Titolare (art. 6, par. 1, lett. f GDPR) e art. 130, comma 4, Codice Privacy, salvo opposizione dell'Interessato, esercitabile in qualsiasi momento e in occasione di ciascuna comunicazione",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-66",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "f) Invio di newsletter, inviti a eventi e comunicazioni promozionali e commerciali su servizi diversi da quelli acquistati, con modalità automatizzate (e-mail, SMS, messaggistica) e tradizionali (telefonate con operatore, posta cartacea)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-67",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Consenso dell'Interessato (art. 6, par. 1, lett. a GDPR), facoltativo e revocabile in qualsiasi momento",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "text-68",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-69",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il conferimento dei dati per le finalità di cui alle lettere a), b) e c) è necessario: il mancato, parziale o inesatto conferimento comporta l'impossibilità di instaurare o proseguire il rapporto e di erogare i servizi richiesti. Il trattamento per la finalità di cui alla lettera d) non richiede un ulteriore conferimento di dati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-70",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il conferimento dei dati e del consenso per la finalità di cui alla lettera f) è facoltativo; il mancato conferimento o la revoca del consenso non comportano alcuna conseguenza sul rapporto contrattuale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-71",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Nei casi in cui il trattamento si fonda sul legittimo interesse, il Titolare ha valutato che tale interesse non prevale sugli interessi e sui diritti e le libertà fondamentali degli Interessati, tenuto conto delle loro ragionevoli aspettative nell'ambito di un rapporto professionale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-72",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Qualora il Titolare intenda trattare ulteriormente i dati personali per una finalità diversa da quella per cui essi sono stati raccolti, prima di tale ulteriore trattamento fornirà all'Interessato le informazioni in merito a tale diversa finalità e ogni ulteriore informazione pertinente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-73",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-74",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "5. MODALITÀ DI TRATTAMENTO DEI DATI PERSONALI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-75",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il trattamento è effettuato con strumenti manuali, informatici e telematici, con logiche di organizzazione ed elaborazione strettamente correlate alle finalità indicate e comunque in modo da garantire la sicurezza, l'integrità e la riservatezza dei dati, nel rispetto delle misure tecniche e organizzative previste dalla normativa vigente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-76",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "I dati personali potranno essere oggetto, tra l'altro, delle seguenti operazioni: raccolta, organizzazione, registrazione, estrazione, uso, raffronto o interconnessione, elaborazione, limitazione, strutturazione, conservazione, consultazione, comunicazione mediante trasmissione, selezione, cancellazione o distruzione.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-77",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "I dati non sono oggetto di diffusione e possono essere comunicati esclusivamente ai destinatari indicati al paragrafo 7, nei limiti necessari al perseguimento delle finalità indicate. Il trattamento non comporta l'adozione di decisioni basate unicamente su un trattamento automatizzato, compresa la profilazione, ai sensi dell'art. 22 del GDPR.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-78",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-79",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "6. MISURE DI SICUREZZA",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-80",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il Titolare adotta misure tecniche e organizzative adeguate al rischio, ai sensi dell'art. 32 del GDPR, al fine di ridurre i rischi di distruzione o perdita, anche accidentale, dei dati, di accesso non autorizzato o di trattamento non consentito o non conforme alle finalità indicate. Il personale autorizzato accede ai dati previa autenticazione con credenziali personali, gestite secondo criteri di complessità e riservatezza adeguati, ed è tenuto al rispetto di specifiche istruzioni. Sono inoltre adottate misure per la protezione degli strumenti informatici utilizzati dal personale. Poiché lo scambio di messaggi e documenti avviene anche tramite posta elettronica, la Società invita la Committente a limitare la trasmissione di dati non strettamente necessari, in particolare di dati relativi alla salute dei lavoratori, e, ove possibile, a fornirli in forma anonimizzata o pseudonimizzata.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-81",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-82",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "7. DESTINATARI DEI DATI PERSONALI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-83",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il trattamento è svolto dal personale e dai collaboratori del Titolare, debitamente autorizzati e istruiti ai sensi dell'art. 29 del GDPR e dell'art. 2-quaterdecies del Codice Privacy, che operano sulla base delle mansioni assegnate e delle istruzioni ricevute in ordine a finalità e modalità del trattamento.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-84",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Per il perseguimento delle finalità indicate, i dati possono essere comunicati alle seguenti categorie di destinatari:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-85",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• consulenti e professionisti esterni (anche legali), tecnici abilitati, docenti e addetti al servizio di prevenzione e protezione dei quali la Società si avvale per l'erogazione dei servizi di consulenza, che operano quali Responsabili del trattamento o soggetti autorizzati, in base al rapporto in essere con la Società;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-86",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Medico Competente designato, che opera quale autonomo Titolare del trattamento per i dati sanitari trattati nell'ambito della sorveglianza sanitaria;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-87",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• enti e organismi di formazione e di accreditamento (tra cui l'ente di cui la Società è centro autorizzato), per la registrazione dei corsi e il rilascio degli attestati, che operano quali autonomi Titolari o Responsabili del trattamento, a seconda dei casi;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-88",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• fornitori di servizi informatici, di hosting e cloud, di posta elettronica, di software gestionali e di fatturazione elettronica, designati Responsabili del trattamento;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-89",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• commercialisti, consulenti fiscali e revisori, che operano quali autonomi Titolari o Responsabili del trattamento;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-90",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• istituti bancari e di pagamento, per la gestione degli incassi (bonifici e RiBa), che operano quali autonomi Titolari del trattamento;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-91",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• avvocati, società di recupero crediti e compagnie assicurative, per la tutela dei diritti del Titolare e la gestione del credito, che operano quali autonomi Titolari o Responsabili del trattamento;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-92",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Pubbliche Amministrazioni e Autorità giudiziarie, amministrative e fiscali (ivi comprese le Autorità di vigilanza in materia di salute e sicurezza sul lavoro), quando ciò sia previsto dalla legge o da un provvedimento dell'Autorità, che operano quali autonomi Titolari del trattamento.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-93",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "La documentazione della sicurezza predisposta (quali il Documento di Valutazione dei Rischi, il Piano di Emergenza, i DUVRI e i POS) è adottata, attuata e conservata dalla Committente, nella sua qualità di datore di lavoro, che ne cura in autonomia la diffusione interna ed esterna, assumendo in proprio le relative responsabilità. Per le comunicazioni di cui alle lettere e) e f) del paragrafo 4, la Società può avvalersi di fornitori di servizi di invio di comunicazioni elettroniche, designati Responsabili del trattamento.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-94",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-95",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "8. TRASFERIMENTO DEI DATI VERSO PAESI TERZI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-96",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "I dati personali sono trattati all'interno dello Spazio Economico Europeo (SEE). L'utilizzo di taluni servizi informatici può comportare il trasferimento dei dati verso Paesi situati al di fuori del SEE. In tal caso il trasferimento avviene esclusivamente sulla base di una decisione di adeguatezza della Commissione europea (art. 45 GDPR), ivi compreso, per i soggetti certificati, l'EU-U.S. Data Privacy Framework, oppure in presenza di garanzie adeguate, quali le clausole contrattuali tipo approvate dalla Commissione europea (art. 46, par. 2, lett. c GDPR). Copia delle garanzie adottate può essere richiesta ai recapiti indicati al paragrafo 1.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-97",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-98",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "9. TEMPI DI CONSERVAZIONE DEI DATI PERSONALI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-99",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "I dati personali sono conservati per il tempo necessario al perseguimento delle finalità per le quali sono trattati e, in particolare:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "table-3",
+    "type": "table",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "columns": [
+     {
+      "width_pct": 41
+     },
+     {
+      "width_pct": 59
+     }
+    ],
+    "rows": [
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-100",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-101",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Periodo di conservazione",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-102",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati relativi a richieste di offerta non seguite dalla conclusione del contratto",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-103",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "12 mesi dall'invio dell'offerta",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-104",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati relativi alla gestione del contratto",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-105",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "per la durata del contratto (triennale, con rinnovo tacito ai sensi dell'art. 2 del Contratto) e per i 10 anni successivi alla sua cessazione (art. 2946 c.c.)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-106",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Scritture contabili, fatture, lettere e documenti equiparati",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-107",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "10 anni dalla data dell'ultima registrazione (art. 2220 c.c.), salvi i maggiori termini previsti dalla normativa fiscale",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-108",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Documenti e atti ricevuti dalla Committente nell'esecuzione del Contratto (art. 3 del Contratto)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-109",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "per il periodo strettamente necessario all'esecuzione dell'incarico e, successivamente, per il periodo indicato nell'accordo ex art. 28 GDPR; al termine, restituzione o cancellazione secondo le istruzioni della Committente",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-110",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Registri dei corsi, elenchi dei partecipanti e attestati di formazione",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-111",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "per il periodo previsto dalla normativa di settore e dall'ente di formazione, e comunque per la durata necessaria a garantire la validità e l'aggiornamento degli attestati",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-112",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati trattati per la tutela dei diritti in sede giudiziale o stragiudiziale",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-113",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "fino alla definizione del contenzioso con provvedimento non più impugnabile e per il tempo necessario all'eventuale esecuzione",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-114",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati trattati per l'invio di comunicazioni su servizi analoghi (finalità e)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-115",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "fino all'opposizione dell'Interessato e comunque non oltre 24 mesi dalla cessazione del rapporto contrattuale",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-116",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Dati trattati sulla base del consenso per finalità promozionali (finalità f)",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-117",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "fino alla revoca del consenso e comunque non oltre 24 mesi dalla sua raccolta o dal suo ultimo rinnovo",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": null,
+            "size": 8,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "text-118",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-119",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il Titolare potrà conservare i dati per un periodo più lungo qualora ciò sia imposto da un obbligo di legge o da un ordine dell'Autorità. Al termine del periodo di conservazione i dati personali saranno cancellati o resi anonimi in modo irreversibile.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-120",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-121",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "10. DIRITTI DELL'INTERESSATO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-122",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "In relazione al trattamento dei propri dati personali, l'Interessato può esercitare, nei limiti e alle condizioni previsti dal GDPR, i seguenti diritti: diritto di accesso ai dati personali (art. 15 GDPR); diritto di rettifica dei dati inesatti e di integrazione dei dati incompleti (art. 16 GDPR); diritto alla cancellazione dei dati (art. 17 GDPR), fatta eccezione per i dati che il Titolare è tenuto a conservare per obbligo di legge o per la tutela dei propri diritti; diritto di limitazione del trattamento (art. 18 GDPR); diritto alla portabilità dei dati (art. 20 GDPR), limitatamente ai dati trattati con strumenti automatizzati sulla base del contratto o del consenso; diritto di opposizione (art. 21 GDPR): in qualsiasi momento, per motivi connessi alla propria situazione particolare, al trattamento fondato sul legittimo interesse del Titolare; in qualsiasi momento e senza necessità di motivazione, al trattamento per finalità di marketing diretto; diritto di revocare il consenso in qualsiasi momento, senza pregiudicare la liceità del trattamento basata sul consenso prestato prima della revoca (art. 7, par. 3, GDPR); diritto di proporre reclamo al Garante per la protezione dei dati personali (art. 77 GDPR), secondo le modalità indicate sul sito https://www.garanteprivacy.it, o di adire l'Autorità giudiziaria (art. 79 GDPR).",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-123",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "I diritti possono essere esercitati inviando una richiesta alla PEC qualificagroup@pec.it.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-124",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-125",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "DICHIARAZIONE DI PRESA VISIONE E CONSENSO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-126",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Il/La sottoscritto/a ______________________________, in qualità di ______________________________ della Committente ______________________________, dichiara di aver ricevuto e letto l'informativa sul trattamento dei dati personali che precede (Allegato A al Contratto e Offerta economica per la consulenza in materia di salute e sicurezza sul lavoro).",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-127",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Con riferimento all'invio di newsletter, inviti a eventi e comunicazioni promozionali e commerciali, con modalità automatizzate e tradizionali, per le finalità di cui al paragrafo 4, lettera f):",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-128",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "☐ presto il consenso          ☐ nego il consenso",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-129",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Il consenso è facoltativo e può essere revocato in qualsiasi momento scrivendo ai recapiti indicati al paragrafo 1, senza alcuna conseguenza sul rapporto contrattuale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-130",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Luogo e data ____________________          Firma ____________________________",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
      }
     ]
    }

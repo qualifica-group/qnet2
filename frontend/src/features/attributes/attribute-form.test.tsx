@@ -75,6 +75,7 @@ function attribute(
     icon: null,
     config: null,
     relation_target: null,
+    current_attribute_id: null,
     options: [
       { id: 1, value: 'red', label: 'Red', color: null, icon: null, sort_order: 0, is_default: false },
       { id: 2, value: 'blue', label: 'Blue', color: 'blue', icon: null, sort_order: 1, is_default: true },

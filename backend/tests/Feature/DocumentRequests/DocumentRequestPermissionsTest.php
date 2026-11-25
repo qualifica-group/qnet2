@@ -10,15 +10,15 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-it('AC-005: permissions:sync creates exactly the four document-requests permissions', function () {
+it('AC-005: permissions:sync creates exactly the five document-requests permissions (review added by spec 0429)', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    foreach (['viewAny', 'view', 'create', 'update'] as $ability) {
+    foreach (['viewAny', 'view', 'create', 'update', 'review'] as $ability) {
         expect(Permission::where('name', "document-requests.{$ability}")->exists())->toBeTrue();
     }
 
-    expect(Permission::where('name', 'like', 'document-requests.%')->count())->toBe(4)
-        ->and(DocumentRequestPolicy::abilities())->toBe(['viewAny', 'view', 'create', 'update']);
+    expect(Permission::where('name', 'like', 'document-requests.%')->count())->toBe(5)
+        ->and(DocumentRequestPolicy::abilities())->toBe(['viewAny', 'view', 'create', 'update', 'review']);
 });
 
 it('AC-005: the per-record abilities also need view on the work order', function () {

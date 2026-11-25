@@ -30,7 +30,7 @@ if (! function_exists('documentRequestUserWith')) {
      */
     function documentRequestUserWith(array $abilities, bool $canViewWorkOrders = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'review'] as $ability) {
             Permission::findOrCreate("document-requests.{$ability}");
         }
         foreach (['view', 'viewAll'] as $ability) {
@@ -175,6 +175,31 @@ if (! function_exists('documentRequestFor')) {
             'snapshot' => ['sections' => $remote['sections'], 'items' => $remote['items']],
             'remote_updated_at' => '2026-12-01 10:00:00',
             'delivery_status' => 'delivered',
+            ...$attributes,
+        ]);
+    }
+}
+
+if (! function_exists('documentRequestWithFiles')) {
+    /**
+     * A sent request whose item 11 holds a file (document 101, current) and whose item 12 holds none.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    function documentRequestWithFiles(WorkOrder $workOrder, array $attributes = []): DocumentRequest
+    {
+        $remote = documentRequestRemote();
+        $remote['items'][0]['status'] = 'ko';
+        $remote['items'][0]['current_document_id'] = 101;
+        $remote['items'][0]['documents'] = [[
+            'id' => 101, 'slot' => 1, 'version' => 1, 'is_current' => true, 'status' => 'ko', 'status_reason' => 'Illeggibile',
+            'original_name' => 'Carta identita.pdf', 'mime_type' => 'application/pdf', 'size_bytes' => 2048,
+            'sha256' => 'deadbeef', 'created_at' => '2026-12-02T09:00:00+00:00',
+        ]];
+        $remote['items'][1]['documents'] = [];
+
+        return documentRequestFor($workOrder, [
+            'snapshot' => ['sections' => $remote['sections'], 'items' => $remote['items']],
             ...$attributes,
         ]);
     }

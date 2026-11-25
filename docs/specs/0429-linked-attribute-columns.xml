@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0429-linked-attribute-columns" status="approved" owner="nicola" date="2026-11-24">
+
+  <goal>
+    Sulle pagine Offerte, Commesse e Contratti, quando le colonne dei campi flessibili vengono da categorie collegate (es. ISO e
+    [OLD] ISO, spec 0374), un campo vecchio collegato al campo attuale che lo continua compare in UNA sola colonna, quella del
+    campo attuale: niente piu' due colonne "Data di assegnazione".
+  </goal>
+
+  <context>
+    Verificato sul codice e sul DB di sviluppo 2026-11-24.
+
+    - Segnalazione utente 2026-11-24: "ci sono due colonne assegnazione e questo da molto fastidio agli operatori ... dobbiamo
+      cercare di unire le colonne come abbiamo unito le categorie". Supera la spec 0374 D-10 ("le colonne con lo stesso nome
+      restano separate e compaiono doppie") per i campi collegati.
+    - ISO (attuale) e [OLD] ISO hanno due cataloghi paralleli: `iso_*` (IsoWorkOrderCatalogue, spec 0181) e i codici migrati dal
+      legacy (`data_inizio_lavorazione`, `quotazione`, ...). Nel gruppo ISO: 17 nomi doppi sulle commesse, 26 sulle offerte;
+      negli altri gruppi collegati nessuno. Un record porta i campi della SUA categoria: i due codici non convivono sulla stessa riga.
+    - Le opzioni dei campi enum hanno valori diversi tra vecchio e nuovo (`1`/`0` contro `on_site`/`off_site`), le tabelle hanno
+      colonne diverse: unirli richiede una mappa dei valori, fuori ambito.
+
+    Decisioni (autonomia di progetto, memoria utente "decido e implemento"):
+    D-1 Collegamento dichiarato, come spec 0374 D-9: nuova colonna nullable `attributes.current_attribute_id` (FK verso la stessa
+        tabella, null on delete, indice). Il campo vecchio punta al campo attuale; molti-a-uno. Niente catene: il campo attuale
+        non puo' avere a sua volta un campo attuale, e un campo a cui altri puntano non puo' collegarsi. Non verso se stesso.
+    D-2 Solo tipi compatibili, cioe' della stessa famiglia di colonna: date; datetime; testo (text, textarea); numero (integer,
+        decimal); boolean. Enum, table, relation e gli altri tipi non si collegano (422). Il controllo vale anche quando cambia il
+        tipo di un campo gia' collegato (in entrambe le direzioni).
+    D-3 Griglie (insieme di colonne di spec 0374 D-1/D-10): se l'insieme mostrato contiene il campo attuale C e uno o piu' campi
+        L collegati a lui, resta solo la colonna `attr.C` (nome, tipo, posizione di C); le `attr.L` spariscono. Se e' selezionata
+        solo la categoria vecchia (C assente), le colonne `attr.L` restano come prima.
+    D-4 Valore della colonna unita: il primo valore non vuoto tra C, L1, L2... (L in ordine di insieme); vuoto = chiave assente o
+        null. Filtro, ordinamento e `POST /values` seguono la stessa regola: il filtro vale su C quando C e' valorizzato,
+        altrimenti sul campo successivo (equivale a un COALESCE, riusa gli handler per tipo); l'ordinamento e' un COALESCE dei
+        percorsi JSON; i valori distinti sono l'unione di quelli dei codici. Vale anche per i Contratti (campi dell'offerta).
+    D-5 Modifica nella cella unita: scrive il codice che il record porta (C se si applica, altrimenti il primo L che si applica),
+        dal CellWriter del modulo come sempre; se nessuno si applica, 422 come oggi. La risposta della PATCH mostra il valore
+        sotto `attr.C`.
+    D-6 (direttiva utente 2026-11-24: "fai un seeder one shot per mappare i campi vecchi con i nuovi, quelli non mappati si
+        vedranno comunque ... avranno lo stesso comportamento di adesso") Seeder una tantum `QualificaLinkedAttributesSeeder`
+        con una mappa esplicita codice vecchio -> codice attuale (41 coppie del gruppo ISO: 12 della commessa, 29 dell'offerta),
+        solo tipi compatibili (D-2). Idempotente: non sovrascrive un collegamento esistente; salta e segnala le coppie con un
+        campo assente o che violano D-1/D-2. I campi non mappati (enum, table, numero/testo) restano due colonne come oggi. La
+        migrazione aggiunge solo la colonna.
+    D-7 Anagrafica Campi: nuovo campo "Campo attuale" (select dei campi, ricerca per nome o codice), permesso di campo
+        `current_attribute_id` come gli altri campi della scheda. Nuovo `GET /api/attributes/for-select` (standard ADR 0011).
+    D-8 Fuori ambito: enum, table (mappa dei valori), form e schede dei record (ognuno mostra i propri campi), report, linguette
+        di Gestione Richieste (una categoria per linguetta, niente doppioni).
+  </context>
+
+  <contract>
+    <db>`attributes.current_attribute_id` BIGINT UNSIGNED NULL, FK `attributes.id` null on delete, indice; migrazione reversibile,
+      solo schema. Collegamenti iniziali dal seeder di D-6 (`php artisan db:seed --class=QualificaLinkedAttributesSeeder`).</db>
+    <endpoint method="POST|PUT|PATCH" path="/api/attributes[/{attribute}]">
+      <request>`current_attribute_id?: number|null` (`nullable|integer|exists:attributes,id`). 422 su `current_attribute_id`:
+        se stesso ("A field cannot be linked to itself." / "Un campo non puo' essere collegato a se stesso."); il campo scelto ha
+        a sua volta un campo attuale, o altri campi puntano a questo ("Links cannot be chained." / "I collegamenti non si possono
+        concatenare."); tipi non compatibili ("These field types cannot share a column." / "Questi tipi di campo non possono
+        condividere una colonna."). Cambio di `type` di un campo collegato a tipo non compatibile: stessa 422 su `type`.</request>
+      <response status="200|201">`AttributeResource` aggiunge `current_attribute_id` e `current_attribute: {id, code, name}|null`.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/attributes/for-select">
+      <request>`search?`, `offset?`, `limit?`, `ids[]?` (standard for-select); `exclude_id?` (il campo in modifica).</request>
+      <response status="200">Paginato `{ id, label }`, label = "Nome (codice)". Solo i campi che possono essere attuali (senza
+        `current_attribute_id`). Gate: `auth:sanctum` (ADR 0011).</response>
+    </endpoint>
+    <endpoint method="GET|POST" path="/api/tables/{quotes|work-orders|contracts}/config|rows|values|export">
+      <response status="200">Invariata nella forma. Con C e L collegati nell'insieme: solo `attr.C` tra le colonne, il valore di
+        riga secondo D-4; `attr.L` non e' piu' filtrabile/ordinabile in quell'insieme (un filtro salvato su `attr.L` viene
+        ignorato, come una colonna di un'altra categoria, spec 0374 D-4).</response>
+    </endpoint>
+  </contract>
+
+  <scope>
+    <in>
+      <item>Backend: migrazione, seeder una tantum (D-6), Attribute (fillable, relazione), Store/UpdateAttributeRequest + DTO + AttributeService,
+        AttributeResource, AttributesAuthorization, for-select (request, service, resource, controller, rotta),
+        `Tables\CategoryTabs\LinkedAttributeColumns` (fold e codice scrivibile), `AttributeGridColumns` (valore, filtro,
+        ordinamento, distinti), `AppendsCategoryAttributeColumns`, `WritesCategoryAttributeCells`, lang it/en.</item>
+      <item>Frontend: campo "Campo attuale" nel form e nel dettaglio campo, tipi, schema, payload, i18n.</item>
+      <item>Guide `attributes`, `work-orders`, `quotes`, `contracts` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Enum e table (D-8), report, form dei record, linguette di Gestione Richieste.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Con C (categoria attuale) e L (categoria vecchia collegata, campo L collegato a C) selezionate in Commesse, il config ha `attr.C` e non `attr.L`; con la sola vecchia selezionata ha `attr.L`.</criterion>
+    <criterion id="AC-002">Le righe mostrano in `attr.C` il valore di C per le commesse nuove e quello di L per le vecchie.</criterion>
+    <criterion id="AC-003">Un filtro data su `attr.C` trova commesse nuove e vecchie nell'intervallo; un filtro "vuoto" trova solo quelle senza nessuno dei due valori.</criterion>
+    <criterion id="AC-004">L'ordinamento su `attr.C` intercala le commesse nuove e vecchie per valore.</criterion>
+    <criterion id="AC-005">`POST /values` su `attr.C` restituisce i valori di entrambi i codici.</criterion>
+    <criterion id="AC-006">La modifica della cella `attr.C` su una commessa vecchia scrive L (C resta assente) e la risposta mostra il nuovo valore in `attr.C`.</criterion>
+    <criterion id="AC-007">Offerte e Contratti: stessa colonna unita sui campi delle offerte.</criterion>
+    <criterion id="AC-008">PATCH attributo: collegamento a se stesso, a un campo che ha un attuale, da un campo a cui altri puntano, o tra tipi non compatibili -> 422; collegamento valido salvato ed esposto con `current_attribute`; null lo toglie. Cambio di tipo che rompe la compatibilita' -> 422.</criterion>
+    <criterion id="AC-009">`GET /api/attributes/for-select` elenca solo i campi senza campo attuale, cerca per nome e codice, esclude `exclude_id`, risolve `ids[]`.</criterion>
+    <criterion id="AC-010">Il seeder collega le coppie della mappa (es. `data_inizio_lavorazione` -> `iso_assignment_date`); rilanciato non scrive nulla; non sovrascrive un collegamento diverso; salta un campo assente o una coppia di tipi non compatibili.</criterion>
+    <criterion id="AC-011">Form campo: il "Campo attuale" si sceglie, si toglie e si invia solo se cambiato; in sola lettura senza permesso.</criterion>
+    <criterion id="AC-012">Guide IT+EN aggiornate con gli stessi id; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance>
+</spec>

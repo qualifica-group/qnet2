@@ -3,13 +3,220 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Cash flow previsionale: impegni ODA IVA compresa (spec 0270 D-15, 2026-11-25) — NON COMMITTATO
+## Cash flow previsionale: impegni ODA IVA compresa (spec 0270 D-15, 2026-11-25) — COMMITTATO (e0f1c0462)
 
 - `CommittedOrderLineQuery::COMMITTED_GROSS_AMOUNT` (= `COMMITTED_AMOUNT` + IVA all'aliquota della riga, arrotondata come `LineAmountCalculator`, riga senza aliquota = nessuna IVA) su `linesWithVatRate()` (left join `vat_rates`). Usata SOLO da `CommittedFlowAggregator` (cash flow). Conto economico, costi di struttura, cifre di commessa, esposizione e costi passivi di commessa restano su `COMMITTED_AMOUNT` (imponibile).
 - Shape API invariata. Test: `CashFlowPayableTest` "AC-004 / D-15" (22% + riga senza aliquota + residuo di riga parzialmente fatturata = 184.21). Guide in-app IT/EN `management-control-cash-flow` aggiornate.
 - Da verificare: manuale Claude Docs non raggiungibile dalla sessione, sezione "Cash flow previsionale" -> voce Impegni da aggiornare a "IVA compresa".
 - Fallimento preesistente non toccato: `ExposureAccessTest` AC-001 cerca la sezione menu `management-control-section`, che non esiste piu' (voce spostata in `config/navigation/accounting.php`).
 - In progettazione (nessun codice): import statini paga (file costi del consulente -> costo reale sulle commesse via segnatempo; file netti -> documento "Cedolino" in Fatture Acquisto con rata = netto). Decisioni utente 2026-11-25: campo codice fiscale nella scheda utente (compilato dall'utente; oggi 0/428), societa' riconosciute dal codice azienda del consulente (mappa una tantum), Italian Quality Institute SRL da creare, divisore della tariffa = ore registrate nel segnatempo, fine rapporto riconosciuta dal TIPO CEDOLINO, costo di 13a/14a sul mese in cui sono pagate. File netti: CF nella colonna `RIP.1: CODICE` con `RIP.1: TIPO` = "Codice fiscale", codifica non UTF-8, campi tra virgolette. Report per la direzione: `C:\Users\PC\Documents\Statini_paga_flusso_di_lavoro.pdf`. Prossimo passo: `/plan-feature` fase A (costi sulle commesse).
+
+## Richieste documenti mai arrivate ad ArchivioSmart + email obbligatoria (spec 0428 rev. 2026-11-25, AC-021/022) — NON PROVATO NEL BROWSER
+
+- Bug: richiesta creata senza email → upsert 422 → mai creata su ArchivioSmart; cancel/refresh davano sempre 404, richiesta bloccata.
+- `DocumentRequest::neverReachedArchivioSmart()` = `status` null e `delivery_status` diverso da pending.
+  - `cancel` su quella richiesta: annullata solo in QNet (`status` cancelled, `cancelled_at`, delivered, niente job). Con upsert ancora in coda passa da ArchivioSmart come prima.
+  - `refresh`: 422 `status` (`archivio_smart.request_never_delivered`); il FE nasconde "Aggiorna stato" (`neverReachedArchivioSmart` in `document-request-status.ts`).
+- `recipient_email` obbligatoria in POST e PUT (FormRequest + schema Zod, `FormLabel required`, chiave i18n `validation.emailRequired`).
+- Authz di store/update spostata in `StoreDocumentRequestRequest::authorize()` / `UpdateDocumentRequestRequest::authorize()` (prima del validate: senza permesso resta 403, non 422); tolte le `authorize()` duplicate dal controller.
+- Test: Pest `tests/Feature/DocumentRequests` + `DocumentChecklists` 329 verdi; Vitest `document-requests` + `help` 211 verdi; tsc -b e ESLint puliti. Guide IT/EN `work-orders` aggiornate.
+- Da verificare nel browser: la richiesta id 5 (commessa 20) ora si annulla con "Annulla richiesta".
+
+## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, COMMITTATO (dd430cf68)
+
+- Azione di riga `duplicate` su `/roles`, stesso schema di attributi/workflow preventivi: `RolesTableDefinition` (`actions()` + `actionsFor`, gate `create` su `Role::class`, mai sul `super-admin`), `roles-table.tsx` (`openDuplicate`, `SYSTEM_ROLE_HIDDEN_ACTIONS`), `roles-screens.tsx` (`RoleDuplicateLoader` rilegge il ruolo), `RoleFormMode` `duplicate` in `use-role-form.ts` (`source` passa da `RoleForm` -> `RoleFormBody` -> `useRoleForm`). Nessun endpoint nuovo: salva via `POST /roles`.
+- Copia: nome + `common.copySuffix`, permessi, `field_permissions`, campi personalizzati. Membri NON copiati (`users: []`).
+- Manuale: guide `roles.ts` IT/EN sezione `duplicate-role`; Claude Docs "Duplicare un ruolo" prima di "Eliminare un ruolo".
+- Verdi: Pest `RolesTableDuplicateActionTest` (4) + `tests/Feature/Table` e `tests/Feature/Roles`, Vitest roles+help (248), ESLint, Pint, `tsc -b --force`. Rossi preesistenti (falliscono anche sull'albero pulito): `DemoRolesSeederTest` (permessi viewer), `TableBulkDeleteTest` last super-admin (`forbidden` vs `guarded`), `TableDefinitionContractTest` (`FormalabCallLog::factory`).
+
+## Verso commissione Fornitore spiegato sul form (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Configuratore Commissioni, regola Fornitore: sotto il campo **Verso** c'e' ora un testo sempre visibile (non piu' il tooltip `hints.supplierCommissionDirection`, rimosso). In lettura spiega il verso scelto, in modifica tutti e due, con formula del margine ed esempio 1.000 euro al 40%.
+- File: `supplier-direction-explanation.tsx` (+ test), `commission-configuration-controls.tsx` (`OptionSelect`/`OptionInlineRow`: `hint` sostituito da `description`), `commission-configuration-rows.tsx`, `commission-configuration-recipient-row.tsx`, chiavi i18n `commissionConfigurations.form.directionExplanations.{RECEIVED,PAID}` IT/EN.
+- Verdi: Vitest 495 (commission-configurations, registries, i18n), ESLint, `tsc -b --force`. Guida in-app gia' spiegava Ricevuta/Pagata: nessuna modifica.
+- Dati (DB locale): tutte le 17 regole Fornitore sono Pagata, nessuna Ricevuta (12 su un fornitore preciso, 5 su sola categoria). Da verificare con l'utente se per gli enti ISO/SOA il verso giusto e' Ricevuta.
+
+## Stato commessa con le parole e i colori del vecchio QNet (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Come il legacy (lista `OrdersTable` + `manageorder`): badge/colonna Stato IT = In programmazione, In lavorazione, Chiusa, Annullata, Disdetta (`it-enums.ts` `work_order_work_phase`); tab = Da pianificare, In lavorazione, Concluse, Annullate, Disdette (`it-work-orders.ts` invariato). EN invariato.
+- Colori: Chiusa `slate` (era green), Disdetta `gray` (era slate): `WorkOrderWorkPhase` `#[Color]` + `STATUS_TONES` in `work-order-detail-header.tsx`. Guide IT `work-orders.ts` / `project-work-orders.ts` aggiornate.
+- Verdi: Vitest 802 (work-orders, help, i18n), tsc -b, ESLint, Pint, Pest 140 (test con work phase).
+
+## Stato legacy 1002 "X _ RICHIESTA PENALI" = chiusura negativa (segnalazione utente su COM-9831, 2026-11-25, spec 0324 D-11) — VERDE, APPLICATO AL DB LOCALE, COMMITTATO (qnet-2 00fb4319c, legacy 375e0ae8)
+
+- Causa: COM-9831 Chiusa nel legacy con stato 1002, che D-2 classificava `in_progress`; D-10 la portava sulla chiave `completed` ("8.b", esito positivo).
+- Fix SOLO nel legacy: `../qnet/app/Support/Migration/LegacyWorkOrderStatusRoles.php`, 1002 aggiunto a `CLOSED_GROUP_IDS` (verificato con tinker sul feed `work-order-workflows`, `php -l`). qnet-2 nessun codice: il re-run riallinea il gruppo (D-4). Test qnet-2 delle sorgenti verdi (39).
+- DB locale: run 453 `work-order-workflows` (stato 32 -> `closed`), run 454 `work-order-workflow-statuses` con aggiorna esistenti: 321 aggiornate (43 per le penali + le commesse il cui stato legacy era diverso da qnet-2), 592 fallite note (550 orfani legacy, 42 commesse non migrate). COM-9841 resta su "Chiusa con esito negativo" (modificata in qnet-2).
+- **Produzione**: deploy del legacy, poi in qnet-2 rilanciare `work-order-workflows` e `work-order-workflow-statuses` con "aggiorna esistenti".
+
+## Layout preventivo "PREVENTIVO SIC_HACCP" (id 7, `qualifica_quote_safety_haccp`) sostituito con la revisione 19.11.2026 (richiesta utente 2026-11-25) — VERDE MIRATO, COMMITTATO, NON APPLICATO AL DB LOCALE
+
+- Fonte: `Template preventivo _SIC_HACCP Rev. 19.11.2026.docx`. Novita': informativa privacy clienti per la consulenza salute e sicurezza (paragrafi 1-10, 3 tabelle statiche, elenco destinatari con prefisso "• ", dichiarazione di presa visione e consenso); sparisce la clausola "Ai sensi degli art. 1341-1342". Testata, tabella prodotti, totali e condizioni di pagamento invariati (blocchi fino a `text-18` copiati tali e quali; diff dell'asset = solo aggiunta + clausola tolta). Carta intestata identica (md5 = `letterhead-75cb7b747891.png`).
+- Convertito con un convertitore Python una tantum (NON nel repo) con le convenzioni della conversione del 2026-11-18 (`services.json`): Normal = after 0 / line 1.0, a capo = un blocco per riga, tab eliminati, hyperlink come testo semplice, larghezze colonne da `tblGrid`.
+- One-shot `QualificaSafetyHaccpLayoutRevisionSeeder` (estende `QualificaQuoteLayoutRevisionSeeder`, `REVISED_LAYOUTS = ['safety_haccp']`; il padre ora legge `static::REVISED_LAYOUTS`): non ritocca servizi/ISO. Sovrascrive config e descrizione, lascia nome/attivo/predefinito, layout assente -> warning, idempotente, riusa l'immagine gia' posseduta. **Produzione: `php artisan db:seed --class=QualificaSafetyHaccpLayoutRevisionSeeder --force`.** Catalogo: file sorgente di `safety_haccp` aggiornato.
+- Provato sul DB locale in transazione annullata: id 7 -> 93 blocchi, validator `[]`, 0 nuovi allegati (riusa id 20), render `.docx` ok su QUO-107291 (copia in `~/Downloads/Anteprima_SIC_HACCP_rev_19.11.2026_QUO-107291.docx`). PDF non provato: LibreOffice non installato su questa macchina.
+- Test: `tests/Feature/Seeding/QualificaSafetyHaccpLayoutRevisionSeederTest.php` (4). Verdi: Seeding 309, DocumentLayouts Feature 149, Unit 93/94 (rosso noto `ProductsTableRendererTest` cost_lines AC-245, non toccato). Pint pulito.
+- Manuale: nessun impatto (cambia solo il contenuto del documento generato).
+
+## Indirizzi: Nazione/Regione/Provincia sempre visibili (segnalazione utente 2026-11-25, /referents) — VERDE MIRATO, NON COMMITTATO
+
+- Causa: il layout `compact` di `GeoSelect` (tutti i form indirizzo: anagrafiche, referenti, societa', sedi operative, conti finanziari) nascondeva Nazione/Regione/Provincia dietro il link con freccia "Modifica area geografica": nessuno apriva la freccia, quindi gli indirizzi esteri non venivano compilati.
+- Fix: `features/geo/geo-compact-fields.tsx` senza Collapsible: riga Nazione/Regione/Provincia (3 colonne da `sm`) + Comune sotto, sempre visibili. Supera la decisione 2026-09-07 ("antenati dietro disclosure"). Prop `collapsible` e chiavi i18n `geo.editArea`/`geo.hideArea` rimosse. Il comune resta ricercabile da solo e compila gli antenati (`cityFirst` in `GeoSelect` invariato).
+- Test (REQUIREMENT CHANGED): `geo-select.test.tsx` blocco `layout="compact"` riscritto (4 select sempre visibili, nessun pulsante, Nazione modificabile subito). Vitest geo/personal-data/referents/registries/companies/operational-sites/financial-accounts/help verdi, eslint e `tsc -b --force` puliti.
+- Manuale: guide in-app referenti e anagrafiche (IT+EN, riga Indirizzi) + manuale Claude Docs (cella tabella campi indirizzo, rev 963) aggiornati.
+
+## Campi collegati in una sola colonna (spec 0429, segnalazione utente 2026-11-24) — VERDE MIRATO, COMMITTATO (0e08fe8e3), MIGRAZIONE E SEEDER NON LANCIATI SU qnet2
+
+- Causa: filtrando ISO, Commesse/Offerte/Contratti mostrano le colonne di ISO e [OLD] ISO (spec 0374) e i due cataloghi hanno campi doppi (es. "Data di assegnazione" = `iso_assignment_date` e `data_inizio_lavorazione`): 17 nomi doppi sulle commesse, 26 sulle offerte. Supera spec 0374 D-10 per i campi collegati.
+- Soluzione (D-1..D-7): `attributes.current_attribute_id` (campo vecchio -> attuale, niente catene, solo tipi compatibili `Services\Attributes\AttributeLinkRules`: date, datetime, text/textarea, integer/decimal, boolean). `Tables\CategoryTabs\LinkedAttributeColumns` piega in griglia il vecchio nella colonna `attr.<attuale>` (valore = primo non vuoto; filtro "attuale presente E filtro, altrimenti vecchio" = COALESCE con gli handler di tipo; sort COALESCE; distinti = unione; cella scritta sul codice che il record ha, risposta PATCH anche sotto la colonna unita). Aggancio in `AttributeGridColumns::linked()` + trait `AppendsCategoryAttributeColumns`/`WritesCategoryAttributeCells`. Scheda campo: "Campo attuale" (`GET /api/attributes/for-select`, permesso di campo `current_attribute_id`).
+- Seeder una tantum `QualificaLinkedAttributesSeeder` (direttiva utente): mappa esplicita di 41 coppie ISO (12 commessa, 29 offerta), idempotente, verificata in sola lettura su qnet2 (41/41 valide). Enum, table, numero/testo NON mappati: restano due colonne come prima.
+- Da lanciare (serve ok utente, anche in produzione): `php artisan migrate --path=database/migrations/2026_12_24_100000_add_current_attribute_id_to_attributes_table.php` poi `php artisan db:seed --class=QualificaLinkedAttributesSeeder`.
+- Test: `LinkedAttributeColumnsTest` (8), `AttributeCurrentAttributeTest` (8, con reversibilita'), REQUIREMENT CHANGED `AttributeMetaTest` (catalogo campi + `current_attribute_id`). Pest CategoryTabs 106, Attributes 112, Contracts 243, Migration 943, Opportunities 305 verdi; rossi preesistenti: WorkOrderAttributeLocksTest (3) e QuoteLineWorkOrderMigrationTest (2) anche da soli e senza toccare codice di questa spec, `managers is not sortable`, AttributeLayoutConditionalSection formContext, LibreOffice (3), SupplierCommissionDirection AC-004 (rosso anche senza la nuova migrazione), ApiDocsDescriptions (operazioni di altre spec; `GET /attributes/for-select` descritta). Vitest attributes 142 + help 165 verdi (nuovo `attribute-current-attribute-field.test.tsx`), `tsc -b --force` ed ESLint puliti, Pint pulito.
+- Manuale: guide `attributes` (sezione `current-attribute`), `work-orders`, `quotes`, `contracts` IT/EN; Claude Docs aggiornato (Colonne dei campi flessibili di Offerte e Commesse, nuovo paragrafo Campo attuale, nota sui 41 collegamenti ISO). NON provato nel browser.
+- Prossimo passo possibile: enum con mappa dei valori (Standard ISO, Annualita' del certificato, Scopo confermato, Supporto verifica) e tabelle.
+
+## Formalab: Partner commerciale e provvigioni dei discenti dal legacy (spec 0427 D-8 / ST-2 rivisto, 2026-11-24) — VERDE MIRATO, COMMITTATO (qnet-2 + legacy), SEEDER NON ANCORA ESEGUITO
+
+- Richiesta utente: il testo `pre_info_formaziones.partner_commerciale` era il G.A.3 dell'opportunita' (`assigned3_to`) scritto a mano; se e' la stessa persona, il referente del G.A.3 (trovato o creato) diventa Partner commerciale, piu' le % / importi / fornitore scritti sul prospetto. Con un seeder.
+- Legacy (NON committato, git legacy soggetto a §3.6): `Api/V2/LearnerCommercialPartnerMigrationController` + rotta `migration/learner-commercial-partners`. Il confronto testo/G.A.3 e' nel legacy (parole senza accenti/ordine, una inclusa nell'altra); i casi scartati escono come `warnings`. Commissione solo sulla prima riga per CF (come legge il prospetto legacy). Verificato con tinker: 6.830 righe, 5.028 con G.A.3, 3.515 con provvigione.
+- qnet-2: `integrations/Formalab/Seeders/LearnerCommercialPartnerSeeder` + `Seeders/Support/UserReferentResolver` (referente con `user_id`, altrimenti omonimo — migrato con id minore —, altrimenti nuovo referente interno "Commerciale" con nome+email, SENZA `user_id`: il link fonde le identita' provvigionali, spec 0090 D-5). Partner solo dove vuoto su opportunita' e preventivi, `toBase()->update` (niente updated_at/activity/resync provvigioni). Provvigioni: riempie solo i valori vuoti.
+- Prova a secco su qnet2 (transazione annullata, dati dell'endpoint legacy): 6 referenti creati, 5.028 opportunita' + 5.028 preventivi, 3.515 provvigioni, 0,9 s. Scartati (warning): es. 437 "Pasquale Vetrano" con G.A.3 Annalisa Giordano, 433 "Interno", 244 "Domenico Communara" e 198 "Fabio Mariniello" senza G.A.3.
+- Esecuzione in prod: deploy del legacy, poi `php artisan db:seed --class="Integrations\Formalab\Seeders\LearnerCommercialPartnerSeeder" --force`. Ri-eseguibile.
+- Test: `FormalabLearnerCommercialPartnerSeederTest` 4; Formalab 111/111 (`FORMALAB_ENABLED=false`); Pint pulito.
+- Manuale: nessun impatto (recupero dati; la guida dice gia' che il partner e' quello dell'offerta).
+
+## Picker stato delle azioni contratto bloccato senza `contracts.update` (segnalazione utente 2026-11-24, Annarita Palumbo) — VERDE MIRATO, COMMITTATO
+
+- Causa: le finestre Disdici / Modifica stato / Valida / Riapri contratto usano `RelationSelectField metaKey="contract_status_id"`, che leggeva il permesso di CAMPO della scheda (`ContractsAuthorization::fieldPermissionCeiling`: sola lettura senza `contracts.update`). Un utente con `contracts.terminate`/`changeStatus` ma senza `update` (ruoli `reparto-iso`, `reparto-pianificazione`) trovava il menu disabilitato; il server invece autorizza solo l'azione.
+- Fix: `contract-actions-bar.tsx` avvolge le finestre di azione in `<ResourcePermissionsProvider permissions={null}>` (fallback permissivo): le finestre sono autorizzate dal bottone (`permissions.actions.*`) e dall'endpoint. Nessun permesso da concedere all'utente.
+- Test: `contract-actions-status-picker.test.tsx` (2, falliscono senza il fix). Contracts 224/224, ESLint e `tsc -b --force` puliti.
+- Manuale: nessun impatto.
+
+## Notifica riepilogativa sulle chiusure multiple di task (spec 0428, segnalazione utente 2026-11-24, Annarita Palumbo) — VERDE MIRATO, COMMITTATO
+
+- Causa segnalata: chiudendo con la Completa massiva i 18 task di fase di una commessa, il richiedente riceveva 18 TaskClosed/TaskFeedbackInserted. Concausa dati: 352.212 task migrati hanno `is_template_generated = 0` (ultimo import `tasks` 2026-11-10, prima di spec 0388; il legacy invia il flag da `ede9c847`, su `origin/master`): serve un ri-lancio della sorgente `tasks` SENZA `updated_since` in produzione (riempie solo il flag, `TasksSource::fillEmptySnapshots`). Non eseguito da qui.
+- Fix: `TaskNotifier::summarizingClosures(Closure)` trattiene le voci 2/3 di un'operazione e le passa a `TaskClosureSummarySender` (nuovo), che raggruppa per destinatario: 1 task -> notifica per-task di sempre, 2+ -> `TasksClosedSummaryNotification` (nuova; titolo "Attività completate", elenco titoli nella mail max 30, link commessa se tutti i task sono della stessa e il destinatario puo' aprirla). Avvolti: `TaskBulkService::execute`, `TaskBulkActionService` (solo `complete`), `TaskCascadeCompletionService` (padre con sotto-task). `TaskNotifier` ora `scoped` in `AppServiceProvider` (stessa istanza tra servizio massivo e TaskCompletionService). Audience invariata.
+- Test: `tests/Feature/Tasks/BulkTaskClosureSummaryTest.php` (9, verificato che falliscono senza il fix). REQUIREMENT CHANGED: `TaskNotifierTest` AC-006 elenca anche `summarizingClosures`. Tasks 741/741, Notifications 225/225; WorkOrders: unici rossi preesistenti `QuoteLineWorkOrderMigration`, `WorkOrderAttributeLocks`.
+- Manuale: guida `tasks` IT/EN (sezione collaboration-and-notifications) + manuale Claude Docs aggiornati.
+
+## Menu @ delle note di commessa: solo Responsabili e Partecipanti (spec 0134 D-2 rev., segnalazione utente 2026-11-24, commessa 13101) — VERDE MIRATO, COMMITTATO
+
+- Causa: `WorkOrderNotable::mentionableUsersQuery` = tutti i LETTORI della commessa (membri + `work-orders.viewAll` + `viewSite` della sede + super-admin), quindi con la @ uscivano quasi tutti.
+- Fix: nuovo `WorkOrderNotable::readersQuery(WorkOrder)` (la regola dei lettori di prima, invariata); `mentionableUsersQuery` = `readersQuery` ristretto a Responsabili/Partecipanti. `TaskNotable::workOrderReaderIds` (spec 0379 D-8) ora usa `readersQuery`: il perimetro dei task NON cambia. Un lettore fuori team (viewAll, super-admin...) si menziona con "Menziona chiunque" e diventa Partecipante (spec 0353). Effetto da sapere: modificando una vecchia nota che menziona un non-membro, al salvataggio questi viene aggiunto ai Partecipanti (il riepilogo sotto l'editor lo mostra).
+- Test: REQUIREMENT CHANGED `WorkOrderNotesTest` AC-005 (+ nuovo: lettore fuori team menzionato -> Partecipante), `WorkOrderSiteVisibilityTest` AC-023, `ServiceUserExclusionTest` (dataset commesse: super-admin e utente tecnico messi tra i Partecipanti). Tasks 741/741, Notes 126/126, Seeding 305/305; WorkOrders unici rossi preesistenti `QuoteLineWorkOrderMigration`, `WorkOrderAttributeLocks`; ApiClients unico rosso `ApiDocsDescriptionsTest` (operazioni non descritte, estraneo).
+- Manuale: guide `work-orders` e `general` IT/EN + manuale Claude Docs aggiornati.
+
+## Fix filtri delle colonne attributo (bug utente 2026-11-24, "Ente di riferimento" su /work-orders, poi controllo a tappeto) — VERDE MIRATO, COMMITTATO
+
+- 1) Testo/numero: le colonne `attr.<code>` testo/numero sono `agMultiColumnFilter`, la griglia invia `{filterType: multi, filterModels}` (o `{operator, conditions}`); il FieldTypeHandler legge solo la forma piatta -> nessun WHERE. Fix: `AttributeGridColumns::applyFilter()` delega multi/combinato a `FilterApplier` sul percorso JSON con `filterConfig()` (type/filterType del contratto), come `CustomFieldAwareTableDefinition`.
+- 2) Si'/no: AG Grid rimanda i valori del Set come stringhe ("true"/"false", "1"/"0"), `AppliesBooleanFilter` accettava solo bool e ignorava `null` ("(Vuoti)"). Fix: coercizione `toBoolean()`, blank con `orWhereNull`, un `orWhere` per valore (solo `where` compila un bool su path JSON). Vale anche per i campi personalizzati.
+- 3) Ricerca nell'elenco valori: il handler cappa a 500 valori distinti PRIMA del filtro di ricerca in memoria -> oltre il 500esimo (es. `scopo` 1972 distinti) la ricerca non trovava nulla. Fix: `FilterApplier::narrowedBySearch()` restringe la query (LIKE contains) prima del cap; usato da `AttributeGridColumns::distinctValues()` e `CustomFieldAwareTableDefinition::distinctValues()`.
+- 4) Numeri su MySQL: un JSON `null` letto dal path e' la stringa 'null' che MySQL casta a 0 -> "= 0", "< 5", "!= 5" includevano le celle vuote. Fix: `FilterApplier::whereNumeric()` aggiunge `whereNotNull` sui path JSON (`->`). SQLite non riproduce il cast: test di sola documentazione, verificato su MySQL locale (cat 211 `quotazione = 0`: 6 righe di cui 4 vuote -> 2 righe a 0).
+- Non bug (da non "correggere"): `/values` di un attributo e' l'unione di tutte le categorie (D-8, scelta di spec); MySQL confronta senza distinzione maiuscole ("Marco Provolo" = "MARCO PROVOLO"), come le colonne native; la tabella non offre "(Vuoti)". Dati legacy con anni sbagliati (`0024-10-14`, `0007-08-02`) nelle date ISO: da sistemare nel legacy.
+- Test: `tests/Feature/CategoryTabs/WorkOrderScalarAttributeFilterTest.php` (8). Suite CategoryTabs/RequestManagement/EnrolleeManagement/Contracts/Quotes/WorkOrders/ProjectWorkOrders/Table/Tables/Attributes/CustomFields/Leads/Opportunities: unici rossi preesistenti (identici senza i fix): QuoteDocumentPdf (LibreOffice), SupplierCommissionDirection, TableBulkDelete, TableDefinitionContract (FormalabCallLog::factory), QuoteLineWorkOrderMigration, WorkOrderAttributeLocks, RequestManagementAllColumnsSortFilter (`managers`), ProvinceRelationTargetTest.
+- Controllo a tappeto sui dati reali (script read-only, non versionato): ogni `attr.*` di ogni categoria di work-orders/quotes/contracts/request-management con i payload della griglia. Su Commesse nessun altro bug (falsi positivi verificati in SQL). Esito delle altre griglie: da riportare.
+- `AttributeGridColumns.php` ~375 righe (soft limit 300): candidato a split. Manuale: nessun impatto (ripristina il comportamento atteso).
+
+## Commesse: colonne "Importo consulenza" e "Totale ricavo" (richiesta utente 2026-11-24, come legacy `OrdersTable` `importo_consulenza`/`totale_ricavi`) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
+
+- Backend: `App\Tables\WorkOrders\WorkOrderAmountColumns` (colonne `consultancy_amount`, `total_revenue`, `type: number`, filtro `number`, ordinabili). Valori riga stringa decimale (`"1500.00"`) calcolati dalle righe pivot eager-loaded (`EAGER_LOADS` = `quoteLines.product.productTypology`, `quoteLines.commissions`, caricati solo se visibili). `consultancy_amount` = somma `net_amount` delle righe con tipologia `code = consultancy`; `total_revenue` = somma `LineEffectiveRevenue::cents` (RECEIVED -> sole provvigioni SUPPLIER, altrimenti netto) = stesso totale `effective_revenue` della tab Dati contrattuali. Filtro (derived table + FilterApplier) e sort (subquery correlata) con la stessa regola in SQL.
+- Visibilita': solo con `work-orders.viewContractData` + `work-orders.viewCosts` (come WorkOrderPolicy::viewContractData; legacy "commessa importi"): senza, niente colonne, valori, filtro, sort. Ordine: dopo `line_payment_statuses`, prima di `proforma_status`. Cablaggio in `WorkOrdersTableDefinition` (columns/filters/baseQuery/mapRow) e `WorkOrderDerivedColumns` (applyFilter/applySort).
+- FE: `CurrencyCell` in `features/work-orders/column-renderers.tsx`; i18n `workOrders.columns.consultancy_amount`/`total_revenue` IT/EN.
+- Test: `tests/Feature/WorkOrders/WorkOrderAmountColumnsTest.php` (9), `column-renderers.test.tsx` (+2). Pest WorkOrders 618/623 (5 rossi preesistenti: WorkOrderAttributeLocksTest 3, QuoteLineWorkOrderMigrationTest 2), Tables 74, Projects 100, Exports 43; Vitest work-orders+help 61 file/549; ESLint, Pint, `tsc -b --force` puliti. Verifica DB dev: 200 commesse a caso, 0 differenze fra `total_revenue` e `effective_revenue` della tab Dati contrattuali.
+- Guide in-app `work-orders` IT/EN (paragrafo dopo "Stato pagamento") + manuale Claude Docs (paragrafo "Colonne Importo consulenza e Totale ricavo." dopo "Colonna Stato pagamento.").
+
+## Avanzamento commesse riallineato al legacy (2026-11-24) — VERDE MIRATO, NON COMMITTATO, SEEDER NON ANCORA ESEGUITO
+
+- Causa: `WorkOrderProgressSource` crea soltanto (salta la commessa che ha gia' avanzamenti) e le cancellazioni del legacy (`ListaAvanzamentoCommesseModale::deleteAvanzamento`, hard delete, nessun activity log ne' utente) non arrivano a qnet-2. Esempio: legacy 12574 al 100% (righe rifatte il 29/10), qnet-2 COM-12574 al 37%.
+- Conteggio sulle copie locali: 173 commesse migrate con percentuale diversa; 37 senza avanzamenti inseriti in qnet-2 (allineabili), 136 con righe manuali qnet-2 (da decidere caso per caso, non toccate).
+- `database/seeders/WorkOrderProgressAlignmentSeeder.php` (one-shot, `php artisan db:seed --class=WorkOrderProgressAlignmentSeeder --force`): righe legacy delle 37 commesse scritte nel seeder; sostituisce gli avanzamenti solo se tutti migrati (`created_by` null), idempotente, senza activity log. Date legacy `0000-00-00` (10678, 15903) -> giorno di inserimento; 20140 senza righe nel legacy -> avanzamenti azzerati.
+- Test: `tests/Feature/Seeding/WorkOrderProgressAlignmentSeederTest.php` (4 verdi). Manuale: nessun impatto.
+- Aperto: il problema si ripresenta per le modifiche future nel legacy finche' non esiste un target di riallineamento `work-order-progress`.
+
+## Costi a IVA 0% (decisione utente 2026-11-24) — VERDE MIRATO, COMMITTATO (qnet-2 + legacy), COMANDO NON ANCORA ESEGUITO
+
+- Regola: righe COSTO dell'offerta e costi effettivi della commessa partono sull'aliquota **"IVA al 0%"** (non vuota). Le righe di RICAVO restano con l'IVA del prodotto. L'operatore puo' cambiarla a mano.
+- Backend: `App\Support\Amounts\CostVatRate::resolve()` trova l'aliquota per nome `config('work-orders.cost_vat_rate_name')` (env `COST_VAT_RATE_NAME`, default `IVA al 0%`) + rate 0 (id diverso per ambiente; `once()`). `ProductForSelectResource` espone `meta.cost_vat_rate` `{id,name,rate}|null` (additivo).
+- Frontend: `QuoteProductForSelectMeta.cost_vat_rate`; `lineValuesFromProduct(item, 'cost')` -> `cost_vat_rate.id` (null se manca); `costRowPatchFromProduct` -> id + `display.vat_*` dalla stessa. Test aggiornati (REQUIREMENT CHANGED): `use-quote-lines-field.test.ts`, `cost-row-product.test.ts`, `work-order-costs-section.test.tsx`.
+- Comando one-shot idempotente `php artisan costs:clear-vat [--dry-run]` (`app/Console/Commands/ClearCostVat.php`, test `tests/Feature/WorkOrders/ClearCostVatCommandTest.php`): porta `quote_lines` COST e `work_order_costs` sull'aliquota 0% (IVA 0, total=net), in transazione, senza activity log; fallisce se l'aliquota non esiste.
+- Legacy (`../qnet`, committato): `LegacyQuoteCosts::ZERO_VAT_RATE_ID = 2` ("IVA al 0%" in `rates`), non legge piu' `rate`; `mapCostLine` e `LegacyWorkOrderCosts` inviano quell'id; tolti i lookup `rates` dei costi. Verificato in tinker: 21 costi reali, tutti `vat_rate_id` 2.
+- Guide IT/EN: `quotes.ts` (catalogo), `parts/work-orders-costs.ts`; manuale Claude Docs: paragrafo catalogo offerta.
+- Prossimo: eseguire `costs:clear-vat` su qnet2 (e staging/prod al deploy, dopo aver verificato che "IVA al 0%" esista); commit qnet-2 + legacy su richiesta, esclusi i file Formalab di un altro lavoro in corso.
+
+## Formalab: partner del prospetto = Partner commerciale dell'offerta del discente (spec 0427 D-2 revised, 2026-11-24) — VERDE MIRATO, NON COMMITTATO
+
+- Richiesta utente: "bisogna prendere il campo partner commerciale che si trova sulla offerta del discente. nient'altro". Nel legacy il partner era solo testo libero `pre_info_formaziones.partner_commerciale` (import GOL, creazione opportunita' GOL, info preliminari).
+- `CommissionBook::offerPartners`: CF -> anagrafiche (`personal_data`) -> opportunita' (`registry_id`) -> offerte; vale la piu' recente (id maggiore) con `commercial_partner_id`. Nessun fallback (ne' testo legacy ne' Partner commerciale dell'anagrafica). Colonna `formalab_learner_commissions.partner_name` rimossa: migrazione nuova `2026_11_24_110000_drop_partner_name_...` (NON eseguita su qnet2: va lanciata con `migrate`; la tabella e' vuota). ST-2 non migra piu' il testo `partner_commerciale`.
+- Fornitore del partner e riepilogo restano legati al NOME del partner (referente).
+- Dati: sulla copia locale nessuna offerta dei discenti della classe 926 ha il Partner commerciale (1 offerta in tutto il DB): finche' non viene compilato sulle offerte il prospetto mostra 0 partner.
+- Test: `FormalabLearnerStatementTest` 15 (REQUIREMENT CHANGED: fixture partner via offerte, nuovo test "offerta piu' recente con partner", nuovo test "nessun partner senza offerta con partner", export per partner senza partner = offerte senza partner). Formalab 107/107 con `FORMALAB_ENABLED=false` (il test "disabled" fallisce col `.env` locale `FORMALAB_ENABLED=true`, preesistente). Pint, Vitest help 165/165, tsc -b puliti.
+- Manuale: guida `formalab` IT/EN aggiornata; il manuale Claude Docs non ha una sezione Formalab/Prospetto (da aggiungere quando il modulo esce da "in sviluppo").
+
+## Formalab: Prospetto contabile discenti, ST-1 (spec 0427, 2026-11-24) — VERDE MIRATO, COMMITTATO, MIGRAZIONE APPLICATA SU qnet2
+
+- Port del Livewire legacy `ProspettoContabileDiscenti` (calcoli identici, valori attesi ricavati eseguendo i metodi legacy in memoria su classe 926 / COM-12574, 4 stati di incasso). Pulsante in Amministrazione > Costi solo con Formalab attiva + commessa idonea + classe collegata (`view_costs`).
+- Backend (`integrations/Formalab/`): tabella `formalab_learner_commissions` (migrazione `2026_11_24_100000`, chiave `tax_code`: partner_name, percentage, amount, supplier_registry_id), config `formalab.learner_statement.*` (tariffe 1/0,85, attributi `gol_importo_anticipo/saldo`, prodotti legacy services/1326, expense_reports/8 e /9). `Services/LearnerStatement/`: ClassRoster (GET /api/classi/{id} in cache 6h, `refresh`), LearnerFigures, QuoteFigures, CommissionBook (partner da riga salvata, altrimenti Partner commerciale dell'anagrafica con quel CF), StatementCalculator, Loader, Presenter (+SummaryPresenter), CommissionEditor. `Exports/` (PhpSpreadsheet, layout legacy: completo e per partner senza MOL). Rotte GET/PUT/GET export sotto `work-orders/{id}/learner-statement`.
+- Frontend: `integrations/formalab/learner-statement/*` (dialog, riepilogo scenari, tabella discenti con %/importo a blur, partner con fornitore e ODA, avanzamento, export); punto di estensione generico `IntegrationDefinition.WorkOrderAccountingActions` montato in `use-work-order-detail-tabs` sopra i Costi. i18n `formalab:learnerStatement.*` in `i18n/{it,en}-learner-statement.ts`; guida `formalab` IT/EN sezione `learner-statement`.
+- Test: `FormalabLearnerStatementTest` 14/14; Pest Integrations+System+Navigation 160/160 (`FORMALAB_ENABLED=false`); Vitest integrations/help 205, work-orders/costs 426; tsc -b, ESLint, Pint puliti. `StatementCalculator` 323 righe (sopra soglia morbida, solo getter).
+- Ambiente: il `vendor/composer` locale non mappava `Integrations\` (tutti i test Formalab fallivano con "class not found"): rigenerato con `composer dump-autoload -o`.
+- qnet2: la tabella era gia' stata creata da un `migrate` interrotto prima di registrarsi (identica, vuota): registrata a mano in `migrations` (batch 50), nessun DROP. Verificato su COM-12574: stessi numeri del legacy (utile 40.283,47, utile/discente 4.028,347), provvigioni a 0 finche' non arriva ST-2.
+- DA FARE: ST-2 migrazione dati partner dal legacy (pre_info_formaziones: 6.826 con partner, 3.364 con %, 1.108 con fornitore; il legacy legge la PRIMA riga per CF). ST-3 azioni: Genera Notula/e, Genera ODA Partner (con scadenze), Importa discenti, selezioni. ST-4 modulo Notule discenti (prerequisito di "Importa liquidazioni" e dello stato ODA discente).
+- Differenze dichiarate dal legacy: la lettura non riallinea gli importi salvati (non influenza i calcoli); colonna ODA discente senza stato (arriva con ST-4); refresh classe esplicito.
+
+## Formalab: polling leggero e backfill senza N+1 (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+
+- Misura sulla copia di prod: `GET /status` (e la fase backfill del sync) facevano 5.504 query / 7 s per le 464 commesse non collegate (~12 query a commessa: mappa categoria + attributi applicabili); il polling ogni 5 s lo martellava.
+- `LinkBackfill::eachUnlinked`: `with('quoteLines.product.category')` + `keyCodeOf` una volta per combinazione ordinata di categorie, poi `CourseFieldWriter::editionIdAt($workOrder, $code)` (nuovo; `editionIdOf` lo usa). Ora 95 query / 0,19 s, stesso risultato.
+- Nuovo `GET /api/integrations/formalab/sync-state` (`StatusReport::syncState()`: `sync_in_progress` + `last_sync`, 2 query); `handle()` lo include. Frontend: `use-formalab-sync-state.ts` (polling 5 s solo mentre e' in corso; alla fine invalida `formalabKeys.status`), `SyncButton` lo usa; `useFormalabStatus` non fa piu' polling.
+- Test: `FormalabSyncQueueTest` +2 (sync-state super-admin/403; query costanti al crescere delle commesse). Formalab 92/92 (`FORMALAB_ENABLED=false`), Vitest formalab 28/28, ESLint e tsc puliti.
+- Non toccato (segnalato): `LinkPropagator` scrive ogni commessa col pipeline completo (resolver, writer, save, listener, activity log): pesa solo quando molte classi cambiano. Lettura da Formalab: 6-21 s a pagina lato loro.
+
+## Formalab: coda dedicata `formalab`, un solo sync alla volta (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, COMMITTATO 978f5b0fb
+
+- Causa (prod, letta sulla copia `qnet2`): i sync schedulati delle 16:50/17:10/17:30 morivano a meta' (worker ucciso: deploy o timeout), 3 job `SyncFormalabClasses` restavano `reserved` sulla coda `default` e i run #2/#4/#5 `running` per sempre. Il job non aveva `$tries`/`$timeout`/`failed()`.
+- Ingresso unico `Services/CatalogSyncLauncher` (`queue()`, `open()`, `inProgress()`, `interrupt()`): sotto lock `formalab:catalog-sync:open` chiude i run abbandonati (`running` oltre `sync_timeout_seconds` + 300 s), rifiuta se c'e' un sync catalogo (trigger schedule|manual) `running`, altrimenti apre il run e accoda il job. I run webhook/work_order non contano.
+- `Jobs/SyncFormalabClasses(int $runId)`: coda `config('formalab.queue')` (env `FORMALAB_QUEUE`, default `formalab`), `$tries = 1`, `$timeout = formalab.sync_timeout_seconds` (env `FORMALAB_SYNC_TIMEOUT_SECONDS`, default 1200, sotto retry_after 1900), `failed()` -> `interrupt()`; se il run e' gia' chiuso non gira. Niente piu' `ShouldBeUnique`.
+- `ClassCatalogSync::handle(FormalabSyncRun $run)` (prima `handle(Trigger)`): riceve il run aperto e ne reimposta `started_at` all'avvio reale. Comando `formalab:sync-classes` = `open()` + `handle()` inline, errore se gia' in corso. Schedule = `$schedule->call(launcher->queue(Schedule))`, nome `formalab:sync-classes` invariato.
+- API: `POST /sync` -> 409 `sync_already_running` se in corso; `GET /status` + `sync_in_progress: boolean`. Messaggi nuovi `sync_already_running`, `sync_interrupted` (IT/EN).
+- Frontend: componente condiviso `components/sync-button.tsx` (pagine stato e classi), disattivato con "Sincronizzazione in corso" e icona che gira; `useFormalabStatus` rilegge ogni 5 s (`SYNC_POLL_INTERVAL_MS`) finche' `sync_in_progress`; tolto `SYNC_REFETCH_DELAY_MS`. Guida `formalab` IT/EN aggiornata.
+- Test: `FormalabSyncQueueTest` (+9), helper condiviso `formalabSync()` in `tests/Helpers/FormalabHelpers.php` al posto di `app(ClassCatalogSync::class)->handle(Trigger::Manual)` e delle funzioni locali `runFormalabSync`/`formalabRemovedSync`. `tests/Feature/Integrations/Formalab` 90/90 con `FORMALAB_ENABLED=false`; Vitest formalab 27/27, help 165/165, ESLint e `tsc -b --force` puliti.
+- PREESISTENTE da sapere: il `.env` locale ha `FORMALAB_ENABLED=true` e `phpunit.xml` non lo fissa, quindi 7 test di attivazione/health/lock falliscono se lanciati senza `FORMALAB_ENABLED=false`.
+- `composer dev`: nuovo listener `queue:listen --queue=formalab --tries=1 --timeout=0`.
+- **Deploy (obbligatorio):** worker dedicato a UN SOLO processo `php artisan queue:work --queue=formalab --tries=1 --timeout=1260` (timeout del worker >= quello del job). Senza, il sync resta "in corso" in coda e dopo 25 min viene chiuso come interrotto. Dopo il deploy cancellare in prod le 3 righe `jobs` 22281/22310/22411 (coda `default`, payload vecchio con `trigger`: ripresi fallirebbero); i run #2/#4/#5 si chiudono da soli come interrotti alla prima richiesta (al piu' il giro orario).
+- Manuale Claude Docs: sezione Formalab › Sincronizza ora / Sincronizzazione automatica da allineare alla guida in-app.
+
+## Richieste documenti: scarica file, approva/rifiuta a mano, chiudi richiesta (spec 0429, 2026-11-25) — NON PROVATO NEL BROWSER
+
+- Download: `GET /api/document-requests/{id}/documents/{document}/download`.
+  - `DocumentRequestFileController` → `DocumentRequestFileDownloader`.
+  - Sincrono, il file passa in streaming e non viene salvato su disco.
+  - Il documento deve stare nello snapshot, altrimenti 404 senza chiamare ArchivioSmart.
+  - Accetta solo URL http/https; un errore di ArchivioSmart dà 502.
+  - Nei log e nella risposta non compaiono mai l'URL temporaneo né il token.
+- `POST .../items/{item}/approve` (`note` facoltativa) e `.../reject` (`note` obbligatoria), max 1000 caratteri.
+  - Nuovo permesso `document-requests.review`: abilità in `DocumentRequestPolicy::abilities()`, etichetta "Revisionare".
+  - Errori 422 su `status`, `item`, `document`.
+- `POST .../complete`: richiede update; ammesso da sent e in_progress; su completed risponde 200 senza job.
+- `SyncDocumentRequestJob(id, operation, send, array $arguments)`: nuove operazioni approve/reject/complete.
+  - Il job invia `note` e `reviewer_name` (nome dell'utente QNet), che non finiscono mai nei log.
+  - Un 404 di ArchivioSmart dà failed "azione non rilasciata".
+- Risorsa:
+  - `items[].documents` (senza sha256) e `current_document_id`;
+  - `permissions.review` e `permissions.complete`.
+- Frontend:
+  - `document-request-item-row.tsx`: pulsante Scarica, Approva/Rifiuta;
+  - `document-request-review-dialog.tsx` e schema;
+  - "Chiudi richiesta" con conferma;
+  - etichette degli 8 stati voce;
+  - guide IT/EN `work-orders`.
+- DIPENDENZA: ArchivioSmart deve ancora esporre nell'API pubblica `POST /requests/{external_id}/items/{item_id}/approve|reject` `{note, reviewer_name}` e `POST /requests/{external_id}/complete`. All'utente è stato consegnato il prompt per implementarli; serve anche una gestione del revisore senza utente ArchivioSmart. Il download funziona già.
+- Migliorabile, non bloccante: in caso di errore del download il toast è generico, perché il messaggio del server dentro il blob non viene letto.
+- Manuale Claude Docs da aggiornare a mano: scarica file, approva/rifiuta, chiudi richiesta, permesso Revisionare.
+- Verifica: AC 14/14 PASS.
+  - Backend mirato: 547 su 549; i 2 rossi sono noti.
+  - Suite completa backend: nessun rosso nei file della feature.
+  - Frontend: 10949 test verdi, tsc pulito.
+  - Restano 11 "Unhandled Rejection" (`toast.error is not a function`) nei test dei form absence-type, vat-rate, skill e altri, estranei alla feature.
 
 ## Richieste di documenti dalla commessa verso ArchivioSmart (spec 0428, 2026-11-24) — NON PROVATO NEL BROWSER
 
@@ -83,6 +290,10 @@
 - Verifica: Pest Integrations 73, System 27, Navigation 27, CustomFields 141, Attributes 105, WorkOrders 608, Migration 943 tutti verdi (con `FORMALAB_ENABLED=false`); nuovo `FormalabClassSelectTest` (7); REQUIREMENT CHANGED in Link/Sync/CategorySettings/LockedFields/Activation + helper `formalabCourseAttributes` (gol_corso relazione). Vitest integrations/help/routes/custom-fields 50 file/375; ESLint, Pint, `tsc -b --force` puliti.
 - DEPLOY (dev e prod), in ordine: `php artisan migrate` -> `php artisan formalab:sync-classes` -> `php artisan db:seed --class="Integrations\Formalab\Seeders\ClassSelectSeeder" --force` -> (solo prod, prima volta) TrainingCategoriesSeeder. In dev NON ancora eseguiti (serve ok utente).
 - Manuale: guida in-app aggiornata; manuale Claude Docs: Formalab fuori dal manuale completo (decisione utente 0422).
+- Committato b8a6b598f (qnet-2 main); legacy su `develop` cfefaed5 (NON su master: regola utente, il legacy si committa su develop).
+- D-12 (2026-11-23, VERDE MIRATO, COMMITTATO f6b08cdd8): classe non piu' su Formalab -> `Services/RemovedClassCleanup` (link eliminati, select svuotata con PeopleChangeLog, classe cancellata dal catalogo; altri campi intatti). Chiamato da `ClassCatalogSync` Step 3 (edizioni locali assenti dall'elenco, solo lettura completa e non vuota: `fetchAll` ritorna `complete`) e da `ClassCatalog::refresh` su 404 (Sincronizza commessa, webhook). Colonna `formalab_sync_runs.classes_removed` (migrazione 2026_11_23_120000) + `last_sync.classes_removed` + riga nella card Ultima sincronizzazione. `CourseFieldWriter::keyCodeOf` nuovo. Verificato su Formalab reale: 39 edizioni note al legacy e assenti dall'elenco danno 404 anche per id (nessuna con commesse collegate in dev). Test `FormalabRemovedClassTest` (5); Pest Integrations 78, System 27, WorkOrders 608; Vitest integrations+help 21 file/191; tsc, ESLint, Pint puliti. Guida `formalab` IT/EN sezione automatic-sync (corretta anche: il giro collega solo le non collegate, spostamenti/scollegamenti avvengono al salvataggio).
+- Fix (2026-11-23, COMMITTATO 823617dc1): il "Nome Corso / Ed." in sola lettura mostrava l'edition_id. Causa: `features/attributes/attribute-value-display.tsx` (dettaglio Commessa/Offerta/Prodotto) stampava l'id nudo di ogni attributo `relation` (difetto generico, colpiva anche gli altri campi relazione). Ora risolve l'etichetta con `useForSelectLabels` su `relation_target.for_select_resource` ('…' in attesa); `DisplayableAttribute.relation_target` opzionale. Test nuovo `attribute-value-display.test.tsx`; Vitest attributes/work-orders/quotes/products 150 file/1231, tsc, ESLint puliti. Se l'attributo e' ancora `text` (ClassSelectSeeder non lanciato) il numero resta: serve la conversione.
+- Sync ogni ORA (richiesta utente 2026-11-23, VERDE MIRATO, NON COMMITTATO): default `FORMALAB_SYNC_INTERVAL_MINUTES` 60 (config + .env.example); `FormalabServiceProvider::schedule` con intervallo >= 60 usa `0 * * * *` (prima tetto a 59 = */59). Health "sync_stale" scala con l'intervallo (STALE_AFTER_INTERVALS x 60 min). Se l'.env di produzione imposta 10 esplicitamente va cambiato/tolto + config:cache. Test: Activation (+dataset default/60/120), Admin (REQUIREMENT CHANGED 10->60); Pest Formalab 81 verdi. Guida formalab IT/EN "ogni ora".
 
 ## Categorie delle checklist + sincronizzazione ArchivioSmart (spec 0410, 2026-11-23) — COMMITTATO (6d5beb16a), NON PROVATO NEL BROWSER
 
@@ -227,7 +438,7 @@
 - Test: `tests/Feature/ProformaRequests/ProformaRequestTaskTest.php` (AC-001..008, incluso rollback su errore inatteso del Task); `QualificaTemplateSeederTest` e `QualificaProductionDataSeederTest` aggiornati 36 -> 37 definizioni company-sites (cambio requisito).
 - Verifica (verifier): suite backend 15149/15172, 12 rossi tutti estranei/preesistenti (PermissionCatalogue AC-004, ManagementControl access, AgentSalesReportCategoryColumns helper in parallelo, ApiDocsDescriptions, ecc.) dopo il fix del conteggio seeder; vitest 10585 passati (11 unhandled `toast.error` in contract-type-form/vat-rate-form-metadata, estranei); `tsc -b --force` pulito. `composer test` con memory_limit 256M va in exit 255: serve `-d memory_limit=1G`. Guide in-app `company-sites` (editing) e `proforma-requests` (how-created) IT/EN.
 - Manuale Claude Docs NON aggiornato (doc non raggiungibile dalla sessione): sezioni Societa'/Sedi (campo Responsabile emissione proforma) e Richieste Proforma (Task generato).
-- **Deploy (obbligatorio):** `php artisan db:seed --class=QualificaTemplateSeeder --force` per creare la definizione `responsible_proforma`, poi compilare il campo sulle sedi (in locale impostato a utente 192 su tutte le 47 sedi; SQL massivo `INSERT ... SELECT FROM company_sites ... ON DUPLICATE KEY UPDATE values = JSON_SET(...)` fornito all'utente, id da verificare in produzione).
+- **Deploy (obbligatorio):** `php artisan db:seed --class=QualificaResponsibleProformaFieldSeeder --force` (one-shot 2026-11-23, non committato: crea solo la definizione `responsible_proforma`, select utenti, in coda ai campi sede; idempotente, non tocca una definizione esistente; test `tests/Feature/Seeding/QualificaResponsibleProformaFieldSeederTest.php` 2/2; `QualificaTemplateSeeder::MANAGER_RELATION_TARGET` reso public per riuso). NON rilanciare `QualificaTemplateSeeder` intero in produzione: reimposta etichetta/ordine/attivazione di tutti i campi del template e il layout documento predefinito. Poi compilare il campo sulle sedi (in locale impostato a utente 192 su tutte le 47 sedi; SQL massivo `INSERT ... SELECT FROM company_sites ... ON DUPLICATE KEY UPDATE values = JSON_SET(...)` fornito all'utente, id da verificare in produzione).
 - Nota ambiente: pest via Git Bash e' andato in segfault (exit 139); via PowerShell `php vendor/bin/pest` ok.
 
 ## Scheda "Appunti" nella commessa di progetto (spec 0420, ex 0380) (2026-11-20) — COMMITTATO, MERGIATO CON IL REMOTO, NON PUBBLICATO
@@ -393,7 +604,7 @@
 - Fuori scope (D-6): azione `documents` della griglia Offerte (resta sull'opportunita'), dettaglio Opportunita', spostamento dei documenti esistenti.
 - Da verificare nel browser: Nuova richiesta con righe ISO + APL, due file su richieste diverse -> ognuno nel tab Documenti della sua richiesta.
 
-## Trasferimento offerta ad altra anagrafica: anche il titolo (spec 0404 B-D8, 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Trasferimento offerta ad altra anagrafica: anche il titolo (spec 0404 B-D8, 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: nel dialog "Trasferisci ad altra anagrafica", oltre ad anagrafica e campi flessibili, anche la modifica del titolo dell'offerta. Seconda richiesta (stesso giorno): popup "piu' professionale come un vero CRM, piu' largo e spazioso".
 - Contratto: body `title?: string|null` max 191 (`TransferQuoteRegistryRequest::titleSubmitted()/title()`), regole di `QuoteTitleWriter::write` (vuoto/uguale all'automatico = automatico, altro = manuale; assente = invariato). `QuoteRegistryTransferService::transfer($quote, $registryId, $attributeValues, $titleSubmitted, $title, $actor)`: Step 5 dopo i campi flessibili; il cambio titolo resta nel log automatico dell'offerta. `RequestManagementResource` espone `title` (titolo dell'offerta) per precompilare il dialog dal pannello Lavora. Spec 0404 B-D8 + AC-015b + endpoint aggiornati; api-docs delle 3 rotte aggiornate.
@@ -452,7 +663,7 @@
 - Seeder one-shot `QualificaRequestRegistryTypeSeeder` (D-5): Formazione/APL (e le [OLD] collegate) Persona fisica, tutto il resto Azienda; test `QualificaRequestRegistryTypeSeederTest`. Anteprima sul DB locale: 4 radici individual (41 categorie su 368), 46 radici company. NON ESEGUITO: in attesa di ok utente.
 - Da verificare a mano: Nuova richiesta con una categoria radice impostata su Azienda -> la scheda vuota passa ad Azienda; con dati gia' scritti resta com'e'.
 
-## Un'offerta per categoria madre da Gestione Richieste (spec 0411, 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Un'offerta per categoria madre da Gestione Richieste (spec 0411, 2026-11-18) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Richiesta utente: "in base alle linee prodotto che seleziono mi genera piu' offerte ma solo per quella categoria prodotto madre (es iso, apl)"; risposte: N radici = N offerte sulla stessa opportunita', ognuna solo nella sua scheda/catalogo/campi; "solo alla creazione, all'edit il sistema blocca".
 - BE: colonna `quotes.root_product_category_id` (migrazione `2026_12_17_110000_add_root_product_category_id_to_quotes_table`, nullable, null = offerta non legata, comportamento invariato) — DA LANCIARE su qnet2 con ok utente. Relazione `Quote::rootProductCategory`, non fillable: la scrive solo `QuoteService::create` da `CreateQuoteData::rootProductCategoryId`.
@@ -588,7 +799,7 @@
 - `time-entry-entry-cells.tsx`: tooltip sul titolo agganciato a uno `span` (il bottone disabilitato non riceve eventi puntatore), bottone `disabled:pointer-events-none`.
 - Test in `time-entry-day-entries-table.test.tsx`; guide IT/EN `time-entries` e manuale Claude Docs (sezione Segnatempo) aggiornati; PDF del manuale da rigenerare.
 
-## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER
+## Campanella: chi ti ha menzionato accanto alla data, come in q-net (decisione utente 2026-11-17) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER
 
 - Riferimento legacy: `q-net/src/app/features/notifications/notifications-panel.tsx` (avatar + nome `assigned_by` accanto alla data).
 - BE: `NotificationData` ha la chiave `actor` `{id, name}|null` (sempre presente nel payload; malformata/assente -> null). `NoteMentionNotification::toArray()` la valorizza con l'autore della nota. Le notifiche gia' salvate restano senza actor (nessun backfill: il nome e' gia' nel messaggio).
@@ -675,7 +886,7 @@
 - Riparazione dati qnet-2: migrazione `2026_12_16_100000_normalize_enum_custom_field_values_to_option_values` (generica su tutti i campi enum, singoli e multiselect: valore non valido che coincide case-insensitive con valore o etichetta di un'opzione -> valore dell'opzione; `down()` no-op). Test `tests/Feature/CustomFields/NormalizeEnumCustomFieldValuesMigrationTest.php`; fixture `ProductsSourceImportTest` allineata al nuovo contratto (`consulenza`). Applicata su qnet2 locale con `--path` (1.462 righe corrette); su prod gira al deploy.
 - Manuale: nessun impatto.
 
-## Offerta: trasferimento ad altra anagrafica + obbligo di trasferimento contatto prima del contratto (spec 0404 parti B e C, 2026-11-16) — VERDE MIRATO, NON COMMITTATO, NON PROVATO NEL BROWSER, MIGRAZIONI NON LANCIATE SU qnet2
+## Offerta: trasferimento ad altra anagrafica + obbligo di trasferimento contatto prima del contratto (spec 0404 parti B e C, 2026-11-16) — VERDE MIRATO, COMMITTATO, NON PROVATO NEL BROWSER, MIGRAZIONI NON LANCIATE SU qnet2
 
 - Richiesta utente 2026-11-16 (sessione qnet-2-89, in parallelo alla parte A di qnet-2-03). Decisioni di esecuzione in spec 0404 C-D4 e B-D7.
 - **C** — colonna `product_categories.requires_contact_transfer_before_contract` (migrazione `2026_12_15_110000`), flag PER CATEGORIA (non della radice: Orientamento specialistico id 26 e' figlia di APL). Regola `App\Services\Quotes\ContactTransferBeforeContractRule` chiamata in `QuoteWorkflowStatusWriter::apply` (tutti i canali): verso closed_won, con contratto generabile (`ContractEligibility`), senza contratto esistente e `is_transferred = false` -> 422 `quote_workflow_status_id` (`quotes.contact_transfer_required_for_contract`; da Offerte rimappato su `quote_system_status_id` dalla parte A). FE: tile `ContactTransferRule` (generico `NodeSwitchRule` in `product-category-flag-rules.tsx`) + riga nella sezione regole. **Da fare dall'utente**: accendere il flag su "Orientamento specialistico" (nessun seed).

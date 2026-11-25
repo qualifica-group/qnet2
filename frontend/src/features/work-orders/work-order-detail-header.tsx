@@ -28,9 +28,9 @@ import type { WorkOrderDetailWithPermissions, WorkOrderType, WorkOrderWorkPhase 
 const STATUS_TONES: Record<WorkOrderWorkPhase, { badge: string; dot: string }> = {
   to_plan: { badge: BADGE_COLOR_CLASSES.blue, dot: 'bg-blue-500' },
   in_progress: { badge: BADGE_COLOR_CLASSES.amber, dot: 'bg-amber-500' },
-  completed: { badge: BADGE_COLOR_CLASSES.green, dot: 'bg-green-500' },
+  completed: { badge: BADGE_COLOR_CLASSES.slate, dot: 'bg-slate-500' },
   cancelled: { badge: BADGE_COLOR_CLASSES.red, dot: 'bg-red-500' },
-  terminated: { badge: BADGE_COLOR_CLASSES.slate, dot: 'bg-slate-500' },
+  terminated: { badge: BADGE_COLOR_CLASSES.gray, dot: 'bg-gray-700' },
 }
 
 /** Colored status pill for the record header: the working phase (spec 0395), read-only. */

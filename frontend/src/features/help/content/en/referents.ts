@@ -31,7 +31,7 @@ const guide: HelpGuide = {
             ['Referent details', 'Referent type (the person’s role, shown under their name on the registry’s Referents cards and in the Contact field of opportunities, quotes and tasks), Contact scope (Internal or External), Linked user (if the person uses QNet), **Supplier registry** and Notes.'],
             ['Other fields', 'The custom fields of referents, grouped as in the form.'],
             ['Contacts', 'Contact details. The Phone is required at creation.'],
-            ['Addresses', 'Sites and billing addresses.'],
+            ['Addresses', 'Sites and billing addresses. Country, Region, Province and City are always visible: for a foreign address pick the Country.'],
           ],
         },
       ],

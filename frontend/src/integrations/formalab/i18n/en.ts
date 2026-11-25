@@ -1,5 +1,7 @@
 /** English translations (namespace `formalab`, spec 0422). */
+import { learnerStatementEn } from '@/integrations/formalab/i18n/en-learner-statement'
 export const formalabEn = {
+  learnerStatement: learnerStatementEn,
   nav: { label: 'Formalab', status: 'Status and settings', classes: 'Classes' },
   classes: {
     entity: 'Formalab classes',
@@ -23,6 +25,7 @@ export const formalabEn = {
   actions: {
     sync: 'Sync now',
     syncQueued: 'Sync started.',
+    syncRunning: 'Sync running',
     syncError: 'Could not start the sync.',
     testConnection: 'Test connection',
     testOk: 'Connection successful ({{ms}} ms).',
@@ -56,6 +59,7 @@ export const formalabEn = {
     finishedAt: 'Finished',
     classesSynced: 'Classes updated',
     workOrdersUpdated: 'Work orders updated',
+    classesRemoved: 'Classes removed (no longer on Formalab)',
     calls24h: 'Calls in the last 24 hours',
     callsTotal: 'Total',
     callsFailures: 'Failed',

@@ -4,9 +4,11 @@ import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleto
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { useResourceMeta } from '@/features/authorization/use-resource-meta'
 import { RoleFormBody } from '@/features/roles/role-form-body'
-import type { RoleDetail } from '@/features/roles/types'
+import type { RoleDetail, RoleDetailWithPermissions } from '@/features/roles/types'
 
 interface RoleFormProps {
+  /** The role copied (row action "duplicate"); absent for a bare create. */
+  source?: RoleDetailWithPermissions
   /** Called after a successful create so the caller can close + refresh. */
   onSuccess: (role: RoleDetail) => void
   /** Called when the user cancels the form. */
@@ -15,7 +17,7 @@ interface RoleFormProps {
 
 /**
  * The role create form (spec 0230: there is no edit form, the detail edits
- * in place). Metadata-driven (spec 0004): resolves the create-context
+ * in place; a duplicate is a create too). Metadata-driven (spec 0004): resolves the create-context
  * `ResourcePermissions` (`GET /meta/roles`) before rendering `RoleFormBody`,
  * which reads every field from that context via `MetaField`.
  */

@@ -40,7 +40,10 @@ namespace Database\Seeders\QualificaCatalog;
  * revisions (task 427544: the "Allegato A" privacy notice, with its static
  * tables and bullet list, and in `iso` the "Privacy" clauses 10.1-10.4);
  * an installation seeded before gets them through
- * QualificaQuoteLayoutRevisionSeeder.
+ * QualificaQuoteLayoutRevisionSeeder. `safety_haccp` was reconverted on
+ * 2026-11-25 from its November revision (the client privacy notice on health
+ * and safety consulting, with its three static tables, replacing the old
+ * "art. 1341-1342" clause), through QualificaSafetyHaccpLayoutRevisionSeeder.
  */
 final class QuoteDocumentLayoutCatalogue
 {
@@ -64,7 +67,7 @@ final class QuoteDocumentLayoutCatalogue
         'iso' => ['Preventivo ISO', 'Template preventivo_ISO Rev. 10.11.2026.docx'],
         'mepa' => ['PREVENTIVO Mepa', 'Template preventivo_MEPA Rev. 3.01.2026.docx'],
         'tender_preparation' => ['PREVENTIVO PREPARAZIONE GARE', 'Template preventivo _Preparazione gare Rev. 4.01.2026.docx'],
-        'safety_haccp' => ['PREVENTIVO SIC_HACCP', 'Template preventivo _SIC_HACCP Rev. 3.01.2026.docx'],
+        'safety_haccp' => ['PREVENTIVO SIC_HACCP', 'Template preventivo _SIC_HACCP Rev. 19.11.2026.docx'],
         'availment_qualifica' => ['PREVENTIVO AVV_ QUALIFICA', 'Template preventivo_avvalimenti_qualifica Rev.5.01.2026.docx'],
         'alfa_academy' => ['PREVENTIVO ALFA ACADEMY', 'LAYOUT_PREVENTIVO_ALFA_ACADEMY.docx'],
         'tender_information' => ['PREVENTIVO INFO GARE', 'Quotation reparto gare Rev. 2.01.2026.docx'],

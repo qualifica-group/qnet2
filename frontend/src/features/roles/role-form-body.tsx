@@ -13,7 +13,7 @@ import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field
 import { PermissionsEditor } from '@/features/roles/permission-explorer/permissions-editor'
 import { RoleIdentityRecordSection, RolePermissionsRecordSection } from '@/features/roles/role-record-sections'
 import { useRoleForm } from '@/features/roles/use-role-form'
-import type { RoleDetail } from '@/features/roles/types'
+import type { RoleDetail, RoleDetailWithPermissions } from '@/features/roles/types'
 
 type RoleCustomFields = NonNullable<RoleDetail['custom_fields']>
 
@@ -21,6 +21,8 @@ type RoleCustomFields = NonNullable<RoleDetail['custom_fields']>
 const ROLE_FORM_ID = 'role-form'
 
 interface RoleFormBodyProps {
+  /** The role copied (row action "duplicate"); absent for a bare create. */
+  source?: RoleDetailWithPermissions
   onSuccess: (role: RoleDetail) => void
   onCancel: () => void
 }
@@ -34,10 +36,10 @@ interface RoleFormBodyProps {
  * field stays wrapped in `MetaField` (spec 0004): hidden fields are absent,
  * non-editable ones disabled. All non-render logic lives in `useRoleForm`.
  */
-export function RoleFormBody({ onSuccess, onCancel }: RoleFormBodyProps) {
+export function RoleFormBody({ source, onSuccess, onCancel }: RoleFormBodyProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit, canManageFieldPermissions } = useRoleForm({ onSuccess })
+  const { form, serverError, onSubmit, canManageFieldPermissions } = useRoleForm({ source, onSuccess })
   const draft = useDraftInlineEdit(form)
   const values = useWatch({ control: form.control })
   const { isSubmitting } = form.formState

@@ -1,9 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Badge } from '@/components/ui/badge'
+import { DocumentRequestItemRow } from '@/features/document-requests/document-request-item-row'
 import type { DocumentRequest, DocumentRequestItem } from '@/features/document-requests/types'
-
-const OK_STATUS = 'ok'
-const KO_STATUS = 'ko'
 
 interface ItemGroup {
   key: string
@@ -26,31 +23,6 @@ function groupItems(request: DocumentRequest): ItemGroup[] {
   return groups.filter((group) => group.items.length > 0)
 }
 
-function ItemRow({ item }: { item: DocumentRequestItem }) {
-  const { t } = useTranslation()
-  const variant = item.status === OK_STATUS ? 'default' : item.status === KO_STATUS ? 'destructive' : 'secondary'
-
-  return (
-    <li className="flex flex-col gap-0.5 px-3 py-1.5 text-xs">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="min-w-0 flex-1 break-words font-medium">
-          {item.name}
-          {item.is_required ? null : (
-            <span className="ml-1 font-normal text-muted-foreground">({t('documentRequests.items.optional')})</span>
-          )}
-        </span>
-        <span className="text-muted-foreground">{t('documentRequests.items.files', { count: item.documents_count })}</span>
-        <Badge variant={variant}>{t(`documentRequests.itemStatus.${item.status}`, { defaultValue: item.status })}</Badge>
-      </div>
-      {item.status_reason ? (
-        <p className="break-words text-muted-foreground">
-          {t('documentRequests.items.reason')}: {item.status_reason}
-        </p>
-      ) : null}
-    </li>
-  )
-}
-
 /** Items of a request grouped by section, each with status, reason and number of files (spec 0428 AC-017). */
 export function DocumentRequestItems({ request }: { request: DocumentRequest }) {
   const { t } = useTranslation()
@@ -69,7 +41,7 @@ export function DocumentRequestItems({ request }: { request: DocumentRequest }) 
           </h4>
           <ul className="divide-y divide-border/60">
             {group.items.map((item) => (
-              <ItemRow key={item.id} item={item} />
+              <DocumentRequestItemRow key={item.id} request={request} item={item} />
             ))}
           </ul>
         </section>

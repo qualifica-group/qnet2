@@ -6,6 +6,8 @@ namespace App\Http\Requests\DocumentRequests;
 
 use App\Enums\DocumentChecklistSyncStatus;
 use App\Models\DocumentChecklist;
+use App\Models\DocumentRequest;
+use App\Models\WorkOrder;
 use Illuminate\Validation\Rule;
 
 /**
@@ -14,6 +16,15 @@ use Illuminate\Validation\Rule;
  */
 class StoreDocumentRequestRequest extends SaveDocumentRequestRequest
 {
+    public function authorize(): bool
+    {
+        $workOrder = $this->route('workOrder');
+
+        return $workOrder instanceof WorkOrder
+            && $this->user()->can('create', DocumentRequest::class)
+            && $this->user()->can('view', $workOrder);
+    }
+
     /**
      * @return array<string, array<int, mixed>>
      */

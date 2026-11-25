@@ -44,7 +44,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Button', 'What it does'],
           rows: [
-            ['**Sync now**', 'Starts the sync right away: it rereads the class catalogue, aligns the work orders to the edition chosen in their select (matched by edition ID only) and updates the fields of the linked work orders. The status refreshes a few seconds after the click.'],
+            ['**Sync now**', 'Starts the sync right away: it rereads the class catalogue, aligns the work orders to the edition chosen in their select (matched by edition ID only) and updates the fields of the linked work orders. **One sync runs at a time**: until the running one (the automatic one included) has finished, the button stays disabled and shows **Sync running**, and the page refreshes on its own when it ends.'],
             ['**Test connection**', 'Tries to reach the service and shows the response time or the reason for the error.'],
           ],
         },
@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Under **External integrations › Formalab › Classes** you find the **class catalogue** read from Formalab, read-only: edition ID, code, title, class and course status, dates, hours, site, learners and last read. It is the same list the work order picks its class from. **Sync now** starts reading the catalogue right away (the sync is queued: reload the table after a few seconds).',
+          text: 'Under **External integrations › Formalab › Classes** you find the **class catalogue** read from Formalab, read-only: edition ID, code, title, class and course status, dates, hours, site, learners and last read. It is the same list the work order picks its class from. **Sync now** starts reading the catalogue right away (the sync is queued and takes a few minutes: while it runs the button is disabled; reload the table once it has finished).',
         },
       ],
     },
@@ -116,7 +116,7 @@ const guide: HelpGuide = {
           items: [
             'Choose the class in the work order\'s **course / edition name** field and save: the link is immediate and the mapped fields are filled from the catalogue.',
             'Open the **Formalab** tab to see the class data.',
-            'Click **Sync** to re-read the chosen edition from Formalab right away and rewrite the mapped fields. From then on the work order also updates by itself every 10 minutes.',
+            'Click **Sync** to re-read the chosen edition from Formalab right away and rewrite the mapped fields. From then on the work order also updates by itself every hour.',
             'If you change the class, save: the link moves to the new edition. If you clear the select, the link is removed.',
           ],
         },
@@ -125,7 +125,7 @@ const guide: HelpGuide = {
           items: [
             '**Work order cannot be linked**: its category is not linked to Formalab, or the map does not name the course / edition field.',
             '**No class chosen**: choose the class in the **course / edition name** field first (clicking **Sync** with an empty select shows "Choose the Formalab class").',
-            '**Class not in the catalogue**: the edition is new and the catalogue has not received it yet (it updates every 10 minutes, or use **Sync now** on the Classes page).',
+            '**Class not in the catalogue**: the edition is new and the catalogue has not received it yet (it updates every hour, or use **Sync now** on the Classes page).',
           ],
         },
         {
@@ -135,12 +135,49 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'learner-statement',
+      title: 'Learner accounting statement',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'On the work orders of a category linked to Formalab, with the class chosen, the **Administration** > **Costs** tab shows the **Learner accounting statement** button (it needs the permission to see the work order costs). The statement reads the class learners from Formalab, with their attendance hours and outcome, and matches them with the work order quote, as in the previous QNet.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Learner cost**: whole attendance hours × 1 €/h; **revenue**: hours rounded down to the quarter × 0.85 €/h. Hours never exceed the course total hours.',
+            '**Costs and Revenue Summary**: learner cost, other quote costs (partner commissions excluded), training revenue, profit, **MOL Qualifica** and **profit per learner** (divided by the learners who passed).',
+            '**Scenarios**: with only the advance collected, actual advance, forecast balance and forecast economic total appear; with only the balance, the single payment; with both, the two tranches and the actual financial total. Advance and balance come from the **€ Anticipo Incassato** and **€ Saldo Incassato** fields of the work order.',
+            '**Partner commissions**: the learner\'s partner is the **Commercial partner** of the learner\'s offer (with more offers, the most recent one that has it); to change it, edit the offer. Each learner with a partner gets a **percentage** (applied to the profit per learner) or a **fixed amount**; changes are saved when leaving the field. The **Economic** scenario uses the forecast profit, the **Financial** one the collected profit and is available only once the balance is recorded.',
+            '**Partner supplier**: in the summary by partner you pick the supplier the partner is paid through; it applies to all the partner learners of the class. Next to it, the partner purchase order on the work order, if any.',
+            '**Work order progress**: the progress percentages by month, with their share of the learner revenue.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: '**Export Excel** downloads the whole statement; **Export per Partner** one sheet per partner with only its learners, without MOL Qualifica. **Refresh from Formalab** reads the class again right away.',
+        },
+        {
+          type: 'note',
+          text: 'Changing percentages, amounts and suppliers requires the permission to manage the work order costs. Under development: learner notes and partner purchase orders generation, learner import, learner notes.',
+        },
+      ],
+    },
+    {
       id: 'automatic-sync',
       title: 'Automatic sync',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every **10 minutes** QNet rereads the class catalogue and realigns every work order of the linked categories to the edition chosen in its select (links, moves or unlinks, by edition ID), writing their fields right away. If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone.',
+          text: 'Every **hour** QNet rereads the class catalogue and links the work orders of the linked categories whose chosen edition is now in the catalogue (always by edition ID). If a class linked to a work order has changed, the work order\'s mapped fields are updated; if nothing changed, the work order is left alone. When you choose, change or clear a work order\'s class, the link is updated as soon as you save.',
+        },
+        {
+          type: 'paragraph',
+          text: 'If a sync is still running at the scheduled time, that turn is skipped: two syncs never start together. A sync interrupted before finishing (for example by a server restart) shows in **Last sync** as **Failed** with the message "Sync interrupted"; the next one starts over.',
+        },
+        {
+          type: 'paragraph',
+          text: 'If a class **no longer exists on Formalab** (it is no longer in the catalogue, or Formalab answers that it does not exist when **Sync** or a notification rereads it), QNet removes it from the catalogue, **deletes the link** of its work orders and **clears the chosen class** in their select; the other work order fields keep their last values. The number of removed classes shows in **Last sync**. If Formalab returns an empty or incomplete catalogue nothing is removed.',
         },
       ],
     },

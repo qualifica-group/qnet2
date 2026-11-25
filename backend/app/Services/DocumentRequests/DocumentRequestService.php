@@ -121,12 +121,49 @@ class DocumentRequestService
             $this->refuse(__('archivio_smart.request_not_cancellable'));
         }
 
+        if ($request->neverReachedArchivioSmart()) {
+            return $this->cancelLocally($request);
+        }
+
         return $this->request($request, DocumentRequestOperation::Cancel);
     }
 
     public function refresh(DocumentRequest $request): DocumentRequest
     {
+        if ($request->neverReachedArchivioSmart()) {
+            $this->refuse(__('archivio_smart.request_never_delivered'));
+        }
+
         return $this->request($request, DocumentRequestOperation::Refresh);
+    }
+
+    /**
+     * Manual approval of the file of an item, overriding the AI outcome (spec 0429, D-2).
+     */
+    public function approveItem(DocumentRequest $request, int $itemId, ?string $note, User $reviewer): DocumentRequest
+    {
+        return $this->reviewItem($request, DocumentRequestOperation::Approve, $itemId, $note, $reviewer);
+    }
+
+    public function rejectItem(DocumentRequest $request, int $itemId, string $note, User $reviewer): DocumentRequest
+    {
+        return $this->reviewItem($request, DocumentRequestOperation::Reject, $itemId, $note, $reviewer);
+    }
+
+    /**
+     * Early closing (spec 0429, D-3). Completing an already completed request is a no-op.
+     */
+    public function complete(DocumentRequest $request): DocumentRequest
+    {
+        if ($request->status === DocumentRequestStatus::Completed) {
+            return $request;
+        }
+
+        if (! $request->isReviewable()) {
+            $this->refuse(__('archivio_smart.request_not_completable'));
+        }
+
+        return $this->request($request, DocumentRequestOperation::Complete);
     }
 
     /**
@@ -144,7 +181,7 @@ class DocumentRequestService
      * Records the intent and queues the job. Public: the webhook asks for a
      * refresh when an event arrives out of order.
      */
-    public function request(DocumentRequest $request, DocumentRequestOperation $operation, bool $send = true): DocumentRequest
+    public function request(DocumentRequest $request, DocumentRequestOperation $operation, bool $send = true, array $arguments = []): DocumentRequest
     {
         $request->forceFill([
             'delivery_status' => DocumentRequestDeliveryStatus::Pending,
@@ -152,14 +189,57 @@ class DocumentRequestService
             'delivery_error' => null,
         ])->save();
 
-        $this->queue($request, $operation, $send);
+        $this->queue($request, $operation, $send, $arguments);
 
         return $request;
     }
 
-    private function queue(DocumentRequest $request, DocumentRequestOperation $operation, bool $send = true): void
+    /**
+     * @param  array{item_id?: int, note?: string|null, reviewer_name?: string}  $arguments
+     */
+    private function queue(DocumentRequest $request, DocumentRequestOperation $operation, bool $send = true, array $arguments = []): void
     {
-        SyncDocumentRequestJob::dispatch($request->id, $operation, $send)->afterCommit();
+        SyncDocumentRequestJob::dispatch($request->id, $operation, $send, $arguments)->afterCommit();
+    }
+
+    private function reviewItem(DocumentRequest $request, DocumentRequestOperation $operation, int $itemId, ?string $note, User $reviewer): DocumentRequest
+    {
+        // Step 1: the request must be open
+        if (! $request->isReviewable()) {
+            $this->refuse(__('archivio_smart.request_not_reviewable'));
+        }
+
+        // Step 2: the item must be in the snapshot and hold a file
+        $item = collect($request->snapshot['items'] ?? [])->firstWhere('id', $itemId);
+        if (! is_array($item)) {
+            throw ValidationException::withMessages(['item' => __('archivio_smart.request_item_not_found')]);
+        }
+        if (empty($item['current_document_id'])) {
+            throw ValidationException::withMessages(['document' => __('archivio_smart.request_item_without_document')]);
+        }
+
+        // Step 3: record the intent and queue the call
+        return $this->request($request, $operation, true, [
+            'item_id' => $itemId,
+            'note' => $note,
+            'reviewer_name' => $reviewer->name,
+        ]);
+    }
+
+    /**
+     * ArchivioSmart does not know the request: cancelling it is a local decision, with no call to make.
+     */
+    private function cancelLocally(DocumentRequest $request): DocumentRequest
+    {
+        $request->forceFill([
+            'status' => DocumentRequestStatus::Cancelled,
+            'cancelled_at' => now(),
+            'delivery_status' => DocumentRequestDeliveryStatus::Delivered,
+            'pending_operation' => null,
+            'delivery_error' => null,
+        ])->save();
+
+        return $request;
     }
 
     private function assertOpen(DocumentRequest $request): void

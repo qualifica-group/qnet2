@@ -97,6 +97,23 @@ class DocumentRequest extends Model
         return in_array($this->status, DocumentRequestStatus::closed(), true);
     }
 
+    /**
+     * Sent or in progress: the states in which a file can be reviewed and the request closed early (spec 0429).
+     */
+    public function isReviewable(): bool
+    {
+        return $this->isRemindable();
+    }
+
+    /**
+     * ArchivioSmart never answered and no call is queued: the request exists only
+     * in QNet 2, so every remote call would answer 404 (spec 0428, D-5 revision 2026-11-25).
+     */
+    public function neverReachedArchivioSmart(): bool
+    {
+        return $this->status === null && $this->delivery_status !== DocumentRequestDeliveryStatus::Pending;
+    }
+
     public function isRemindable(): bool
     {
         return in_array($this->status, DocumentRequestStatus::remindable(), true);

@@ -5,7 +5,7 @@ import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { ProductSupplierOption } from '@/features/products/product-suppliers'
 import type { ProductUsage } from '@/features/products/types'
-import type { QuoteLineCategoryRef, QuoteLineUnitOfMeasureRef } from '@/features/quotes/types'
+import type { QuoteLineCategoryRef, QuoteLineUnitOfMeasureRef, QuoteLineVatRateRef } from '@/features/quotes/types'
 
 /**
  * The `meta` block additive to `GET /products/for-select` (spec 0065 D-1/
@@ -42,6 +42,8 @@ export interface QuoteProductForSelectMeta {
   product_typology: QuoteLineCategoryRef | null
   /** Spec 0320: the product's suppliers (default first), each with its cost; `cost` above is the standard cost. */
   suppliers?: ProductSupplierOption[]
+  /** The 0% VAT a cost row starts on instead of the product's own (user decision 2026-11-24); null when missing. */
+  cost_vat_rate?: QuoteLineVatRateRef | null
 }
 
 export interface QuoteProductForSelectItem extends ForSelectItem {

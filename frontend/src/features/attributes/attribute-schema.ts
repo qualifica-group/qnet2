@@ -71,6 +71,9 @@ function baseFields(t: TFunction) {
     icon: z.string(),
     config: fieldDefinitionConfigFields(),
     relation_target: fieldDefinitionRelationTargetFields(),
+    current_attribute_id: z.number().nullable(),
+    /** Display only, never sent: the picked "Campo attuale" as the closed row shows it. */
+    current_attribute_label: z.string().nullable(),
     options: z.array(fieldDefinitionOptionFields(schemaMessages(t), NAME_MAX_LENGTH)),
     table: fieldDefinitionTableFields(),
   }

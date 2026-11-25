@@ -16,7 +16,11 @@ use Integrations\Formalab\FormalabServiceProvider;
 use Integrations\Formalab\Models\FormalabCallLog;
 use Integrations\Formalab\Models\FormalabCategorySetting;
 use Integrations\Formalab\Models\FormalabClass;
+use Integrations\Formalab\Models\FormalabSyncRun;
+use Integrations\Formalab\Services\CatalogSyncLauncher;
+use Integrations\Formalab\Services\ClassCatalogSync;
 use Integrations\Formalab\Support\FormalabField;
+use Integrations\Formalab\Support\Trigger;
 
 if (! function_exists('formalabEnable')) {
     /**
@@ -43,6 +47,18 @@ if (! function_exists('formalabEnable')) {
 
         // commands() queues onto the console application: rebuild it so the new commands are known
         app(ConsoleKernel::class)->setArtisan(null);
+    }
+}
+
+if (! function_exists('formalabSync')) {
+    /**
+     * A manual catalogue sync run inline, opened through the launcher like the console command.
+     */
+    function formalabSync(): FormalabSyncRun
+    {
+        $run = app(CatalogSyncLauncher::class)->open(Trigger::Manual);
+
+        return app(ClassCatalogSync::class)->handle($run);
     }
 }
 

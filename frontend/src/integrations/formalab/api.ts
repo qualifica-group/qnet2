@@ -5,6 +5,7 @@ import type {
   FormalabCategorySettingsPayload,
   FormalabConnectionTest,
   FormalabStatus,
+  FormalabSyncState,
   FormalabWorkOrderLink,
 } from '@/integrations/formalab/types'
 
@@ -18,6 +19,11 @@ export const FORMALAB_CLASSES_DOMAIN = 'formalab-classes'
 
 export async function fetchFormalabStatus(): Promise<FormalabStatus> {
   const { data } = await apiClient.get<ApiResponse<FormalabStatus>>(`${BASE}/status`)
+  return data.data
+}
+
+export async function fetchFormalabSyncState(): Promise<FormalabSyncState> {
+  const { data } = await apiClient.get<ApiResponse<FormalabSyncState>>(`${BASE}/sync-state`)
   return data.data
 }
 

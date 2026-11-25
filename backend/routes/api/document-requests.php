@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DocumentRequests\DocumentRequestActionController;
 use App\Http\Controllers\DocumentRequests\DocumentRequestController;
+use App\Http\Controllers\DocumentRequests\DocumentRequestFileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,3 +27,7 @@ Route::get('document-requests/{documentRequest}/sync-logs', [DocumentRequestCont
 Route::post('document-requests/{documentRequest}/remind', [DocumentRequestActionController::class, 'remind']);
 Route::post('document-requests/{documentRequest}/cancel', [DocumentRequestActionController::class, 'cancel']);
 Route::post('document-requests/{documentRequest}/refresh', [DocumentRequestActionController::class, 'refresh']);
+Route::post('document-requests/{documentRequest}/complete', [DocumentRequestActionController::class, 'complete']);
+Route::post('document-requests/{documentRequest}/items/{item}/approve', [DocumentRequestActionController::class, 'approveItem'])->whereNumber('item');
+Route::post('document-requests/{documentRequest}/items/{item}/reject', [DocumentRequestActionController::class, 'rejectItem'])->whereNumber('item');
+Route::get('document-requests/{documentRequest}/documents/{document}/download', [DocumentRequestFileController::class, 'download'])->whereNumber('document');

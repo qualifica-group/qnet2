@@ -59,7 +59,7 @@ describe('DocumentRequestCreateDialog', () => {
   it('pre-fills the recipient email from the defaults (AC-018)', async () => {
     renderCreate()
 
-    expect(await screen.findByLabelText('Email del destinatario')).toHaveValue('cliente@example.com')
+    expect(await screen.findByLabelText(/Email del destinatario/)).toHaveValue('cliente@example.com')
     expect(screen.getByText('Scegli la checklist da inviare a ACME Srl.')).toBeInTheDocument()
   })
 
@@ -67,12 +67,12 @@ describe('DocumentRequestCreateDialog', () => {
     defaultsMock.mockRejectedValue(httpError(500, {}))
     renderCreate()
 
-    expect(await screen.findByLabelText('Email del destinatario')).toHaveValue('')
+    expect(await screen.findByLabelText(/Email del destinatario/)).toHaveValue('')
   })
 
   it('narrows the checklist picker by category and posts the chosen checklist (AC-018)', async () => {
     renderCreate()
-    await screen.findByLabelText('Email del destinatario')
+    await screen.findByLabelText(/Email del destinatario/)
 
     await pickOption('Categoria', 'Societa')
     await pickOption('Checklist', 'Documenti societari')
@@ -98,7 +98,7 @@ describe('DocumentRequestCreateDialog', () => {
 
   it('requires a checklist and does not call the endpoint (AC-018)', async () => {
     renderCreate()
-    await screen.findByLabelText('Email del destinatario')
+    await screen.findByLabelText(/Email del destinatario/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Crea richiesta' }))
 
@@ -111,13 +111,25 @@ describe('DocumentRequestCreateDialog', () => {
     await pickOption('Checklist', 'Documenti societari')
 
     fireEvent.change(screen.getByLabelText('Scadenza'), { target: { value: '2000-01-01' } })
-    fireEvent.change(screen.getByLabelText('Email del destinatario'), { target: { value: 'non-una-email' } })
+    fireEvent.change(screen.getByLabelText(/Email del destinatario/), { target: { value: 'non-una-email' } })
     fireEvent.change(screen.getByLabelText('Messaggio'), { target: { value: 'x'.repeat(2001) } })
     fireEvent.click(screen.getByRole('button', { name: 'Crea richiesta' }))
 
     expect(await screen.findByText('La scadenza non può essere nel passato.')).toBeInTheDocument()
     expect(screen.getByText('Inserisci un indirizzo email valido.')).toBeInTheDocument()
     expect(screen.getByLabelText('Scadenza')).toHaveAttribute('aria-invalid', 'true')
+    expect(createMock).not.toHaveBeenCalled()
+  })
+
+  it('requires the recipient email when the customer has none (AC-021)', async () => {
+    defaultsMock.mockResolvedValue({ recipient_email: null, customer_name: 'ACME Srl' })
+    renderCreate()
+    await pickOption('Checklist', 'Documenti societari')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Crea richiesta' }))
+
+    expect(await screen.findByText("Indica l'email del destinatario.")).toBeInTheDocument()
+    expect(screen.getByLabelText(/Email del destinatario/)).toHaveAttribute('aria-invalid', 'true')
     expect(createMock).not.toHaveBeenCalled()
   })
 
@@ -128,8 +140,8 @@ describe('DocumentRequestCreateDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Crea richiesta' }))
 
-    await waitFor(() => expect(screen.getByLabelText('Email del destinatario')).toHaveAttribute('aria-invalid', 'true'))
-    expect(screen.getByLabelText('Email del destinatario')).toHaveAccessibleDescription(/Indirizzo rifiutato dal server/)
+    await waitFor(() => expect(screen.getByLabelText(/Email del destinatario/)).toHaveAttribute('aria-invalid', 'true'))
+    expect(screen.getByLabelText(/Email del destinatario/)).toHaveAccessibleDescription(/Indirizzo rifiutato dal server/)
   })
 })
 
@@ -148,7 +160,7 @@ describe('DocumentRequestEditDialog', () => {
       />,
     )
 
-    const email = screen.getByLabelText('Email del destinatario')
+    const email = screen.getByLabelText(/Email del destinatario/)
     expect(email).toHaveValue('cliente@example.com')
     fireEvent.change(email, { target: { value: 'altro@example.com' } })
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Salva' }))

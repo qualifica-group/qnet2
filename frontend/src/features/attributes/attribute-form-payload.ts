@@ -37,6 +37,7 @@ export function buildCreatePayload(values: AttributeFormValues): CreateAttribute
     icon: values.icon || undefined,
     config: buildFieldDefinitionConfig(values),
     relation_target: buildFieldDefinitionRelationTarget(values),
+    current_attribute_id: values.current_attribute_id ?? undefined,
     options: buildFieldDefinitionOptions(values),
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
@@ -81,6 +82,10 @@ export function buildUpdatePayload(
   const nextRelationTarget = buildFieldDefinitionRelationTarget(values)
   if (JSON.stringify(nextRelationTarget ?? null) !== JSON.stringify(original.relation_target ?? null)) {
     payload.relation_target = nextRelationTarget ?? null
+  }
+
+  if ((values.current_attribute_id ?? null) !== (original.current_attribute_id ?? null)) {
+    payload.current_attribute_id = values.current_attribute_id ?? null
   }
 
   if (values.type === 'enum') {
