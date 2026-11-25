@@ -17,18 +17,31 @@ function useRelationRef(resource: string, id: number | null): CommissionRelation
   return id !== null && label !== undefined ? { id, name: label } : null
 }
 
+/** Same as `useRelationRef` for a picked list: ids whose label is not loaded yet are left out until it arrives. */
+function useRelationRefs(resource: string, ids: number[]): CommissionRelationRef[] {
+  const labels = useForSelectLabels({ resource, ids })
+  return useMemo(
+    () =>
+      ids.flatMap((id) => {
+        const label = labels.get(id)?.label
+        return label === undefined ? [] : [{ id, name: label }]
+      }),
+    [ids, labels],
+  )
+}
+
 /** The create draft only holds ids: this gives its closed rows the names (and the pickers their `selected`). */
 export function useCommissionConfigurationDraftRefs(
   form: UseFormReturn<CommissionConfigurationFormValues>,
 ): CommissionConfigurationRefs {
-  const [categoryId, productId, recipientId, recipientType] = useWatch({
+  const [categoryIds, productIds, recipientId, recipientType] = useWatch({
     control: form.control,
-    name: ['product_category_id', 'product_id', 'recipient_id', 'recipient_type'],
+    name: ['product_category_ids', 'product_ids', 'recipient_id', 'recipient_type'],
   })
 
   return {
-    category: useRelationRef(PRODUCT_CATEGORY_NODES_FOR_SELECT_RESOURCE, categoryId),
-    product: useRelationRef(PRODUCTS_FOR_SELECT_RESOURCE, productId),
+    categories: useRelationRefs(PRODUCT_CATEGORY_NODES_FOR_SELECT_RESOURCE, categoryIds),
+    products: useRelationRefs(PRODUCTS_FOR_SELECT_RESOURCE, productIds),
     recipient: useRelationRef(RECIPIENT_RESOURCE_BY_TYPE[recipientType], recipientId),
   }
 }

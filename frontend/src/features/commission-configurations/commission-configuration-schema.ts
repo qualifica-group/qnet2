@@ -10,14 +10,17 @@ import {
   SUPPLIER_COMMISSION_DIRECTIONS,
 } from './types'
 
+/** Server cap on the categories/products one rule can list (spec 0430). */
+const MAX_SCOPE_ITEMS = 500
+
 export function buildCommissionConfigurationSchema(t: TFunction) {
   return z
     .object({
       name: z.string().trim().min(1, t('commissionConfigurations.form.errors.nameRequired')).max(191),
       recipient_role: z.enum(COMMISSION_ROLES),
       application_scope: z.enum(COMMISSION_SCOPES),
-      product_category_id: z.number().nullable(),
-      product_id: z.number().nullable(),
+      product_category_ids: z.array(z.number()).max(MAX_SCOPE_ITEMS),
+      product_ids: z.array(z.number()).max(MAX_SCOPE_ITEMS),
       // Chosen by the operator among `recipient_role`'s allow-list (spec 0090 D-4).
       recipient_type: z.enum(COMMISSION_RECIPIENT_TYPES),
       recipient_id: z.number().nullable(),
@@ -35,17 +38,17 @@ export function buildCommissionConfigurationSchema(t: TFunction) {
       internal_note: z.string().max(5000).nullable(),
     })
     .superRefine((values, ctx) => {
-      if (values.application_scope === 'PRODUCT_CATEGORY' && values.product_category_id === null) {
+      if (values.application_scope === 'PRODUCT_CATEGORY' && values.product_category_ids.length === 0) {
         ctx.addIssue({
           code: 'custom',
-          path: ['product_category_id'],
+          path: ['product_category_ids'],
           message: t('commissionConfigurations.form.errors.categoryRequired'),
         })
       }
-      if (values.application_scope === 'PRODUCT' && values.product_id === null) {
+      if (values.application_scope === 'PRODUCT' && values.product_ids.length === 0) {
         ctx.addIssue({
           code: 'custom',
-          path: ['product_id'],
+          path: ['product_ids'],
           message: t('commissionConfigurations.form.errors.productRequired'),
         })
       }

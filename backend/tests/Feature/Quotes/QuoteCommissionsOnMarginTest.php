@@ -69,11 +69,9 @@ function marginRevenueProduct(): Product
 /** A 10% PERCENTAGE commission rule for $product, recipient role Commercial. */
 function marginPercentageRule(Product $product): CommissionConfiguration
 {
-    return CommissionConfiguration::factory()->create([
+    return CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'commission_type' => CommissionType::Percentage,
         'value' => 10,
         'valid_from' => '2026-01-01',

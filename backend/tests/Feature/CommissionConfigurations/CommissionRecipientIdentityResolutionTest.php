@@ -44,13 +44,11 @@ it('lets a rule intestata to the linked USER win for the referent actually on th
     $product = Product::factory()->create();
 
     $personalOnUser = CommissionConfiguration::factory()
-        ->forRecipient('user', $linkedUser->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id]);
-    CommissionConfiguration::factory()->create([
+        ->forRecipient('user', $linkedUser->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial]);
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
     ]);
 
     $match = matchForRole($product, CommissionRecipientRole::Commercial, new CommissionRecipient('referent', $commercial->id));
@@ -66,8 +64,8 @@ it('works symmetrically: a rule on the linked REFERENT wins for the SUPERVISOR u
     $product = Product::factory()->create();
 
     $personalOnReferent = CommissionConfiguration::factory()
-        ->forRecipient('referent', $linkedReferent->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Supervisor, 'product_id' => $product->id]);
+        ->forRecipient('referent', $linkedReferent->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Supervisor]);
 
     $match = matchForRole($product, CommissionRecipientRole::Supervisor, new CommissionRecipient('user', $supervisorUser->id));
 
@@ -109,11 +107,11 @@ it('breaks a tie between the referent rule and its linked user rule by priority,
     $product = Product::factory()->create();
 
     CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id, 'priority' => 5]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'priority' => 5]);
     $higherPriorityOnUser = CommissionConfiguration::factory()
-        ->forRecipient('user', $linkedUser->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id, 'priority' => 50]);
+        ->forRecipient('user', $linkedUser->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'priority' => 50]);
 
     $match = matchForRole($product, CommissionRecipientRole::Commercial, new CommissionRecipient('referent', $commercial->id));
 
@@ -138,8 +136,8 @@ it('keeps resolving exactly like before when referents.user_id is null everywher
     $product = Product::factory()->create();
 
     $personal = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial]);
 
     $match = matchForRole($product, CommissionRecipientRole::Commercial, new CommissionRecipient('referent', $commercial->id));
 

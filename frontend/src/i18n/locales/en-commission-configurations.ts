@@ -21,7 +21,7 @@ export const commissionConfigurations = {
     genericError: 'Unable to save the commission configuration.', deleteError: 'Unable to delete the commission configuration.',
     deleteReferenced: 'This configuration is used by another module and cannot be deleted.',
     name: 'Configuration name', recipient_role: 'Recipient role', application_scope: 'Application scope',
-    product_category_id: 'Product category', product_id: 'Product', recipient_type: 'Recipient type', recipient_id: 'Recipient', supplier_commission_direction: 'Supplier commission direction', commission_type: 'Commission type',
+    product_category_ids: 'Product categories', product_ids: 'Products', recipient_type: 'Recipient type', recipient_id: 'Recipient', supplier_commission_direction: 'Supplier commission direction', commission_type: 'Commission type',
     value: 'Commission value', priority: 'Rule priority', valid_from: 'Valid from', valid_until: 'Valid until',
     status: 'Status', internal_note: 'Internal service note', searchCategory: 'Search product categories…', categoryBranchHint: 'Also applies to every subcategory; when several rules cover the product, the closest category wins.',
     searchProduct: 'Search products…', searchRecipient: 'Search recipient…', selectPlaceholder: 'Select…', selectEmpty: 'No results found.', selectError: 'Unable to load options.',
@@ -29,7 +29,7 @@ export const commissionConfigurations = {
     leaveConfirm: { title: 'Leave without saving?', description: 'The commission configuration has not been created yet: the data you entered will be lost.', confirm: 'Leave without saving', cancel: 'Keep editing' },
     directionExplanations: { RECEIVED: 'Received: we collect the commission from the supplier (for example the institution). It is the line revenue: margin = commission − costs − other commissions. Example: a €1,000 line at 40%, we earn €400.', PAID: 'Paid: we pay the commission to the supplier. It is a line cost: margin = net amount − costs − other commissions − this commission. Example: a €1,000 line at 40%, we pay €400 and €600 remain.' },
     hints: { priority: 'Decides which rule wins when several valid configurations compete for the same role and the same scope: the highest number wins, then the most recent start date. A Product rule always beats a Category rule regardless.' },
-    errors: { directionRequired: 'The direction is required for a Supplier rule.', nameRequired: 'Configuration name is required.', valueInvalid: 'Commission value must be zero or greater.', priorityInvalid: 'Priority must be a whole number.', validFromRequired: 'Start date is required.', categoryRequired: 'Select a product category.', productRequired: 'Select a product.', recipientRequired: 'Select a recipient.', validUntilInvalid: 'End date cannot precede start date.', recipientTypeInvalid: 'This recipient type is not allowed for the selected role.' },
+    errors: { directionRequired: 'The direction is required for a Supplier rule.', nameRequired: 'Configuration name is required.', valueInvalid: 'Commission value must be zero or greater.', priorityInvalid: 'Priority must be a whole number.', validFromRequired: 'Start date is required.', categoryRequired: 'Select at least one product category.', productRequired: 'Select at least one product.', recipientRequired: 'Select a recipient.', validUntilInvalid: 'End date cannot precede start date.', recipientTypeInvalid: 'This recipient type is not allowed for the selected role.' },
   },
   propagation: {
     title: 'Update the existing quotes too?',

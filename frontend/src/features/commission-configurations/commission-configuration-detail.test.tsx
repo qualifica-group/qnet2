@@ -28,6 +28,10 @@ vi.mock('./api', async (importOriginal) => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+vi.mock('@/components/form/relation-multi-select-field', async () => ({
+  RelationMultiSelectField: (await import('./commission-configuration-relation-double')).RelationMultiSelectFieldDouble,
+}))
+
 vi.mock('@/components/form/relation-select-field', async () => ({
   RelationSelectField: (await import('./commission-configuration-relation-double')).RelationSelectFieldDouble,
 }))
@@ -72,7 +76,7 @@ describe('CommissionConfigurationDetailView read-only content', () => {
   it('does not expose hidden fields or render their empty sections', () => {
     const hidden = Object.fromEntries(
       [
-        'name', 'recipient_role', 'application_scope', 'product_id', 'product_category_id', 'recipient_id', 'commission_type', 'supplier_commission_direction',
+        'name', 'recipient_role', 'application_scope', 'product_ids', 'product_category_ids', 'recipient_id', 'commission_type', 'supplier_commission_direction',
         'value', 'priority', 'status', 'valid_from', 'valid_until', 'internal_note', 'updated_at',
       ].map((field) => [field, HIDDEN]),
     )
@@ -101,10 +105,10 @@ describe('CommissionConfigurationDetailView read-only content', () => {
     {
       overrides: {
         application_scope: 'PRODUCT_CATEGORY' as const,
-        product: null,
-        product_id: null,
-        product_category: { id: 4, name: 'Networking' },
-        product_category_id: 4,
+        products: [],
+        product_ids: [],
+        product_categories: [{ id: 4, name: 'Networking' }],
+        product_category_ids: [4],
         commission_type: 'FIXED_AMOUNT' as const,
         value: '25',
         status: 'SUSPENDED' as const,

@@ -95,7 +95,7 @@ it('AC-002: a supplier rule on a category becomes an active percentage rule for 
         ->and($rule->recipient_type)->toBe('registry')
         ->and($rule->recipient_id)->toBe($registry->id)
         ->and($rule->application_scope)->toBe(CommissionApplicationScope::ProductCategory)
-        ->and($rule->product_category_id)->toBe($category->id)
+        ->and($rule->product_category_ids)->toBe([$category->id])
         ->and($rule->commission_type)->toBe(CommissionType::Percentage)
         ->and($rule->supplier_commission_direction)->toBe(SupplierCommissionDirection::Paid)
         ->and($rule->value)->toBe('10.0000')
@@ -137,8 +137,8 @@ it('AC-003: a commercial rule on a contact maps to the referent, a rule on a ser
 
     $onProduct = CommissionConfiguration::where('old_id', 2)->sole();
     expect($onProduct->application_scope)->toBe(CommissionApplicationScope::Product)
-        ->and($onProduct->product_id)->toBe($product->id)
-        ->and($onProduct->product_category_id)->toBeNull()
+        ->and($onProduct->product_ids)->toBe([$product->id])
+        ->and($onProduct->product_category_ids)->toBe([])
         ->and($onProduct->commission_type)->toBe(CommissionType::FixedAmount)
         ->and($onProduct->value)->toBe('25.5000');
 });
@@ -185,7 +185,7 @@ it('spec 0223 AC-009: a rule on a container category is imported, it covers the 
 
     expect($run->created_rows)->toBe(1)
         ->and($run->failed_rows)->toBe(0)
-        ->and(CommissionConfiguration::sole()->product_category_id)->toBe($container->id);
+        ->and(CommissionConfiguration::sole()->product_category_ids)->toBe([$container->id]);
 });
 
 it('imports a rule without recipient as an active role-wide rule (user decision 2026-10-12)', function () {
@@ -199,7 +199,7 @@ it('imports a rule without recipient as an active role-wide rule (user decision 
         ->and($rule->recipient_type)->toBeNull()
         ->and($rule->recipient_id)->toBeNull()
         ->and($rule->status)->toBe(CommissionConfigurationStatus::Active)
-        ->and($rule->product_category_id)->toBe($category->id)
+        ->and($rule->product_category_ids)->toBe([$category->id])
         ->and($rule->name)->toBe('Legacy - '.CommissionRecipientRole::Commercial->label().' - Formazione');
 });
 

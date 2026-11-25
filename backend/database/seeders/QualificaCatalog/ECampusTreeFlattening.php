@@ -44,8 +44,10 @@ final class ECampusTreeFlattening
         'project_product_lines' => 'product_category_id',
         'campaign_product_lines' => 'product_category_id',
         'employment_product_lines' => 'product_category_id',
-        'commission_configurations' => 'product_category_id',
     ];
+
+    /** Spec 0430: a commission rule holds a LIST of categories, so repointing must not duplicate a pair. */
+    private const string RULE_CATEGORIES_TABLE = 'commission_configuration_product_category';
 
     /**
      * The product line tables, unique on (owner, function, category): table =>
@@ -121,6 +123,12 @@ final class ECampusTreeFlattening
         foreach (self::REFERENCES as $table => $column) {
             DB::table($table)->whereIn($column, $retiredIds)->update([$column => $branch->id]);
         }
+
+        $ruleIds = DB::table(self::RULE_CATEGORIES_TABLE)->whereIn('product_category_id', $retiredIds)->distinct()->pluck('commission_configuration_id');
+        DB::table(self::RULE_CATEGORIES_TABLE)->insertOrIgnore(
+            $ruleIds->map(static fn (mixed $id): array => ['commission_configuration_id' => $id, 'product_category_id' => $branch->id])->all(),
+        );
+        DB::table(self::RULE_CATEGORIES_TABLE)->whereIn('product_category_id', $retiredIds)->delete();
     }
 
     /**

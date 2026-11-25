@@ -29,6 +29,12 @@
       stessa esenzione per il valore gia' salvato). Il selettore `product-categories/for-select` NON cambia (filtro
       `is_selectable` incondizionato, spec 0074 D-4): il Configuratore usa un nuovo selettore separato, come gia'
       fatto per i rami dei criteri di workflow (`product-category-branches/for-select`, spec 0092 D-4).
+    - D-5 rev. (decisione utente 2026-11-25): il Configuratore accetta anche le categorie NON attive. Il selettore
+      `product-category-nodes/for-select` le elenca (`resolveNodes` con `includeInactive`) e la validazione di
+      `product_category_id` passa da `ActiveProductCategory` a `exists:product_categories,id`. Motivo: 180 delle 189
+      categorie [OLD] sono inattive e servono regole proprie, separate dalle categorie nuove (il resolver non segue
+      `current_category_id`: una regola su ISO non vale per i prodotti di [OLD] ISO). Il prodotto (`ActiveProduct`)
+      non cambia. Supera AC-011 della spec 0208 per la sola categoria delle regole commissioni.
     - D-6: `CommissionConfigurationsSource` toglie il rifiuto delle categorie non selezionabili; tutto il resto
       (destinatario e ruolo obbligatori, categoria/prodotto importati) resta.
     - Fatti verificati: `CommissionRuleResolver::firstMatch()` abbina con `where('product_category_id', ...)`;

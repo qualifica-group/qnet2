@@ -67,8 +67,8 @@ function CommissionConfigurationDetailContent({ configuration, onChanged }: Comm
   })
   const refs = useMemo<CommissionConfigurationRefs>(
     () => ({
-      category: configuration.product_category,
-      product: configuration.product,
+      categories: configuration.product_categories,
+      products: configuration.products,
       recipient: configuration.recipient ?? null,
     }),
     [configuration],

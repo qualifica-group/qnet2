@@ -82,11 +82,9 @@ function quoteWithManualCommission(): array
 
 it('redacts hidden commission fields from quote detail, defaults and activity', function () {
     $context = quoteWithManualCommission();
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$context['product']->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $context['product']->id,
-        'product_category_id' => null,
         'valid_from' => '2026-01-01',
         'internal_note' => 'Hidden default note',
     ]);
@@ -131,11 +129,9 @@ it('redacts hidden commission fields from quote detail, defaults and activity', 
 
 it('keeps readonly values visible and allows only an unchanged nested no-op', function () {
     $context = quoteWithManualCommission();
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$context['product']->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $context['product']->id,
-        'product_category_id' => null,
         'valid_from' => '2026-01-01',
         'value' => 5,
     ]);

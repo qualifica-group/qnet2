@@ -20,38 +20,30 @@ it('resolves product before category and applies priority and validity determini
     $category = ProductCategory::factory()->create();
     $product = Product::factory()->create(['category_id' => $category->id]);
 
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forCategories([$category->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::ProductCategory,
-        'product_category_id' => $category->id,
-        'product_id' => null,
         'priority' => 999,
         'valid_from' => '2026-01-01',
         'status' => CommissionConfigurationStatus::Active,
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_category_id' => null,
-        'product_id' => $product->id,
         'priority' => 10,
         'valid_from' => '2026-01-01',
         'status' => CommissionConfigurationStatus::Active,
     ]);
-    $winner = CommissionConfiguration::factory()->create([
+    $winner = CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_category_id' => null,
-        'product_id' => $product->id,
         'priority' => 20,
         'valid_from' => '2026-02-01',
         'status' => CommissionConfigurationStatus::Active,
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_category_id' => null,
-        'product_id' => $product->id,
         'priority' => 100,
         'valid_from' => '2027-01-01',
         'status' => CommissionConfigurationStatus::Active,
@@ -71,27 +63,21 @@ it('resolves product before category and applies priority and validity determini
 
 it('breaks equal-priority ties by latest valid_from and then highest id', function () {
     $product = Product::factory()->create();
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'priority' => 10,
         'valid_from' => '2026-01-01',
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'priority' => 10,
         'valid_from' => '2026-02-01',
     ]);
-    $highestId = CommissionConfiguration::factory()->create([
+    $highestId = CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'priority' => 10,
         'valid_from' => '2026-02-01',
     ]);
@@ -109,27 +95,21 @@ it('breaks equal-priority ties by latest valid_from and then highest id', functi
 
 it('ignores suspended, expired and future rules and returns no match when none remains', function () {
     $product = Product::factory()->create();
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'status' => CommissionConfigurationStatus::Suspended,
         'valid_from' => '2026-01-01',
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'valid_from' => '2026-01-01',
         'valid_until' => '2026-07-28',
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'valid_from' => '2026-07-30',
     ]);
 
@@ -166,11 +146,9 @@ function branchCommissionTree(): array
 
 function branchCategoryRule(ProductCategory $category, int $priority = 0): CommissionConfiguration
 {
-    return CommissionConfiguration::factory()->create([
+    return CommissionConfiguration::factory()->forCategories([$category->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::ProductCategory,
-        'product_category_id' => $category->id,
-        'product_id' => null,
         'priority' => $priority,
         'valid_from' => '2026-01-01',
         'status' => CommissionConfigurationStatus::Active,
@@ -224,11 +202,9 @@ it('AC-003: on the same category the priority, then valid_from, then id still de
 it('AC-004: a product rule beats an ancestor rule, and a personal ancestor rule beats a role rule on the category', function () {
     ['parent' => $parent, 'category' => $category, 'product' => $product] = branchCommissionTree();
     branchCategoryRule($parent, priority: 99);
-    $productRule = CommissionConfiguration::factory()->create([
+    $productRule = CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_category_id' => null,
-        'product_id' => $product->id,
         'valid_from' => '2026-01-01',
         'status' => CommissionConfigurationStatus::Active,
     ]);
@@ -239,8 +215,8 @@ it('AC-004: a product rule beats an ancestor rule, and a personal ancestor rule 
     branchCategoryRule($category, priority: 50);
     $commercial = Referent::factory()->create();
     $personal = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::ProductCategory)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_category_id' => $parent->id, 'valid_from' => '2026-01-01']);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::ProductCategory)->forCategories([$parent->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'valid_from' => '2026-01-01']);
 
     $match = resolveBranchRule($product, [CommissionRecipientRole::Commercial->value => new CommissionRecipient('referent', $commercial->id)]);
 

@@ -193,21 +193,29 @@ function activeValidationCommissionPayload(array $overrides): array
     ];
 }
 
-it('AC-011: commission configuration rejects an inactive category and a product of an inactive category', function () {
+// REQUIREMENT CHANGED (user decision 2026-11-25): a commission rule may point at
+// an inactive category (the [OLD] ones keep rules of their own); a product of an
+// inactive category is still rejected.
+it('AC-011: commission configuration accepts an inactive category, rejects a product of an inactive category', function () {
     Sanctum::actingAs(activeValidationActor(['commission-configurations.create']));
 
     $this->postJson('/api/commission-configurations', activeValidationCommissionPayload([
         'application_scope' => 'PRODUCT_CATEGORY',
-        'product_category_id' => ProductCategory::factory()->create(['is_active' => false])->id,
-    ]))->assertStatus(422)->assertJsonValidationErrors('product_category_id');
+        'product_category_ids' => [ProductCategory::factory()->create(['is_active' => false])->id],
+    ]))->assertCreated();
+
+    $this->postJson('/api/commission-configurations', activeValidationCommissionPayload([
+        'application_scope' => 'PRODUCT_CATEGORY',
+        'product_category_ids' => [999999],
+    ]))->assertStatus(422)->assertJsonValidationErrors('product_category_ids.0');
 
     $product = Product::factory()->create(['category_id' => activeValidationInactiveChild()->id]);
     $response = $this->postJson('/api/commission-configurations', activeValidationCommissionPayload([
         'application_scope' => 'PRODUCT',
-        'product_id' => $product->id,
-    ]))->assertStatus(422)->assertJsonValidationErrors('product_id');
+        'product_ids' => [$product->id],
+    ]))->assertStatus(422)->assertJsonValidationErrors('product_ids.0');
 
-    expect($response->json('errors.product_id'))->toBe([__('This product belongs to an inactive category.')]);
+    expect($response->json('errors')['product_ids.0'][0])->toBe(__('This product belongs to an inactive category.'));
 });
 
 it('AC-011: commission configuration resubmitting its saved category or product passes after deactivation', function () {
@@ -216,20 +224,20 @@ it('AC-011: commission configuration resubmitting its saved category or product 
     $product = Product::factory()->create();
 
     $byCategory = $this->postJson('/api/commission-configurations', activeValidationCommissionPayload([
-        'application_scope' => 'PRODUCT_CATEGORY', 'product_category_id' => $category->id,
+        'application_scope' => 'PRODUCT_CATEGORY', 'product_category_ids' => [$category->id],
     ]))->assertCreated()->json('data.id');
     $byProduct = $this->postJson('/api/commission-configurations', activeValidationCommissionPayload([
-        'application_scope' => 'PRODUCT', 'product_id' => $product->id,
+        'application_scope' => 'PRODUCT', 'product_ids' => [$product->id],
     ]))->assertCreated()->json('data.id');
 
     $category->update(['is_active' => false]);
     $product->category()->update(['is_active' => false]);
 
     $this->patchJson("/api/commission-configurations/{$byCategory}", [
-        'application_scope' => 'PRODUCT_CATEGORY', 'product_category_id' => $category->id, 'priority' => 3,
+        'application_scope' => 'PRODUCT_CATEGORY', 'product_category_ids' => [$category->id], 'priority' => 3,
     ])->assertOk();
     $this->patchJson("/api/commission-configurations/{$byProduct}", [
-        'application_scope' => 'PRODUCT', 'product_id' => $product->id, 'priority' => 3,
+        'application_scope' => 'PRODUCT', 'product_ids' => [$product->id], 'priority' => 3,
     ])->assertOk();
 });
 
