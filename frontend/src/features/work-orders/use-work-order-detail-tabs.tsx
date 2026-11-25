@@ -111,7 +111,9 @@ export function useWorkOrderDetailTabs({
       value: 'tasks',
       label: t('workOrders.taskBoard.title'),
       icon: <ListChecks className="size-3.5" aria-hidden="true" />,
-      content: <WorkOrderTaskBoard workOrderId={workOrder.id} actionsContainer={actionsContainer} />,
+      content: (
+        <WorkOrderTaskBoard workOrderId={workOrder.id} workOrderType={workOrder.type} actionsContainer={actionsContainer} />
+      ),
     })
   }
 

@@ -4,7 +4,8 @@
  * `TableView domain="tasks"` panel (`work-order-tasks-section.tsx`, spec
  * 0133/D-10) with the grouped Lista/Board kanban pair. Orchestrates
  * `use-task-board-state.ts` (filters/selection/derived groups) and
- * `use-task-board-view-mode.ts` (persisted Lista/Board toggle); every view
+ * `use-task-board-view-mode.ts` (Roadmap/Lista/Board toggle, persisted per
+ * work order type: a project one opens on the Roadmap); every view
  * below only renders what it is handed.
  */
 
@@ -23,6 +24,7 @@ import { TaskBoardBulkBar } from '@/features/work-orders/task-board/task-board-b
 import { TaskBoardKanbanView } from '@/features/work-orders/task-board/task-board-kanban-view'
 import { TaskBoardKpis } from '@/features/work-orders/task-board/task-board-kpis'
 import { TaskBoardListView } from '@/features/work-orders/task-board/task-board-list-view'
+import { TaskBoardRoadmapView } from '@/features/work-orders/task-board/task-board-roadmap-view'
 import { TaskBoardSelectAllCheckbox } from '@/features/work-orders/task-board/task-board-select-all-checkbox'
 import { TaskBoardStageCreateDialog } from '@/features/work-orders/task-board/task-board-stage-create-dialog'
 import { TaskBoardTemplateReloadDialog } from '@/features/work-orders/task-board/task-board-template-reload-dialog'
@@ -31,9 +33,12 @@ import { DEFAULT_TASK_BOARD_FILTERS } from '@/features/work-orders/task-board/ta
 import { useInvalidateTaskBoard } from '@/features/work-orders/task-board/use-task-board-mutations'
 import { useTaskBoardState } from '@/features/work-orders/task-board/use-task-board-state'
 import { useTaskBoardViewMode } from '@/features/work-orders/task-board/use-task-board-view-mode'
+import type { WorkOrderType } from '@/features/work-orders/types'
 
 interface WorkOrderTaskBoardProps {
   workOrderId: number
+  /** Picks the default view: the Roadmap for a project work order, Lista otherwise. */
+  workOrderType: WorkOrderType
   /**
    * Header slot of the hosting card (the detail's Task | Costi strip): the
    * "Nuovo task" button and the "..." menu are portaled there, so they live
@@ -42,7 +47,7 @@ interface WorkOrderTaskBoardProps {
   actionsContainer: HTMLElement | null
 }
 
-export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderTaskBoardProps) {
+export function WorkOrderTaskBoard({ workOrderId, workOrderType, actionsContainer }: WorkOrderTaskBoardProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const invalidateBoard = useInvalidateTaskBoard(workOrderId)
@@ -62,7 +67,7 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
   )
 
   const state = useTaskBoardState(workOrderId)
-  const { viewMode, setViewMode } = useTaskBoardViewMode()
+  const { viewMode, setViewMode } = useTaskBoardViewMode(workOrderType)
   const [isCreatingStage, setIsCreatingStage] = useState(false)
   const [isReloadingTemplate, setIsReloadingTemplate] = useState(false)
 
@@ -171,6 +176,16 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
                   {t('workOrders.taskBoard.filters.reset')}
                 </Button>
               </div>
+            ) : viewMode === 'roadmap' ? (
+              <TaskBoardRoadmapView
+                groups={state.groups}
+                allGroups={state.allGroups}
+                today={state.today}
+                isReadOnly={state.isReadOnly}
+                selectedTaskIds={state.selectedTaskIds}
+                onToggleSelection={state.toggleTaskSelection}
+                onOpenTask={openTask}
+              />
             ) : viewMode === 'kanban' ? (
               <TaskBoardKanbanView
                 workOrderId={workOrderId}

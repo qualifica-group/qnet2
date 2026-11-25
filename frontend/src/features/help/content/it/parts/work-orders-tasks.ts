@@ -3,6 +3,30 @@ import type { HelpSection } from '../../../types'
 /** Task-tab sections of the work-orders guide, split out to stay under the file-size limit. */
 export const taskSections: HelpSection[] = [
     {
+      id: 'task-board-roadmap',
+      title: 'Task: vista Roadmap',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Nella scheda **Task** scegli la vista dai pulsanti nella barra dei filtri: **Roadmap**, **Lista** o **Board**. La **Roadmap** mostra i task su una linea del tempo divisa in settimane: a sinistra le fasi con i loro task, a destra una barra per ogni task, dalla **Data inizio** alla **Data fine**. Una linea verticale segna **oggi**; all'apertura la linea del tempo scorre fino a oggi e si sposta in orizzontale per vedere il resto.",
+        },
+        {
+          type: 'list',
+          items: [
+            "Il colore della barra è quello della fase; una barra **rossa** è un task scaduto, **arancione** un task bloccato, **grigia** un task chiuso (con il titolo barrato). Passando il mouse sulla barra leggi titolo, date e stato.",
+            "Un task con una sola data compare come un **rombo** su quel giorno; un task senza date resta nella sua fase con la scritta **Senza date**.",
+            "Accanto al nome di ogni fase una barra sottile mostra il periodo coperto dai suoi task. I sotto-task stanno rientrati sotto il task padre.",
+            "Un clic sulla barra o sul titolo apre il task: le date si cambiano lì, oppure con l'azione massiva **Date**. La Roadmap non sposta le barre col trascinamento.",
+            "Filtri, ricerca, riquadri in alto e selezione multipla funzionano come nelle altre viste.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "Le **Commesse di Progetto** aprono la scheda Task sulla **Roadmap**, le **Commesse** sulla **Lista**. La vista che scegli si ricorda per te tra un accesso e l'altro, separatamente per i due tipi di commessa.",
+        },
+      ],
+    },
+    {
       id: 'task-board-rows',
       title: 'Task: righe e modifica veloce',
       blocks: [

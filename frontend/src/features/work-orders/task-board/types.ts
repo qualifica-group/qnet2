@@ -192,8 +192,8 @@ export interface TaskTemplateReloadConflictError extends ApiErrorResponse {
   data?: { completed_tasks_count: number }
 }
 
-/** The two board layouts toggled by D-5, persisted in `localStorage` (see `use-task-board-view-mode.ts`). */
-export type TaskBoardViewMode = 'list' | 'kanban'
+/** The board layouts (D-5 + the Roadmap timeline, 2026-11-25), persisted in `localStorage` per work order type (see `use-task-board-view-mode.ts`). */
+export type TaskBoardViewMode = 'roadmap' | 'list' | 'kanban'
 
 /** `end_date ?? start_date` due filter (D-6). */
 export type TaskBoardDueFilter = 'all' | 'today' | 'overdue' | 'this_week'

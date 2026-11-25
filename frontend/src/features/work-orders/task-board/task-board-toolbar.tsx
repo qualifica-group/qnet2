@@ -1,7 +1,7 @@
 /**
  * The filter bar above the board (D-5/D-6, AC-025), reshaped on Gestione
  * Richieste's dashboard bar (user directive 2026-09-22): one contained strip,
- * controls on top (live title search, "Modifica filtri", Lista/Board) and the
+ * controls on top (live title search, "Modifica filtri", Roadmap/Lista/Board) and the
  * applied-filter chips on their own horizontal line below. "Modifica filtri"
  * opens `TaskBoardFiltersSheet`, the only place the other filters are edited. CONTROLLED over `TaskBoardFilters`:
  * the mounting panel owns the value.
@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 
 /** A raised white strip (rung 3) floating on the board's rung-2 canvas: the controls read as a toolbar, not as another panel of content. */
 const BAR_CLASS = 'flex flex-col gap-2 rounded-xl bg-card px-3 py-2.5 shadow-sm ring-1 ring-border/70'
-const VIEW_MODES: readonly TaskBoardViewMode[] = ['list', 'kanban']
+const VIEW_MODES: readonly TaskBoardViewMode[] = ['roadmap', 'list', 'kanban']
 
 function isDefaultFilters(filters: TaskBoardFilters): boolean {
   return (

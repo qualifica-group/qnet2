@@ -7,6 +7,7 @@ import { createWorkOrderStage, fetchTaskBoard } from '@/features/work-orders/tas
 import { boardTask, taskBoardPayload, workOrderStage } from '@/features/work-orders/task-board/task-board-fixtures'
 import type { BoardStageGroup } from '@/features/work-orders/task-board/task-board-filters'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
+import type { WorkOrderType } from '@/features/work-orders/types'
 
 vi.mock('@/features/work-orders/task-board/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/work-orders/task-board/api')>()),
@@ -32,6 +33,9 @@ vi.mock('@/features/work-orders/task-board/task-board-list-view', () => ({
   ),
 }))
 vi.mock('@/features/work-orders/task-board/task-board-kanban-view', () => ({ TaskBoardKanbanView: () => null }))
+vi.mock('@/features/work-orders/task-board/task-board-roadmap-view', () => ({
+  TaskBoardRoadmapView: () => <section aria-label="roadmap" />,
+}))
 vi.mock('@/features/work-orders/task-board/task-board-toolbar', () => ({
   TaskBoardToolbar: ({ selectAllSlot }: { selectAllSlot?: ReactNode }) => <div>{selectAllSlot}</div>,
 }))
@@ -45,11 +49,11 @@ vi.mock('@/features/work-orders/task-board/task-board-bulk-bar', () => ({
 const fetchTaskBoardMock = vi.mocked(fetchTaskBoard)
 const createWorkOrderStageMock = vi.mocked(createWorkOrderStage)
 
-function renderBoard() {
+function renderBoard(workOrderType: WorkOrderType = 'processing') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <WorkOrderTaskBoard workOrderId={20} actionsContainer={document.body} />
+      <WorkOrderTaskBoard workOrderId={20} workOrderType={workOrderType} actionsContainer={document.body} />
     </QueryClientProvider>,
   )
 }
@@ -120,6 +124,27 @@ describe('WorkOrderTaskBoard — load task template (spec 0399)', () => {
 
     expect(await screen.findByText('No task yet in this work order.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Load task template' })).not.toBeInTheDocument()
+  })
+})
+
+describe('WorkOrderTaskBoard — default view by work order type', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    fetchTaskBoardMock.mockResolvedValue(taskBoardPayload())
+  })
+
+  it('opens a project work order on the Roadmap', async () => {
+    renderBoard('project')
+
+    expect(await screen.findByRole('region', { name: 'roadmap' })).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'stage groups' })).not.toBeInTheDocument()
+  })
+
+  it('opens a processing work order on the list', async () => {
+    renderBoard('processing')
+
+    expect(await screen.findByRole('list', { name: 'stage groups' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'roadmap' })).not.toBeInTheDocument()
   })
 })
 

@@ -17,6 +17,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: "Nelle schede **Commesse** di un Contratto o di un'Anagrafica vedi le commesse di tutti i tipi che puoi vedere, Progetto compreso.",
         },
+        {
+          type: 'note',
+          text: "Nel dettaglio di una commessa di progetto la scheda **Task** si apre sulla vista **Roadmap**, la linea del tempo dei task; con i pulsanti nella barra dei filtri passi a **Lista** o **Board** (vedi **Task: vista Roadmap** nella guida **Commesse**).",
+        },
       ],
     },
     {

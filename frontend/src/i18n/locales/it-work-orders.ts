@@ -222,8 +222,17 @@ export const workOrders = {
     headerMenuLabel: 'Altre azioni',
     loadError: 'Impossibile caricare il task board. Riprova.',
     viewToggle: {
+      roadmap: 'Roadmap',
       list: 'Lista',
       kanban: 'Board',
+    },
+    roadmap: {
+      label: 'Roadmap dei task',
+      taskColumn: 'Task',
+      noDates: 'Senza date',
+      today: 'Oggi',
+      blocked: 'Bloccato',
+      bar: '{{title}}: {{period}}, {{state}}',
     },
     kpi: {
       total: 'Task totali',

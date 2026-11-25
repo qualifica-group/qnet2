@@ -17,6 +17,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'In the **Work orders** tabs of a Contract or a Registry you see the work orders of every type you may see, Project included.',
         },
+        {
+          type: 'note',
+          text: 'In the detail of a project work order the **Tasks** tab opens on the **Roadmap** view, the timeline of the tasks; the buttons in the filter bar switch to **List** or **Board** (see **Tasks: Roadmap view** in the **Work Orders** guide).',
+        },
       ],
     },
     {

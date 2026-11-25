@@ -3,6 +3,30 @@ import type { HelpSection } from '../../../types'
 /** Task-tab sections of the work-orders guide, split out to stay under the file-size limit. */
 export const taskSections: HelpSection[] = [
     {
+      id: 'task-board-roadmap',
+      title: 'Tasks: Roadmap view',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In the **Tasks** tab pick the view with the buttons in the filter bar: **Roadmap**, **List** or **Board**. The **Roadmap** shows the tasks on a timeline split into weeks: on the left the phases with their tasks, on the right a bar for each task, from the **Start date** to the **End date**. A vertical line marks **today**; on opening the timeline scrolls to today and moves sideways to show the rest.",
+        },
+        {
+          type: 'list',
+          items: [
+            "The bar takes the colour of its phase; a **red** bar is an overdue task, an **orange** one a blocked task, a **grey** one a closed task (with its title struck through). Hovering the bar shows title, dates and state.",
+            "A task with a single date shows as a **diamond** on that day; a task with no date stays in its phase marked **No dates**.",
+            "Next to each phase name a thin bar shows the period its tasks cover. Sub-tasks sit indented under their parent task.",
+            "A click on the bar or on the title opens the task: dates are changed there, or with the **Dates** bulk action. The Roadmap does not move bars by dragging.",
+            "Filters, search, the tiles at the top and multiple selection work as in the other views.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "**Project Work Orders** open the Tasks tab on the **Roadmap**, **Work Orders** on the **List**. The view you pick is remembered for you between sessions, separately for the two work order types.",
+        },
+      ],
+    },
+    {
       id: 'task-board-rows',
       title: 'Tasks: rows and quick editing',
       blocks: [

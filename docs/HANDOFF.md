@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Task board: vista Roadmap, predefinita nelle Commesse di Progetto (richiesta utente 2026-11-25) — VERDE, solo frontend, NON COMMITTATO
+
+- Terza vista `TaskBoardViewMode = 'roadmap' | 'list' | 'kanban'` (toggle Roadmap | Lista | Board in `task-board-toolbar.tsx`), disponibile su entrambi i tipi di commessa. Nessun endpoint nuovo: legge `start_date`/`end_date` del payload `task-board`.
+- Geometria pura `task-board/task-board-roadmap.ts` (`roadmapSpan`, `buildRoadmapRange` = da lunedi', +1 settimana di margine, min 8 settimane, include sempre oggi; `roadmapBar`, `mergeSpans`, `roadmapPx`, `ROADMAP_DAY_WIDTH_PX = 14`). Righe `task-board-roadmap-row.tsx`, vista `task-board-roadmap-view.tsx` (finestra calcolata su `allGroups` non filtrati, righe filtrate; scroll iniziale a oggi - 2 settimane).
+- Barra: colore fase (`stageAccentAt`), rossa scaduto, `bg-warning` bloccato, grigia chiuso; una sola data = rombo; nessuna data = "Senza date" nella sua fase; "Senza fase" nascosta se vuota. Clic su barra/titolo apre il task; nessun drag delle date (fuori scope, si potra' fare con l'endpoint bulk `dates`).
+- `useTaskBoardViewMode(workOrderType)`: chiavi localStorage per tipo (`work-orders.task-board.view-mode` invariata per processing, `project-work-orders.task-board.view-mode` per project); default `roadmap` per project, `list` per processing. `WorkOrderTaskBoard` riceve `workOrderType` da `use-work-order-detail-tabs.tsx`.
+- Test: `task-board-roadmap.test.ts`, `task-board-roadmap-view.test.tsx`, `use-task-board-view-mode.test.ts`, `work-order-task-board.test.tsx` (default per tipo). Vitest work-orders 51 file / 413 test + help verdi, ESLint pulito, `tsc -b --force` EXIT 0.
+- Manuale: guide `parts/work-orders-tasks.ts` sezione `task-board-roadmap` (IT/EN) + nota in `project-work-orders.ts` overview; manuale Claude Docs aggiornato (paragrafo "Vista Roadmap" prima della vista Lista + paragrafo Commesse/Commesse di Progetto). DA FARE: rigenerare il PDF del manuale.
+
 ## Commesse e Commesse di Progetto: due moduli distinti (richiesta utente 2026-11-25) — VERDE, branch `feature/project-work-orders-module`, NON COMMITTATO
 
 - Spec 0359 D-12 + AC-016 rev. + AC-016-bis. Punto unico backend `App\Services\WorkOrders\WorkOrderTypeAccess` (tipo -> risorsa `work-orders`/`project-work-orders`, permesso `view`/`viewAny`, path `/work-orders/{id}` o `/project-work-orders/{id}`); frontend `features/work-orders/work-order-type-routing.ts`.
