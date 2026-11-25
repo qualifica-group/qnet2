@@ -3,11 +3,11 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Campi Avvalimenti dalla 320 alla 43 (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+## Fonti doppie unificate: seeder one-shot (richiesta utente 2026-11-25) — VERDE, ESEGUITO SU qnet2 LOCALE (verificato), COMMITTATO
 
-- Seeder one-shot `QualificaAvvalimentiTenderFieldsSeeder`: la categoria 43 "Gare - Avvalimenti" riceve in copia i campi Offerta (5) e Commessa (31) della 320 "[OLD] Avvalimenti_AVV", con flag obbligatorio/sync e in coda ai propri; le sezioni dei form 320 vanno in coda al form 43 dello stesso contesto (Offerta: dopo "Documenti da allegare"; Commessa: form nuovo). La 320 tiene i suoi campi (le 125 commesse legacy ne mostrano i valori). Id con controllo del nome: se non combaciano si ferma. Idempotente.
-- Da eseguire in produzione: `php artisan db:seed --class=QualificaAvvalimentiTenderFieldsSeeder`. Provato sul DB locale in transazione annullata: 43 -> 12 campi Offerta, 31 Commessa, 4 sezioni Commessa.
-- Verdi: Pest `tests/Feature/Seeding/QualificaAvvalimentiTenderFieldsSeederTest.php` (4), Pint. Manuale: nessun impatto (configurazione dati).
+- `SourcesDeduplicationSeeder`: Passa parola (14) e Passa parola + buono amazon (15) -> Passaparola (2); Contatto Diretto (11) -> Diretto (1); Segnalatore (9) -> Derivanti da CAF e Segnalazioni (12, scelta mia: l'utente non l'ha indicata). Sposta i riferimenti di `UsageMap::USAGES['sources']` (anagrafiche, lead, campagne, preventivi) e cancella il doppione. Id verificati col nome (stop se diversi), idempotente, in transazione.
+- Test `tests/Feature/Seeding/SourcesDeduplicationSeederTest.php` + suite Sources: 37 verdi; Pint ok. Manuale: nessun impatto.
+- Eseguito sul DB locale dall'utente e verificato (nessun riferimento ai doppioni, nessun orfano, 4 delete in activity_log). Per altri ambienti: `php artisan db:seed --class=SourcesDeduplicationSeeder --force`. Sul DB locale ha spostato 2+1 anagrafiche/preventivo di Contatto Diretto e 2 anagrafiche di Segnalatore. 14, 15 e 11 arrivano dal legacy (old_id 5, 6, 4): un nuovo import delle fonti li ricreerebbe.
 
 ## Commissioni: categorie non attive ([OLD]) sceglibili nel Configuratore (richiesta utente 2026-11-25) — VERDE, COMMITTATO
 
@@ -16,6 +16,12 @@
 - Fallimenti NON legati, gia' presenti: `ApiDocsDescriptionsTest` (operazioni senza descrizione: attachments/read, merge, work-orders page...), `SupplierCommissionDirectionTest` AC-004 (drop FK per nome su SQLite).
 - Verifica su dati reali: il selettore restituisce 190 categorie con "OLD", compresa id 246 "[OLD] Ente_Iso".
 - Prossimo (piano approvato dall'utente, da fare): regola commissione su PIU' categorie / PIU' prodotti (tabelle pivot, `product_category_ids[]`/`product_ids[]`, selettore multiplo). I dati esistenti restano come sono (niente accorpamento delle 2.441 regole). Serve ok esplicito per `php artisan migrate` su qnet2.
+
+## Campi Avvalimenti dalla 320 alla 43 (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Seeder one-shot `QualificaAvvalimentiTenderFieldsSeeder`: la categoria 43 "Gare - Avvalimenti" riceve in copia i campi Offerta (5) e Commessa (31) della 320 "[OLD] Avvalimenti_AVV", con flag obbligatorio/sync e in coda ai propri; le sezioni dei form 320 vanno in coda al form 43 dello stesso contesto (Offerta: dopo "Documenti da allegare"; Commessa: form nuovo). La 320 tiene i suoi campi (le 125 commesse legacy ne mostrano i valori). Id con controllo del nome: se non combaciano si ferma. Idempotente.
+- Da eseguire in produzione: `php artisan db:seed --class=QualificaAvvalimentiTenderFieldsSeeder`. Provato sul DB locale in transazione annullata: 43 -> 12 campi Offerta, 31 Commessa, 4 sezioni Commessa.
+- Verdi: Pest `tests/Feature/Seeding/QualificaAvvalimentiTenderFieldsSeederTest.php` (4), Pint. Manuale: nessun impatto (configurazione dati).
 
 ## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, NON COMMITTATO
 
