@@ -276,6 +276,27 @@ it('cities: the aliased row ranks first, ahead of same-prefix Italian names', fu
         ->assertJsonPath('data.0.name', 'Roma');
 });
 
+it('cities: a comune the dataset spells as one word is found and shown by its official name', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $state = State::factory()->create();
+    // world.sql stores the old spelling "Sannicandro Garganico"; ISTAT and the
+    // users write "San Nicandro Garganico", which the prefix LIKE alone misses.
+    City::factory()->forState($state)->create(['name' => 'Sannicandro Garganico']);
+    City::factory()->forState($state)->create(['name' => 'Sannicandro di Bari']);
+
+    $this->getJson('/api/cities?search=San Nicandro')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'San Nicandro Garganico');
+
+    $this->getJson('/api/cities?search=Sannicandro')
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.name', 'San Nicandro Garganico')
+        ->assertJsonPath('data.1.name', 'Sannicandro di Bari');
+});
+
 it('cities: the English name keeps working as a search term', function () {
     Sanctum::actingAs(User::factory()->create());
 

@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Comune San Nicandro Garganico non trovabile (segnalazione utente 2026-11-25) — VERDE, COMMITTATO
+
+- Il comune c'era (city id 60310, Foggia) ma world.sql lo scrive "Sannicandro Garganico": la ricerca a prefisso di `/api/cities` non lo trovava digitando "San Nicandro". Aggiunto `'Sannicandro Garganico' => 'San Nicandro Garganico'` a `GeoNameLocalizer::TO_ITALIAN`: mostrato col nome ISTAT, trovato con entrambe le grafie, filtri tabellari coerenti (bijection). Colonna DB invariata, quindi l'import (`ItalianGeoLocalizer`, che mappa all'inverso) resta giusto.
+- Test: `GeoLookupTest` (nuovo caso) + `GeoNameLocalizerTest`; suite Geo, PersonalData, Registries, Companies, CompanySites, Tables, Unit/Support verdi; Pint ok. Manuale: nessun impatto.
+- Stesso problema possibile per altri comuni che il dataset scrive diversamente (gia' noti in `ItalianGeoLocalizer`: "Godega" per Godega di Sant'Urbano, "Cancello-Arnone" per Cancello ed Arnone): non corretti, da decidere.
+- `tests/Feature/Migration/CommissionConfigurationsSourceImportTest`: 4 rossi dovuti al lavoro commissioni non committato, non a questa modifica.
+
 ## Fonti doppie unificate: seeder one-shot (richiesta utente 2026-11-25) — VERDE, ESEGUITO SU qnet2 LOCALE (verificato), COMMITTATO
 
 - `SourcesDeduplicationSeeder`: Passa parola (14) e Passa parola + buono amazon (15) -> Passaparola (2); Contatto Diretto (11) -> Diretto (1); Segnalatore (9) -> Derivanti da CAF e Segnalazioni (12, scelta mia: l'utente non l'ha indicata). Sposta i riferimenti di `UsageMap::USAGES['sources']` (anagrafiche, lead, campagne, preventivi) e cancella il doppione. Id verificati col nome (stop se diversi), idempotente, in transazione.
