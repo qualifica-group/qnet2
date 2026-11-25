@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0433-ai-assistant-agent" status="approved" owner="committente" date="2026-11-26">
+
+  <goal>
+    L'assistente AI di QNET2 (spec 0347) smette di solo rispondere e agisce: legge i dati con i permessi della persona
+    collegata e prepara creazioni, modifiche ed eliminazioni che partono SOLO dal clic su "Conferma" in un'anteprima.
+    Il ciclo dell'agente sta in Laravel (modulo `AiAssistant`) e gira in un lavoro in coda; gli strumenti (lettura,
+    ricerca delle operazioni, codice di lettura, preparazione scritture) sono quelli del connettore MCP, usato come
+    server di strumenti. Il `super-admin` ottiene due pagine: Impostazioni dell'assistente (modello da OpenRouter,
+    istruzioni aggiuntive, tetti di spesa, interruttore generale) e Costi dell'assistente.
+    Questa spec congela i contratti prima del codice; non contiene codice applicativo.
+  </goal>
+
+  <context>
+    Fonti (repository del connettore, non versionate qui): `spec.md` e `intervista.md` della feature "assistente-ai",
+    ADR 0019 (assistente in Laravel, connettore come server di strumenti), ADR 0020 (collegamento aperto dalla sessione
+    di QNET2, deroga B-4 per il solo assistente), ADR 0021 (conferma solo dal pulsante). Decisioni del committente
+    25-26/11/2026 con id Q dell'intervista; l'id Q e' riportato accanto a ogni decisione.
+
+    Base di codice verificata (QNET2 `79914fbf4`):
+    - `backend/app/Http/Controllers/AiAssistant/` (`AiAssistantConfigController`, `AiConversationController`,
+      `AiMessageController`, `AiAttachmentController`), `app/Actions/AiAssistant/SendAiMessage` (+ `SendAiMessageData`),
+      `app/Services/AiAssistant/` (`AiPromptBuilder`, `AiSystemInstructions`, `Drivers/*` con `OpenRouterDriver`,
+      `Mentions/*`), modelli `AiConversation` (`user_id`, `title`, `last_message_at`) e `AiMessage`, enum `AiMessageRole`
+      (`user`|`assistant`), `AiConversationPolicy::PERMISSION` = `ai-assistant.use`, rotte in
+      `backend/routes/api/ai-assistant.php` (prefisso `ai-assistant`, middleware `can:ai-assistant.use`,
+      `EnsureAiAssistantEnabled`), config `backend/config/ai-assistant.php`, comando `ai-assistant:prune` (30 giorni).
+    - Modulo MCP: `routes/api/mcp-links.php` (`POST mcp/links`, `mcp/links/exchange`, `mcp/links/{mcpLink}/revoke`, solo
+      chiave del client API), `App\Http\Controllers\McpLinks\McpLinkController`, `App\Services\McpLinks\McpLinkService`
+      (`open`, `exchange`, `revoke`, `dropForUser`), modello `McpLink`, enum `McpLinkReason`
+      (`link_revoked`, `link_expired`, `user_inactive`, `password_changed`, `user_deactivated`, ...).
+    - `POST /api/auth/refresh` (`AuthController::refresh`) cancella il token e ne crea uno nuovo;
+      `config/sanctum.php` `expiration` = `SANCTUM_EXPIRATION` (default 30 giorni).
+    - Ruolo `super-admin` e middleware alias `super-admin` (`EnsureSuperAdmin`, nessun permesso assegnabile), usato da
+      `GET /api/system-health` (`SystemHealthController`); pagina da imitare: `frontend/src/features/system-health`.
+    - `BusinessFunction` (modello, spec 0010), relazione `User::businessFunctions()` (pivot `business_function_user`).
+    - Coda: connessione `database`, `retry_after` = `DB_QUEUE_RETRY_AFTER` (1.900 s). Grafici: `recharts`.
+    - Involucro: `BaseApiController::ok()/created()/fail()`: `{ success, message, data }` (errori: `errors` opzionale).
+      Gli errori sono testi inglesi passati a `__()`, tradotti in `backend/lang/it.json`: le "chiavi i18n" di questa
+      spec sono quelle frasi inglesi.
+    - Limite per client `api-client` (`ThrottleApiClientRequests`): i token dello scambio MCP appartengono al client API
+      del connettore e dividono il suo limite al minuto con i client MCP (valore da controllare prima dell'uso).
+
+    Decisioni (id Q dell'intervista):
+    D-1  (Q1, Q9) Stesse operazioni dei connettori ChatGPT e Claude: elenco chiuso di 647 operazioni ammesse allineato
+         a QNET2 `79914fbf4`; le 219 escluse restano escluse. QNET2 rifiuta cio' che il ruolo non puo' fare e il rifiuto
+         torna alla persona, senza strade alternative.
+    D-2  (Q2, Q19, Q21) Stesso mascheramento dei client MCP. Una menzione `@` arriva al modello solo come tipo di record
+         e identificativo; il contenuto lo legge il modello tramite il connettore. Le 7 letture nuove di `79914fbf4`
+         entrano nel perimetro con i campi senza classe mascherati.
+    D-3  (Q3, Q16; ADR 0021) La conferma parte solo dal pulsante premuto dalla persona, un'anteprima e un clic per
+         record. Il modello non riceve mai `confirm_write`; "si" scritto in chat non conferma nulla.
+    D-4  (Q4, Q13) Tutti gli utenti: `ai-assistant.use` si da' a tutti i ruoli esistenti con una migrazione ed e'
+         preselezionato nella creazione di un ruolo nuovo; resta il modo per togliere l'assistente a un ruolo. In piu'
+         un interruttore generale (impostazioni, `enabled`).
+    D-5  (Q5) Conversazione privata. L'amministratore vede costi, mai testi. Nessuna memoria fra conversazioni; le parti
+         vecchie si riassumono (campi `summary` e `summary_count` sulla conversazione); la persona puo' aprirne una nuova.
+    D-6  (Q6) Istruzioni aggiuntive dell'amministratore in coda a un nucleo fisso nel codice (identico byte per byte fra
+         le richieste, non modificabile da pagina), con autore e data di ogni modifica (registro delle attivita').
+         Tetto di lunghezza in configurazione (`instructions_max_chars`).
+    D-7  (Q7, Q14) Tetto mensile per persona e totale, in dollari, modificabili; raggiunto il tetto il turno si chiude
+         con stato `limit_reached` e testo fisso. Prenotazione del costo massimo prima di ogni chiamata al modello, in
+         una transazione con blocco dei contatori del mese (per persona e totale).
+    D-8  (Q10; ADR 0019, 0020) Ciclo in Laravel, coda dedicata `ai-assistant`, un solo tentativo per lavoro. Il
+         collegamento al connettore si apre con una chiamata interna dalla sessione attiva, non con una rotta del
+         browser (vedi `internal_contract`).
+    D-9  (Q11) Le due pagine e le loro API solo per `super-admin`, senza permesso assegnabile; le API rifiutano gli altri
+         ruoli lato server (middleware `super-admin`).
+    D-10 (Q12) "Reparto" = funzione aziendale (`BusinessFunction`): il costo di una chiamata si divide in parti uguali
+         fra le funzioni della persona fotografate al momento del messaggio che avvia il turno; "Senza funzione" per chi
+         non ne ha. Il registro dei costi e' separato dalle conversazioni e non si cancella con loro.
+    D-11 (Q15, Q17) Nessun allegato per ora (modello di solo testo): campo nascosto, backend rifiuta allegati nuovi,
+         gli allegati gia' salvati si scaricano ancora.
+    D-12 (Q18) Le conversazioni esistenti possono andare perse se lo schema nuovo lo richiede; chat, pagina e menzioni
+         restano quelle di adesso, arricchite con le azioni.
+    D-13 (Q20) Modello predefinito provvisorio `deepseek/deepseek-v4-flash-0731`; la scelta definitiva viene dalla prova
+         su staging fra questo e `z-ai/glm-5.3` (al massimo 5 dollari). Solo modelli con chiamata di strumenti e solo
+         testo. Instradamento OpenRouter per richiesta: fornitori senza conservazione (`provider.zdr`,
+         `data_collection: deny`), `require_parameters`, `sort: throughput`, `session_id` = id conversazione,
+         `provider.max_price` calcolato dalla prenotazione; valori nelle impostazioni.
+    D-14 (Q8) Ramo di lavoro da `staging`, PR verso `staging` rivista dal collega; produzione dopo, con conferma a ogni
+         rilascio. Un rilascio di QNET2 cambia `release_commit`: le scritture dell'assistente restano sospese finche'
+         il connettore non e' riallineato.
+    D-15 (derivata, ADR 0021) Il browser legge lo stato del turno a intervalli (TanStack Query, nessun processo PHP
+         aperto, nessun SSE, nessun Reverb). Il lavoro in coda aggiorna lo stato man mano che il modello risponde.
+    D-16 (derivata, spec.md) Un solo turno attivo per conversazione. Il messaggio della persona si salva PRIMA del turno
+         e non si cancella se il turno fallisce (supera D-13 della spec 0347).
+    D-17 (derivata, ADR 0021) Mentre il turno aspetta la conferma nessun lavoro resta in esecuzione: lo stato e'
+         salvato; si accoda un lavoro ritardato alla scadenza dell'anteprima (10 minuti), che riprende il turno con
+         esito `expired` solo se il turno aspetta ancora quella stessa anteprima.
+    D-18 (derivata, spec.md) Un lavoro di ripresa controlla lo stato prima di agire (riprende solo da `queued` o dal
+         ritorno della conferma attesa): un lavoro doppio non fa nulla.
+    D-19 (derivata, spec.md) La scheda dell'anteprima mostra SOLO il contenuto restituito dal connettore e salvato nello
+         stato del turno, mai testo scritto dal modello.
+    D-20 (assunta, da confermare) `cancelled` e' lo stato di un turno chiuso senza esito perche' il collegamento e' caduto
+         (uscita, rinnovo del token, disattivazione) o la conversazione e' stata eliminata. Non esiste una rotta "ferma
+         il turno": l'annullamento di un'anteprima NON cancella il turno, che riprende con esito `cancelled` dello
+         strumento e il modello lo comunica.
+  </context>
+
+  <supersedes spec="0347-ai-assistant-chat">
+    <item>0347 scope/out "Tool use / function calling: l'assistente non interroga il DB da solo, vede solo cio' che
+      l'utente menziona": SUPERATO. L'assistente legge e prepara scritture tramite gli strumenti `search_operations`,
+      `list_records`, `run_read_code`, `prepare_write` del connettore (D-1, D-3). Il confine resta: nessuna richiesta di
+      QNET2 verso se stessa per conto del modello, tutto passa dal connettore.</item>
+    <item>0347 D-17 "Fuori scope: ... scelta del modello dall'interfaccia": SUPERATO. Il `super-admin` sceglie il modello
+      dall'elenco di OpenRouter nelle impostazioni (D-13); le variabili `AI_ASSISTANT_OPENROUTER_MODEL` e simili restano
+      solo come valore iniziale/fallback, la chiave `AI_ASSISTANT_OPENROUTER_API_KEY` resta solo in `.env`.</item>
+    <item>0347 scope/out "limiti di spesa o quote per utente; dashboard costi (i token restano salvati sui messaggi)":
+      SUPERATO. Tetti per persona e totali (D-7) e pagina Costi (D-10), con registro separato dai messaggi.</item>
+    <item>Conseguenze sullo stesso perimetro: 0347 D-8 (SSE dal POST) e D-14 "Coda/worker per lo streaming" sono sostituiti
+      da turno in coda con interrogazione periodica (D-8, D-15); 0347 D-13 (messaggio utente cancellato se il provider
+      fallisce) da D-16; 0347 D-9 (ultimi 20 messaggi senza riassunto) da riassunto + bilancio di contesto in token (D-5);
+      0347 D-10 (dati delle menzioni inviati al provider) da D-2; 0347 AC-005, AC-006, AC-014, AC-020, AC-021 e il
+      contratto `POST .../messages` come flusso SSE decadono. Restano validi permessi, proprieta' delle conversazioni,
+      allegati gia' salvati (download), menzioni (ricerca `for-select`), guida in-app della pagina, retention 30 giorni.</item>
+  </supersedes>
+
+  <scope>
+    <in>
+      <item>Contratti HTTP del modulo `AiAssistant` per la persona (avvio turno, stato turno, conferma/annullamento
+        anteprima, conversazioni, config) e per il `super-admin` (impostazioni, elenco modelli, fornitori, costi).</item>
+      <item>Contratto interno QNET2 -&gt; modulo MCP (apertura del collegamento dalla sessione) e riferimento al contratto
+        dell'ingresso del connettore (implementato nel repository del connettore).</item>
+      <item>Stati del turno, anteprima, passi, testi fissi d'errore, casi di prova.</item>
+    </in>
+    <out>
+      <item>Le 219 operazioni escluse dall'elenco chiuso del connettore.</item>
+      <item>Allegati e immagini con modelli multimodali; memoria fra conversazioni; tempo reale con Reverb o websocket.</item>
+      <item>Rotta per fermare un turno in corso (D-20); tetti di spesa dentro OpenRouter (li applica QNET2).</item>
+      <item>Conversione dei costi in euro (dollari, come li addebita OpenRouter).</item>
+      <item>Rilascio in produzione di assistente e connettore; processo della coda in Ploi, chiave OpenRouter, segreto
+        dell'assistente nel `.env`, regola nginx: passi del committente o del collega.</item>
+      <item>Controllo di ChatGPT in modalita' Chat (da fare dopo questa funzione, a parte).</item>
+      <item>Questioni normative e di protezione dei dati: nessuna.</item>
+      <item>Nessun codice applicativo in questo ticket: solo spec e HANDOFF.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <conventions>
+      Tutte le rotte sono sotto `/api/ai-assistant/` dentro il gruppo `auth:sanctum` di `routes/api.php`, nessun throttle
+      (backend.md §2), involucro `{ success, message, data }`; errori `{ success: false, message, errors? , data? }`.
+      Rotte della persona: middleware `can:ai-assistant.use`; senza permesso 403. Rotte del `super-admin`: middleware
+      `super-admin` (403 con "This section is reserved to the super-admin."), nessun permesso assegnabile.
+      Le rotte della persona, tranne `config`, rispondono 404 `{ success: false }` quando entrambe le superfici
+      (`floating_enabled`, `page_enabled`) sono spente (come 0347 AC-032); le rotte `super-admin` NON dipendono da quelle
+      superfici. Le conversazioni sono della proprieta' dell'utente (`AiConversationPolicy`): altrui = 403.
+      Date ISO-8601; importi in dollari come stringhe decimali con 6 cifre (`"0.001234"`) per evitare errori in virgola
+      mobile; prezzi dei modelli in dollari per milione di token, stringhe decimali.
+    </conventions>
+
+    <shared_types>
+      <!-- AiConversation (come 0347; `active_turn` compare solo nel dettaglio) -->
+      { "id": int, "title": string, "last_message_at": iso8601|null, "created_at": iso8601,
+        "messages": AiMessage[]?, "active_turn": AiTurn|null? }
+      <!-- AiMessage: invariato rispetto a 0347 (mentions: [{module, id, label}], attachments, model, token) -->
+      <!-- AiTurnStatus -->
+      "queued"|"running"|"awaiting_confirmation"|"completed"|"failed"|"cancelled"|"limit_reached"
+      <!-- AiTurn -->
+      { "id": int, "conversation_id": int, "status": AiTurnStatus,
+        "user_message_id": int,
+        "assistant_text": string,            <!-- testo parziale mentre `running`, finale a turno chiuso -->
+        "assistant_message": AiMessage|null, <!-- solo con `completed` (e `limit_reached`/`failed` con testo parziale salvato) -->
+        "steps": AiTurnStep[],
+        "preview": AiPreview|null,           <!-- l'anteprima aperta o l'ultima del turno -->
+        "queue_position": int|null,          <!-- solo con `queued`, se disponibile -->
+        "error_code": AiTurnErrorCode|null, "error_message": string|null,  <!-- testo fisso tradotto -->
+        "created_at": iso8601, "updated_at": iso8601, "finished_at": iso8601|null }
+      <!-- AiTurnStep: etichetta breve gia' tradotta nella lingua del turno (it|en) -->
+      { "index": int, "tool": "search_operations"|"list_records"|"run_read_code"|"prepare_write",
+        "label": string, "state": "running"|"done"|"failed" }
+      <!-- AiPreview: contenuto del connettore, mai testo del modello (D-19) -->
+      { "id": string,                        <!-- identificativo dell'anteprima del connettore -->
+        "operation": string,                 <!-- identificativo dell'operazione dell'elenco chiuso -->
+        "record": { "type": string, "id": int|string|null, "label": string|null },
+        "changes": [ { "field": string, "label": string, "before": mixed, "after": mixed } ],
+        "effects": string[],
+        "expires_at": iso8601,
+        "state": "open"|"confirmed"|"cancelled"|"expired"|"rejected"|"uncertain"|"stale",
+        "outcome": AiPreviewOutcome|null }
+      <!-- AiPreviewOutcome: esito della scrittura dopo il clic -->
+      "succeeded"|"rejected"|"uncertain"|"expired"|"cancelled"|"stale"
+      <!-- AiTurnErrorCode (testi fissi nella tabella `fixed_texts`) -->
+      "model_unavailable"|"connector_unavailable"|"link_lost"|"too_many_steps"|"turn_timeout"|"stream_error"|
+      "switched_off"|"limit_person"|"limit_total"|"internal"
+    </shared_types>
+
+    <state_machine>
+      queued -&gt; running (il lavoro parte) | cancelled (collegamento caduto o conversazione eliminata prima della partenza).
+      running -&gt; awaiting_confirmation (il connettore ha restituito un'anteprima valida da `prepare_write`)
+              | completed | failed | limit_reached | cancelled.
+      awaiting_confirmation -&gt; queued (clic Conferma, clic Annulla o scadenza: il turno riprende in coda con l'esito come
+              risultato dello strumento) | cancelled.
+      completed, failed, limit_reached, cancelled sono finali. Un solo turno non finale per conversazione.
+      Un turno fermo in `queued` o `running` oltre la durata massima + margine viene chiuso `failed` (`turn_timeout`)
+      dallo scheduler, mai riconsegnato (un solo tentativo, D-8).
+    </state_machine>
+
+    <endpoint method="GET" path="/api/ai-assistant/config">
+      <request>nessun parametro. Autorizzazione: `can:ai-assistant.use` (anche con le superfici spente, come 0347).</request>
+      <response status="200">
+        data: { "floating_enabled": bool, "page_enabled": bool, "enabled": bool,  <!-- interruttore generale -->
+          "configured": bool,            <!-- chiave OpenRouter presente e modello scelto -->
+          "driver": "openrouter"|null, "model": string|null, "attachments_enabled": bool,  <!-- false con modello di solo testo -->
+          "limits": { "max_message_chars": int, "guide_max_chars": int, "max_mentions": int,
+                      "max_files": int, "max_file_size_kb": int, "accepted_mimes": string[],
+                      "poll_interval_ms": int },   <!-- intervallo di interrogazione del turno, da configurazione -->
+          "mention_modules": AiMentionModule[] }
+      </response>
+      <errors>401; 403 senza `ai-assistant.use`. Mai chiavi, `base_url` o segreti.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/conversations">
+      <request>invariato (0347): query `offset`, `limit` 1..100.</request>
+      <response status="200">{ "items": AiConversation[], "pagination": {...} }, solo dell'utente.</response>
+      <errors>401; 403; 422.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/ai-assistant/conversations">
+      <request>body vuoto.</request>
+      <response status="201">data: AiConversation (titolo vuoto fino al primo messaggio).</response>
+      <errors>401; 403.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/conversations/{conversation}">
+      <response status="200">data: AiConversation con `messages` e `active_turn` (il turno non finale, o null): il browser
+        che ricarica la pagina riprende l'interrogazione del turno.</response>
+      <errors>401; 403 (anche conversazione altrui); 404.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/ai-assistant/conversations/{conversation}">
+      <response status="200">data: null. Elimina messaggi, file, turni e stato dei turni; un turno non finale diventa
+        `cancelled`. Il registro dei costi NON si tocca (D-10).</response>
+      <errors>401; 403; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/ai-assistant/conversations/{conversation}/messages">
+      <!-- SOSTITUISCE il POST SSE di 0347 allo stesso percorso: stessa richiesta, risposta diversa -->
+      <request>multipart/form-data come 0347: `content` (1..max_message_chars), `mentions[N][module]`, `mentions[N][id]`
+        (max `max_mentions`), `page_guide_key`, `page_guide_text`, `locale` (`it`|`en`). `files[]` e' ancora nel
+        formato ma con `attachments_enabled=false` ogni file da' 422.</request>
+      <response status="202">data: { "user_message": AiMessage, "turn": AiTurn }  (turn.status = `queued`).
+        Il messaggio della persona e' gia' salvato; il turno e' accodato su `ai-assistant`. Nessuno stream.</response>
+      <errors>
+        401; 403 senza permesso o conversazione altrui o menzione non visibile (policy `view`); 404 conversazione;
+        409 turno gia' attivo nella conversazione ("The assistant is still working on your previous message.");
+        422 validazione, menzione inesistente, allegato con modello di solo testo ("Attachments are not available with the
+        current model."); 503 assistente spento ("The AI assistant is switched off.", `data.reason = "switched_off"`) o non
+        configurato ("The AI assistant is not configured.", `data.reason = "not_configured"`); in tali casi nessuna riga e
+        nessuna chiamata al modello. Il tetto di spesa NON e' un errore di avvio: si valuta prima di ogni chiamata e chiude
+        il turno con `limit_reached`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/conversations/{conversation}/turns/{turn}">
+      <request>nessun parametro; scopeBindings (il turno deve appartenere alla conversazione).</request>
+      <response status="200">data: AiTurn. Interrogazione periodica a `poll_interval_ms` finche' lo stato non e' finale
+        (`awaiting_confirmation` richiede ancora l'interrogazione per la scadenza).</response>
+      <errors>401; 403 (conversazione altrui); 404 turno non della conversazione.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/ai-assistant/conversations/{conversation}/turns/{turn}/confirm">
+      <request>JSON `{ "preview_id": string }` (solo l'identificativo; max 128 caratteri; FormRequest).</request>
+      <response status="202">data: AiTurn (status `queued`, preview.state `confirmed`, outcome ancora null: l'esito arriva
+        dal turno ripreso). La rotta controlla che l'anteprima appartenga a QUEL turno, a QUELLA conversazione e a
+        QUELLA persona, poi conferma tramite la rotta di conferma dell'ingresso del connettore (mai da uno strumento).</response>
+      <errors>
+        401; 403 conversazione altrui; 404 anteprima non del turno ("Preview not found.");
+        409 anteprima non piu' aperta, `data.reason` = `expired` | `already_used` | `not_open`
+        ("This preview is no longer open."); 422 forma di `preview_id`;
+        503 connettore non raggiungibile ("The assistant could not reach its tools. Try again later."): l'anteprima resta
+        `open` finche' non scade; esito incerto della conferma: nessuna ripetizione automatica, il turno riprende con
+        esito `uncertain` dopo la lettura di verifica del connettore.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/ai-assistant/conversations/{conversation}/turns/{turn}/cancel">
+      <request>JSON `{ "preview_id": string }`.</request>
+      <response status="202">data: AiTurn (status `queued`, preview.state `cancelled`). Il turno riprende con esito
+        `cancelled` dello strumento; nessuna scrittura.</response>
+      <errors>Come `confirm` (401, 403, 404, 409, 422).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/messages/{message}/attachments/{attachment}">
+      <response status="200">invariato (0347): download degli allegati gia' salvati.</response>
+      <errors>401; 403; 404.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/settings">
+      <request>solo `super-admin`.</request>
+      <response status="200">
+        data: { "enabled": bool,
+          "model_id": string,                         <!-- default provvisorio `deepseek/deepseek-v4-flash-0731` -->
+          "instructions": string,                     <!-- istruzioni aggiuntive; il nucleo fisso NON e' mai esposto -->
+          "instructions_max_chars": int,
+          "spend_cap_person_usd": string|null, "spend_cap_total_usd": string|null,   <!-- mensili, null = nessun tetto -->
+          "routing": { "zdr": bool, "data_collection": "deny"|"allow", "require_parameters": bool,
+                       "sort": "throughput"|"price"|"latency" },
+          "openrouter_key_present": bool,             <!-- mai il valore -->
+          "updated_at": iso8601|null, "updated_by": { "id": int, "name": string }|null }
+      </response>
+      <errors>401; 403.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/ai-assistant/settings">
+      <request>
+        JSON con tutti i campi modificabili: `enabled` bool, `model_id` string (deve essere nell'elenco filtrato dei modelli),
+        `instructions` string (max `instructions_max_chars`), `spend_cap_person_usd`/`spend_cap_total_usd` decimale &gt;= 0
+        o null, `routing.*` come sopra. `openrouter_key_present`, `updated_*` non si scrivono.
+      </request>
+      <response status="200">data: come GET. Ogni modifica va nel registro delle attivita' con autore e data (D-6);
+        il valore delle istruzioni e' registrato, mai la chiave.</response>
+      <errors>401; 403; 422 (modello fuori elenco: "The selected model is not available."; istruzioni troppo lunghe;
+        tetti negativi).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/models">
+      <request>solo `super-admin`. Query: `search` (string, max 100), `offset` (default 0), `limit` (1..100, default 50).
+        Il backend legge OpenRouter (`GET /models` con `supported_parameters=tools`, poi solo ingresso e uscita
+        esclusivamente testo) e tiene l'elenco in cache per pochi minuti; il browser non parla mai con OpenRouter.</request>
+      <response status="200">{ "items": [ { "id": string, "name": string, "context_length": int,
+          "pricing": { "prompt": string, "completion": string, "input_cache_read": string|null, "request": string|null },
+          "selected": bool } ], "pagination": {...} }   <!-- prezzi in dollari per milione di token -->
+      </response>
+      <errors>401; 403; 422; 503 OpenRouter non raggiungibile ("The model list is not available. Try again later.").</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/models/providers">
+      <request>solo `super-admin`. Query `model_id` obbligatorio (stringa `autore/slug`). Id nella query e non nel percorso
+        perche' contiene `/`.</request>
+      <response status="200">data: [ { "name": string, "tag": string, "zdr": bool, "uptime_pct": number|null,
+          "throughput_tps": number|null, "latency_ms": number|null,
+          "pricing": { "prompt": string, "completion": string, "input_cache_read": string|null } } ]
+        <!-- solo fornitori senza conservazione dei dati e con strumenti; velocita'/latenza null quando OpenRouter non le da' -->
+      </response>
+      <errors>401; 403; 422; 503 come sopra.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/costs">
+      <request>solo `super-admin`. Query `from`, `to` (date `Y-m-d`, inclusive, `to` &gt;= `from`; default: dal primo del mese
+        a oggi, fuso dell'applicazione). Mostra cifre e conteggi, mai testi (Q5).</request>
+      <response status="200">
+        data: { "period": { "from": date, "to": date },
+          "totals": { "cost_usd": string, "requests": int, "input_tokens": int, "output_tokens": int,
+                      "cache_read_tokens": int, "reasoning_tokens": int },
+          "by_day": [ { "date": date, "cost_usd": string, "requests": int } ],
+          "by_function": [ { "business_function_id": int|null, "name": string|null, "cost_usd": string, "requests": int } ],
+          "by_user": [ { "user_id": int, "name": string|null, "cost_usd": string, "requests": int,
+                         "input_tokens": int, "output_tokens": int } ],
+          "by_model": [ { "model_id": string, "cost_usd": string, "requests": int,
+                          "input_tokens": int, "output_tokens": int } ],
+          "caps": { "month": "YYYY-MM", "spent_total_usd": string, "spend_cap_total_usd": string|null,
+                    "spend_cap_person_usd": string|null } }
+        <!-- by_function: `business_function_id`/`name` null = "Senza funzione" (etichetta lato UI); la somma di
+             `by_function` = `totals.cost_usd`. `name` null in by_user = persona eliminata. -->
+      </response>
+      <errors>401; 403; 422 (date non valide o intervallo oltre il massimo in configurazione).</errors>
+    </endpoint>
+  </data_contract>
+
+  <fixed_texts>
+    <!-- Chiavi `__()` inglesi (backend/lang/it.json per l'italiano). Mai nomi di classi, URL, chiavi o valori. -->
+    <text code="model_unavailable">The assistant could not reach the model. Try again later.</text>
+    <text code="connector_unavailable">The assistant could not reach its tools. Try again later.</text>
+    <text code="link_lost">Your session changed. Send your message again.</text>
+    <text code="too_many_steps">The assistant stopped: this request needed too many steps.</text>
+    <text code="turn_timeout">The assistant stopped: this request took too long.</text>
+    <text code="stream_error">The model returned an error. Try again.</text>
+    <text code="switched_off">The AI assistant has been switched off.</text>
+    <text code="limit_person">You have reached your monthly assistant spending limit.</text>
+    <text code="limit_total">The company monthly assistant spending limit has been reached.</text>
+    <text code="internal">Something went wrong. Try again later.</text>
+    <text route="messages">The assistant is still working on your previous message.</text>
+    <text route="messages">Attachments are not available with the current model.</text>
+    <text route="confirm|cancel">Preview not found.</text>
+    <text route="confirm|cancel">This preview is no longer open.</text>
+    <text route="preview-expired">The preview expired before it was confirmed. Nothing was written.</text>
+    <text route="preview-cancelled">You cancelled the preview. Nothing was written.</text>
+    <text route="preview-stale">The record changed after the preview. Nothing was written.</text>
+    <text route="preview-busy">Another preview is already waiting for your confirmation.</text>
+    <text route="settings">The selected model is not available.</text>
+    <text route="models">The model list is not available. Try again later.</text>
+  </fixed_texts>
+
+  <internal_contract>
+    <item>Apertura del collegamento (D-8, ADR 0020): metodo nuovo del modulo MCP, nome proposto
+      `McpLinkService::openForAssistant(User $user, PersonalAccessToken $token)`: chiamata interna dalla sessione attiva,
+      nessuna rotta nuova raggiungibile dal browser. Il collegamento appartiene al client API del connettore come quelli
+      della pagina di accesso e si distingue come assistente nel registro. E' legato al token di accesso: cade alla
+      revoca o scadenza (logout, `POST /api/auth/refresh`, `SANCTUM_EXPIRATION`) oltre che per le cause di
+      `McpLinkReason`. La credenziale esce in chiaro una sola volta; QNET2 la custodisce cifrata a riposo con il cast
+      `encrypted` di Laravel in un record per persona e token (nome della tabella: ticket di implementazione), campo
+      nascosto da serializzazione, risorse e registro delle attivita'. Mai nel browser, nei log, nelle risposte.</item>
+    <item>Due conversazioni della stessa persona con lo stesso token usano lo stesso collegamento: una sola anteprima
+      aperta in tutto; la seconda che prepara una scrittura riceve il rifiuto del connettore ("preview-busy").</item>
+    <item>Ingresso del connettore per l'assistente (implementato nel repository del connettore; qui solo il contratto
+      che QNET2 consuma). Nomi PROPOSTI, da congelare nel ticket del connettore: percorso MCP `/assistant/mcp`
+      (JSON-RPC `initialize`, `tools/list`, `tools/call`), percorso di conferma `/assistant/confirm` (riceve solo
+      `{ preview_id }`), intestazioni `X-Assistant-Secret` (segreto QNET2-connettore, confronto in tempo costante) e
+      `X-Assistant-Credential` (credenziale di collegamento della persona); `Host` uguale all'host pubblico configurato
+      del connettore, richieste su `127.0.0.1`. `tools/list` non pubblica `confirm_write`; `tools/call` di `confirm_write`
+      e' rifiutato. Senza entrambe le intestazioni, o con credenziale rifiutata dallo scambio: rifiuto con testo fisso e
+      nessuna richiesta di dati verso QNET2. `clientId` fisso dell'assistente nel registro di audit.</item>
+    <item>QNET2 non scrive il segreto dell'assistente in log, risposte o registro delle attivita'; la variabile e'
+      letta solo da `config()`. Client MCP di QNET2: client HTTP di Laravel, nessuna dipendenza nuova.</item>
+    <item>Tetti per turno (configurazione, valori iniziali nel ticket di implementazione): chiamate al modello, chiamate
+      di strumenti, durata del turno esclusa l'attesa della conferma, `max_tokens` per chiamata. Durata massima di un
+      lavoro sotto `DB_QUEUE_RETRY_AFTER` con margine. Superato un tetto: `failed` con `too_many_steps` o `turn_timeout`.</item>
+    <item>Registro dei costi: una riga per chiamata al modello (riassunti compresi) con persona, id conversazione (semplice
+      intero, nessuna FK), modello, fornitore, token di ingresso/uscita/cache/ragionamento, costo `usage.cost`, data; una
+      riga per funzione aziendale con la quota in parti uguali oppure "Senza funzione". Funzioni fotografate al salvataggio
+      del messaggio che avvia il turno (D-10). Prenotazione del costo massimo con contatori mensili bloccati in
+      transazione (D-7); `provider.max_price` passato a OpenRouter.</item>
+    <item>Memoria (D-5): soglia di riassunto in percentuale della finestra di contesto del modello (da OpenRouter);
+      risultati degli strumenti per intero solo nel turno in corso; riassunto salvato sulla conversazione, costo nel
+      registro; dopo `summary_count` pari a un massimo di configurazione l'assistente propone una conversazione nuova.</item>
+    <item>Prefisso della richiesta al modello identico fra le chiamate di una conversazione (nucleo, istruzioni aggiuntive,
+      strumenti in ordine fisso, poi riassunto e messaggi) per la cache dei fornitori; i blocchi di ragionamento si
+      rimandano invariati dopo una chiamata di strumento; errore a meta' stream (`finish_reason: error`) fallisce la
+      chiamata, senza ripetizione dopo uno strumento di scrittura.</item>
+    <item>Lista ammessa di strumenti nel codice di QNET2: `search_operations`, `list_records`, `run_read_code`,
+      `prepare_write`; ogni altro nome, `confirm_write` compreso, e' scartato.</item>
+  </internal_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Senza `ai-assistant.use` ogni rotta della persona risponde 403 e non scrive nulla; con le superfici spente rispondono 404 tranne `config`.</criterion>
+    <criterion id="AC-002">Le rotte `settings`, `models`, `models/providers`, `costs` rispondono 403 a ogni ruolo diverso da `super-admin`, anche con tutti i permessi assegnabili.</criterion>
+    <criterion id="AC-003">Con OpenRouter e connettore sostituiti da `Http::fake`, un elenco chiude il turno con una sola chiamata di strumento e `completed`; `POST .../messages` risponde 202 con turno `queued` e messaggio utente salvato.</criterion>
+    <criterion id="AC-004">Anteprima, conferma e ripresa: `prepare_write` porta il turno in `awaiting_confirmation` con `preview` uguale al contenuto del connettore anche quando il testo del modello descrive un'altra scrittura (D-19); `confirm` riprende il turno e l'esito arriva come risultato dello strumento.</criterion>
+    <criterion id="AC-005">`cancel` non scrive nulla e il turno riprende con esito `cancelled`; "si" scritto in chat non conferma; un `confirm_write` chiesto dal modello e' scartato.</criterion>
+    <criterion id="AC-006">`confirm`/`cancel` di un'anteprima di un'altra persona o di un'altra conversazione sono rifiutati (403/404); anteprima gia' usata o scaduta: 409 con `data.reason`.</criterion>
+    <criterion id="AC-007">Scadenza a browser chiuso: il lavoro ritardato riprende il turno con `expired` solo se il turno aspetta quella anteprima; un lavoro di ripresa doppio non fa nulla.</criterion>
+    <criterion id="AC-008">Un secondo `POST .../messages` con un turno non finale risponde 409; il messaggio della persona resta salvato dopo un fallimento del turno.</criterion>
+    <criterion id="AC-009">Rinnovo del token con un'anteprima aperta: il collegamento cade, l'anteprima arriva come scaduta, il turno chiude `cancelled` (`link_lost`); al messaggio successivo se ne apre uno nuovo.</criterion>
+    <criterion id="AC-010">Tetti per persona e totale: raggiunti, il turno chiude `limit_reached` con il testo fisso; con due turni contemporanei vicini al tetto parte solo uno; la prenotazione e' liberata dopo un fallimento senza costo e mai inferiore al costo restituito.</criterion>
+    <criterion id="AC-011">Costi attribuiti alle funzioni del messaggio anche se l'appartenenza cambia mentre il turno aspetta; "Senza funzione" per chi non ne ha; somma di `by_function` = `totals.cost_usd`; costi intatti dopo la cancellazione delle conversazioni.</criterion>
+    <criterion id="AC-012">Interruttore generale spento: avvio turno 503 `switched_off`; `config.enabled=false`. Errore a meta' stream: turno `failed` (`stream_error`), nessuna ripetizione dopo uno strumento di scrittura.</criterion>
+    <criterion id="AC-013">Riassunto oltre la soglia con costo nel registro; menzione che porta al modello solo tipo e identificativo; allegato rifiutato (422) con modello di solo testo; allegati salvati ancora scaricabili.</criterion>
+    <criterion id="AC-014">`PUT settings` rifiuta un modello fuori dall'elenco filtrato, scrive autore e data nel registro delle attivita'; `GET settings` non espone mai la chiave ne' il nucleo delle istruzioni.</criterion>
+    <criterion id="AC-015">Credenziale di collegamento e segreto dell'assistente assenti da risposte, log, registro delle attivita' e serializzazione; un segreto finto riconoscibile non compare in nessuna uscita.</criterion>
+    <criterion id="AC-016">Il connettore tiene le rotte `/api/ai-assistant/*` fuori dall'elenco chiuso (motivo E3); il riallineamento del connettore a QNET2 con l'assistente lo prova con un test.</criterion>
+    <criterion id="AC-017">(FE) Scheda dell'anteprima (operazione, record, campi prima/dopo, effetti, scadenza, Conferma/Annulla), stato del turno (in coda, passi, testo parziale), campo allegati nascosto, pagine Impostazioni e Costi (solo `super-admin`); testi IT/EN con parita' i18n e guide in-app IT/EN (`ai-assistant` e due pagine); verifica con Playwright su 375/768/1024.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna dipendenza nuova (client HTTP di Laravel per OpenRouter e MCP, `recharts` per i grafici, TanStack Query per l'interrogazione); se servisse, autorizzazione scritta.</item>
+    <item>Test senza chiamate reali: `Http::fake` con risposte scritte nel test; coda sincrona nei test; nessuna spesa su OpenRouter se non nella prova dal vivo su staging (al massimo 5 dollari, un solo record di prova scritto).</item>
+    <item>Ogni endpoint: FormRequest + autorizzazione server-side + risorse via `JsonResource`; rotte annidate con `scopeBindings()`; niente `throttle` (backend.md §2).</item>
+    <item>Chiave OpenRouter e segreto dell'assistente solo in `.env`/`config()`; mai in risposte, log, registro delle attivita' o bundle (nessuna `VITE_*`).</item>
+    <item>Migrazioni reversibili e nuove (mai modificare quelle committate); la migrazione dei permessi `ai-assistant.use` a tutti i ruoli segue il modello di `2026_12_26_100000_add_project_work_orders_view_permissions`.</item>
+    <item>Manuale utente (CLAUDE.md §4-bis): guide in-app IT/EN e manuale completo da aggiornare nella stessa modifica di implementazione.</item>
+    <item>Il rilascio con l'assistente cambia `release_commit`: il connettore va riallineato prima che le scritture riprendano.</item>
+    <item>Nessun commit nel repository di QNET2 senza ordine esplicito del committente dato in quel momento.</item>
+  </constraints>
+
+  <microtasks>
+    M-1 backend: tabelle (impostazioni a riga singola, turni con stato, registro dei costi, contatori, credenziale di collegamento), migrazione permesso a tutti i ruoli.
+    M-2 backend: `McpLinkService::openForAssistant`, client MCP, ciclo del turno in coda, prenotazione dei costi, riassunto.
+    M-3 backend: rotte persona (messaggi, turno, conferma, annullamento, config) con Pest e `Http::fake`.
+    M-4 backend: rotte `super-admin` (impostazioni, modelli, fornitori, costi).
+    M-5 connettore: ingresso dell'assistente (repository del connettore).
+    M-6 frontend: scheda anteprima, stato del turno, pagine Impostazioni e Costi, i18n, guide.
+    M-7 prova dal vivo su staging e scelta del modello.
+  </microtasks>
+
+  <open_points>
+    <item>D-20 (stato `cancelled` e assenza della rotta di arresto) e' una mia derivazione dal testo, non una frase del committente.</item>
+    <item>Forma esatta del contenuto dell'anteprima del connettore (`changes`, `effects`, `record`): normalizzata qui da `spec.md` ("operazione, record, campi prima e dopo, effetti, scadenza"), da riallineare alla busta reale del connettore nel ticket M-5.</item>
+    <item>Percorsi e nomi delle intestazioni dell'ingresso del connettore e il nome del metodo `openForAssistant`: proposti, non esistenti nel codice.</item>
+    <item>Valore del limite `api-client` del client del connettore sotto carico condiviso: da controllare prima dell'uso con tutti gli utenti.</item>
+  </open_points>
+
+</spec>
