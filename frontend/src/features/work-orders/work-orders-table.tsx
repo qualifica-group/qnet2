@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, type ReactNode } from 'react'
 import { PageHeader } from '@/components/page-header'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE, type TableConfigScope } from '@/features/table/use-table-config'
@@ -22,6 +22,8 @@ interface WorkOrdersGridProps {
   scope?: TableConfigScope
   /** Shows the working-phase tabs at the top right; only the "Commesse" page has them. */
   showWorkPhaseTabs?: boolean
+  /** Page action beside the tabs: the "Commesse di Progetto" create button (spec 0431). */
+  createAction?: ReactNode
 }
 
 /**
@@ -29,7 +31,13 @@ interface WorkOrdersGridProps {
  * (Modifica, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
  * and its dialogs. Permission gating is an affordance only; the backend re-authorizes each call.
  */
-export function WorkOrdersGrid({ domain, rowScope, scope, showWorkPhaseTabs = false }: WorkOrdersGridProps) {
+export function WorkOrdersGrid({
+  domain,
+  rowScope,
+  scope,
+  showWorkPhaseTabs = false,
+  createAction,
+}: WorkOrdersGridProps) {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => {
     tableRef.current?.refresh()
@@ -43,15 +51,17 @@ export function WorkOrdersGrid({ domain, rowScope, scope, showWorkPhaseTabs = fa
   return (
     <div className="flex flex-1 flex-col gap-4">
       {/*
-        Nessuna azione di creazione qui: una commessa nasce sempre dentro il
-        perimetro di un'offerta, quindi la pagina elenco non la offre (spec 0093
-        D-13). Il PageHeader resta per il breadcrumb e per i tab di fase.
+        "Commesse" non offre una creazione: quella commessa nasce dentro il
+        perimetro di un'offerta (spec 0093 D-13). "Commesse di Progetto" crea
+        invece una commessa senza offerta (spec 0431), via `createAction`.
       */}
       <PageHeader
         actions={
           showWorkPhaseTabs ? (
             <WorkPhaseTabs active={workPhaseTabs.active} counts={workPhaseTabs.counts} onSelect={workPhaseTabs.select} />
-          ) : undefined
+          ) : (
+            createAction
+          )
         }
       />
 

@@ -182,8 +182,9 @@ final class WorkOrderTaskGenerator
             'work_order_id' => $workOrder->id,
             'work_order_stage_id' => $workOrderStageId,
             'parent_task_id' => $parentTask?->id,
-            // Spec 0267, D-11: a multi-offer commessa has no single client / opportunity.
-            'registry_id' => $workOrder->quote?->opportunity->registry_id,
+            // Spec 0267, D-11: a multi-offer commessa has no single client / opportunity;
+            // one born without an offer has its own client (spec 0431).
+            'registry_id' => app(WorkOrderReferences::class)->registryId($workOrder),
             'opportunity_id' => $workOrder->quote?->opportunity_id,
             'requester_id' => $actor->id,
             'start_date' => $startDate,

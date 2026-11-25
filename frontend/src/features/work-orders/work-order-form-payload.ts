@@ -2,7 +2,9 @@ import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { blankToNull, managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type {
+  CreateStandaloneProjectWorkOrderPayload,
   CreateWorkOrderPayload,
+  StandaloneWorkOrderReferencesPayload,
   UpdateWorkOrderPayload,
   WorkOrderDetail,
 } from '@/features/work-orders/types'
@@ -39,6 +41,72 @@ export function buildCreatePayload(values: WorkOrderFormValues, suggestedCode?: 
     // payload" pattern.
     task_template_id: values.task_template_id,
   }
+}
+
+/**
+ * Builds the POST /project-work-orders payload (spec 0431): the create
+ * payload without offer, lines and type, plus the own references. The schema
+ * has already required client, company, title and complete rows.
+ */
+export function buildStandaloneCreatePayload(
+  values: WorkOrderFormValues,
+  suggestedCode?: string,
+): CreateStandaloneProjectWorkOrderPayload {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped on purpose: the endpoint takes neither
+  const { quote_id, quote_line_ids, type, ...base } = buildCreatePayload(values, suggestedCode)
+
+  return {
+    ...base,
+    title: values.title.trim(),
+    ...references(values),
+  }
+}
+
+/** The own references as the server takes them; incomplete rows never travel. */
+function references(values: WorkOrderFormValues): StandaloneWorkOrderReferencesPayload {
+  return {
+    registry_id: values.registry_id as number,
+    company_id: values.company_id as number,
+    company_site_id: values.company_site_id,
+    operational_site_id: values.operational_site_id,
+    product_lines: values.product_lines
+      .filter((row) => row.product_category_id !== null)
+      .map((row) => ({ product_category_id: row.product_category_id as number })),
+  }
+}
+
+/**
+ * Spec 0431: the changed own references of a work order born without an
+ * offer; never any on another kind (the server refuses them there).
+ */
+function changedReferences(
+  values: WorkOrderFormValues,
+  original: WorkOrderDetail,
+): Partial<StandaloneWorkOrderReferencesPayload> {
+  if (original.is_standalone !== true) {
+    return {}
+  }
+
+  const next = references(values)
+  const changed: Partial<StandaloneWorkOrderReferencesPayload> = {}
+  if (next.registry_id !== (original.registry?.id ?? null)) {
+    changed.registry_id = next.registry_id
+  }
+  if (next.company_id !== (original.company?.id ?? null)) {
+    changed.company_id = next.company_id
+  }
+  if (next.company_site_id !== (original.company_site?.id ?? null)) {
+    changed.company_site_id = next.company_site_id
+  }
+  if (next.operational_site_id !== (original.operational_site?.id ?? null)) {
+    changed.operational_site_id = next.operational_site_id
+  }
+  const originalCategoryIds = (original.product_lines ?? []).map((line) => line.product_category.id)
+  if (!sameIdSet(next.product_lines.map((line) => line.product_category_id), originalCategoryIds)) {
+    changed.product_lines = next.product_lines
+  }
+
+  return changed
 }
 
 /**
@@ -117,5 +185,5 @@ export function buildUpdatePayload(
     payload.attribute_values = values.attribute_values
   }
 
-  return payload
+  return { ...payload, ...changedReferences(values, original) }
 }

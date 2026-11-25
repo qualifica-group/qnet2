@@ -313,3 +313,50 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
     )
   })
 })
+
+// Spec 0431: a project work order born without an offer owns its references.
+describe('WorkOrderDetailView — work order born without an offer', () => {
+  const standalone = () =>
+    workOrder({
+      type: 'project',
+      is_standalone: true,
+      quote: null,
+      contract_number: null,
+      quote_lines: [],
+      registry: { id: 5, name: 'Cliente Interno' },
+      company: { id: 6, name: 'Societa Uno' },
+      company_site: { id: 7, name: 'Sede Nord' },
+      operational_site: { id: 8, label: 'Via Roma 1, Bari' },
+      product_lines: [{ id: 1, business_function: { id: 3, name: 'Formazione' }, product_category: { id: 2, name: 'Corsi' } }],
+    })
+
+  it('edits client, company, sites and business functions in place, with no contract row', () => {
+    renderDetail(standalone())
+
+    for (const field of [
+      'workOrders.form.references.registry',
+      'workOrders.detail.company',
+      'workOrders.detail.companySite',
+      'workOrders.detail.operationalSite',
+      'workOrders.form.references.productLines',
+    ]) {
+      expect(queryPencil(label(field))).toBeInTheDocument()
+    }
+    expect(screen.getAllByText('Cliente Interno').length).toBeGreaterThan(0)
+    expect(screen.queryByText(label('workOrders.detail.contract'))).not.toBeInTheDocument()
+  })
+
+  it('keeps the type read-only: always a project work order', () => {
+    renderDetail(standalone())
+
+    expect(queryPencil(label('workOrders.form.type'))).not.toBeInTheDocument()
+    expect(screen.getAllByText(label('workOrders.options.type.project')).length).toBeGreaterThan(0)
+  })
+
+  it('shows no editable reference on a work order born from an offer', () => {
+    renderDetail(workOrder({ company: { id: 6, name: 'Societa Uno' } }))
+
+    expect(queryPencil(label('workOrders.form.references.registry'))).not.toBeInTheDocument()
+    expect(queryPencil(label('workOrders.detail.company'))).not.toBeInTheDocument()
+  })
+})

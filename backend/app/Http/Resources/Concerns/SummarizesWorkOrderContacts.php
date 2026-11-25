@@ -6,6 +6,7 @@ namespace App\Http\Resources\Concerns;
 
 use App\Models\Referent;
 use App\Models\Registry;
+use App\Services\WorkOrders\WorkOrderReferences;
 use App\Support\ReferentRef;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Http\Request;
@@ -28,16 +29,15 @@ use Illuminate\Http\Request;
 trait SummarizesWorkOrderContacts
 {
     /**
-     * The client of the commessa, reached through `quote.opportunity` (a work
-     * order has no `registry_id` of its own). Spec 0173: the detail mounts its
-     * documents read-only.
+     * The client of the commessa: its offer's, or its own when it was born
+     * without one (spec 0431, WorkOrderReferences). Spec 0173: the detail
+     * mounts its documents read-only.
      *
      * @return array{id: int, name: string, primary_contacts: array<int, array{type: string, icon: string|null, label: string, value: string}>}|null
      */
     private function summarizeRegistry(Request $request): ?array
     {
-        /** @var Registry|null $registry */
-        $registry = $this->quote?->opportunity?->registry;
+        $registry = app(WorkOrderReferences::class)->registry($this->resource);
 
         if ($registry === null) {
             return null;
@@ -55,9 +55,10 @@ trait SummarizesWorkOrderContacts
      */
     private function summarizeReferent(Request $request): ?array
     {
-        $opportunity = $this->quote?->opportunity;
+        /** @var Referent|null $offerReferent */
+        $offerReferent = $this->quote?->opportunity?->referent;
         /** @var Referent|null $referent */
-        $referent = $opportunity?->referent ?? $opportunity?->registry?->primaryReferent;
+        $referent = $offerReferent ?? app(WorkOrderReferences::class)->registry($this->resource)?->primaryReferent;
         $summary = ReferentRef::summarize($referent);
 
         if ($referent === null || $summary === null) {
@@ -66,7 +67,7 @@ trait SummarizesWorkOrderContacts
 
         return $summary + [
             'primary_contacts' => $this->visiblePrimaryContacts($request, $referent),
-            'is_registry_primary' => $opportunity->referent === null,
+            'is_registry_primary' => $offerReferent === null,
         ];
     }
 

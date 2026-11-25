@@ -97,7 +97,11 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
 
   return (
     <Can
-      permission={`${entry?.permissionDomain ?? domain}.${isEdit ? 'update' : 'create'}`}
+      permission={
+        !isEdit && entry?.createPermission !== undefined
+          ? entry.createPermission
+          : `${entry?.permissionDomain ?? domain}.${isEdit ? 'update' : 'create'}`
+      }
       fallback={<p className="text-sm text-muted-foreground">{t(`${ns}.forbidden`)}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">

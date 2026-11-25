@@ -13,6 +13,7 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderStage;
 use App\Services\Tasks\TaskEffectiveStage;
 use App\Services\Tasks\TaskVisibilityScope;
+use App\Services\WorkOrders\WorkOrderReferences;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -158,9 +159,9 @@ final class TimeEntryLinkResolver
     {
         $derivedRegistryId = match (true) {
             $data->opportunityId !== null => Opportunity::query()->find($data->opportunityId)?->registry_id,
-            $data->workOrderId !== null => WorkOrder::query()
-                ->with('quote.opportunity')
-                ->find($data->workOrderId)?->quote?->opportunity?->registry_id,
+            $data->workOrderId !== null => ($workOrder = WorkOrder::query()->with('quote.opportunity')->find($data->workOrderId)) === null
+                ? null
+                : app(WorkOrderReferences::class)->registryId($workOrder),
             default => null,
         };
 

@@ -16,6 +16,7 @@ use App\Services\DocumentLayouts\QuoteDocumentLayoutResolver;
 use App\Services\OutboundEmails\EmailOwner;
 use App\Services\OutboundEmails\WorkOrderEmailVariableCatalog;
 use App\Services\OutboundEmails\WorkOrderEmailVariableResolver;
+use App\Services\WorkOrders\WorkOrderReferences;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
@@ -41,6 +42,9 @@ final class WorkOrderEmailOwner implements EmailOwner
         'quote.opportunity.registry.personalData.contacts',
         'quote.opportunity.registry.referents.personalData.contacts',
         'quote.opportunity.referent.personalData.contacts',
+        // Spec 0431: the own client of a commessa born without an offer.
+        'registry.personalData.contacts',
+        'registry.referents.personalData.contacts',
     ];
 
     public function __construct(
@@ -95,7 +99,7 @@ final class WorkOrderEmailOwner implements EmailOwner
         $quote = $workOrder->quote;
 
         return [
-            'documents' => $this->documents($workOrder, $quote?->opportunity?->registry, $actor),
+            'documents' => $this->documents($workOrder, app(WorkOrderReferences::class)->registry($workOrder), $actor),
             'quote_pdf_available' => $quote !== null && $actor->can('view', $quote) && $this->layoutResolver->resolve($quote) !== null,
         ];
     }
@@ -131,7 +135,7 @@ final class WorkOrderEmailOwner implements EmailOwner
     {
         $workOrder = $this->workOrder($owner);
         $workOrder->loadMissing(self::RELATIONS);
-        $registry = $workOrder->quote?->opportunity?->registry;
+        $registry = app(WorkOrderReferences::class)->registry($workOrder);
 
         /** @var array<string, array{email: string, label: string, source: string}> $byEmail */
         $byEmail = [];

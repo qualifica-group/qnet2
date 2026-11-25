@@ -1,7 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { LayoutBlob, LayoutSection } from '@/features/attributes/attribute-layout-types'
 import i18n from '@/i18n'
-import { buildCreateWorkOrderSchema, buildUpdateWorkOrderSchema } from '@/features/work-orders/work-order-schema'
+import {
+  buildCreateStandaloneWorkOrderSchema,
+  buildCreateWorkOrderSchema,
+  buildUpdateWorkOrderSchema,
+} from '@/features/work-orders/work-order-schema'
 import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
 
 const VALID_BASE = {
@@ -18,6 +22,12 @@ const VALID_BASE = {
   quote_line_ids: [1, 2],
   task_template_id: null,
   attribute_values: {},
+  // Spec 0431: the form always carries the own references, empty on a work order from an offer.
+  registry_id: null,
+  company_id: null,
+  company_site_id: null,
+  operational_site_id: null,
+  product_lines: [],
 }
 
 function requiredTextAttribute(): ApplicableAttributeSummary {
@@ -207,5 +217,42 @@ describe('work order schemas - conditional sections (spec 0288 AC-011)', () => {
 
     expect(hasRequiredIssue(schema.safeParse({ ...VALID_BASE, attribute_values: { has_site: false, site_access: null } }))).toBe(false)
     expect(hasRequiredIssue(schema.safeParse({ ...VALID_BASE, attribute_values: { has_site: true, site_access: null } }))).toBe(true)
+  })
+})
+
+describe('standalone project work order schemas (spec 0431)', () => {
+  const STANDALONE = {
+    ...VALID_BASE,
+    quote_id: null,
+    quote_line_ids: [],
+    type: 'project' as const,
+    registry_id: 5,
+    company_id: 6,
+    product_lines: [{ root_category_id: 1, product_category_id: 2 }],
+  }
+
+  it('creates without an offer once client, company, title and a complete function row are set', () => {
+    expect(buildCreateStandaloneWorkOrderSchema(i18n.t).safeParse(STANDALONE).success).toBe(true)
+  })
+
+  it('requires client, company, title and at least one complete function row', () => {
+    const schema = buildCreateStandaloneWorkOrderSchema(i18n.t)
+    const paths = (values: object) =>
+      (schema.safeParse(values).error?.issues ?? []).map((issue) => issue.path.join('.'))
+
+    expect(paths({ ...STANDALONE, registry_id: null })).toContain('registry_id')
+    expect(paths({ ...STANDALONE, company_id: null })).toContain('company_id')
+    expect(paths({ ...STANDALONE, title: '  ' })).toContain('title')
+    expect(paths({ ...STANDALONE, product_lines: [] })).toContain('product_lines')
+    expect(paths({ ...STANDALONE, product_lines: [{ root_category_id: 1, product_category_id: null }] })).toContain(
+      'product_lines',
+    )
+  })
+
+  it('keeps the own references mandatory on the detail of such a work order only', () => {
+    const emptied = { ...STANDALONE, registry_id: null }
+
+    expect(buildUpdateWorkOrderSchema(i18n.t, [], null, true).safeParse(emptied).success).toBe(false)
+    expect(buildUpdateWorkOrderSchema(i18n.t).safeParse({ ...VALID_BASE }).success).toBe(true)
   })
 })

@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  * form never edits it, it follows the linked quote. Every hop is NOT NULL, so
  * a mono-offer work order always has a registry and the set filter has no
  * blank entry. A multi-offer commessa (spec 0267, `quote_id` null) is matched
- * and listed through the offers of its lines.
+ * and listed through the offers of its lines; one born without an offer
+ * (spec 0431) through its own `registry_id`.
  *
  * A `set` filter on `registries.name` via `whereHas` with BOUND values, a
  * correlated-subquery sort (never a row-multiplying JOIN) and Excel-like
@@ -32,6 +33,9 @@ final class WorkOrderRegistryColumn
     private const string RELATION_PATH = 'quote.opportunity.registry';
 
     private const string LINES_RELATION_PATH = 'quoteLines.quote.opportunity.registry';
+
+    /** Spec 0431: the own client of a commessa born without an offer. */
+    private const string OWN_RELATION_PATH = 'registry';
 
     private const string LABEL_COLUMN = 'name';
 
@@ -54,7 +58,8 @@ final class WorkOrderRegistryColumn
         // Spec 0267, D-8: a multi-offer commessa is found through its lines' offers.
         $query->where(static function (Builder $scope) use ($constrain): void {
             $scope->whereHas(self::RELATION_PATH, $constrain)
-                ->orWhereHas(self::LINES_RELATION_PATH, $constrain);
+                ->orWhereHas(self::LINES_RELATION_PATH, $constrain)
+                ->orWhereHas(self::OWN_RELATION_PATH, $constrain);
         });
     }
 
@@ -71,7 +76,8 @@ final class WorkOrderRegistryColumn
         };
 
         $query->orWhereHas(self::RELATION_PATH, $constrain)
-            ->orWhereHas(self::LINES_RELATION_PATH, $constrain);
+            ->orWhereHas(self::LINES_RELATION_PATH, $constrain)
+            ->orWhereHas(self::OWN_RELATION_PATH, $constrain);
     }
 
     /**
@@ -79,13 +85,20 @@ final class WorkOrderRegistryColumn
      */
     public function applySort(Builder $query, string $direction): void
     {
+        // Spec 0431: the offer's client, else the commessa's own (only one of the two exists).
+        $offerClient = DB::table('registries')
+            ->select('registries.'.self::LABEL_COLUMN)
+            ->join('opportunities', 'opportunities.registry_id', '=', 'registries.id')
+            ->join('quotes', 'quotes.opportunity_id', '=', 'opportunities.id')
+            ->whereColumn('quotes.id', 'work_orders.quote_id')
+            ->limit(1);
+        $ownClient = DB::table('registries')
+            ->select('registries.'.self::LABEL_COLUMN)
+            ->whereColumn('registries.id', 'work_orders.registry_id')
+            ->limit(1);
+
         $query->orderBy(
-            DB::table('registries')
-                ->select('registries.'.self::LABEL_COLUMN)
-                ->join('opportunities', 'opportunities.registry_id', '=', 'registries.id')
-                ->join('quotes', 'quotes.opportunity_id', '=', 'opportunities.id')
-                ->whereColumn('quotes.id', 'work_orders.quote_id')
-                ->limit(1),
+            DB::query()->selectRaw('COALESCE(('.$offerClient->toSql().'), ('.$ownClient->toSql().'))', [...$offerClient->getBindings(), ...$ownClient->getBindings()]),
             $direction,
         );
     }
@@ -127,7 +140,9 @@ final class WorkOrderRegistryColumn
             })
             ->select('opportunity_id');
 
-        return DB::table('opportunities')->whereIn('id', $opportunityIds)->select('registry_id');
+        // Spec 0431: plus the own client of the commessa born without an offer.
+        return DB::table('opportunities')->whereIn('id', $opportunityIds)->select('registry_id')
+            ->union((clone $query)->whereNotNull('work_orders.registry_id')->select('work_orders.registry_id')->toBase());
     }
 
     /**

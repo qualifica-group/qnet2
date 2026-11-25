@@ -54,7 +54,8 @@ final class WorkOrderWorkflowResolver
     public function resolve(WorkOrder $workOrder): ?WorkOrderWorkflow
     {
         // Step 1: the REVENUE lines' products, without a query per candidate.
-        $workOrder->loadMissing('quoteLines.product');
+        // Spec 0431: a commessa born without an offer is classified by its own rows.
+        $workOrder->loadMissing($workOrder->is_standalone ? 'productLines' : 'quoteLines.product');
 
         // Step 2: every active workflow with its criteria (memoized).
         $workflows = $this->activeWorkflows();

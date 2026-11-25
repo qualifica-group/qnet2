@@ -33,7 +33,9 @@ final class WorkOrderSourceQuotes
 
     /**
      * A `whereIn` subquery callback selecting the work orders with a source
-     * offer carrying a REVENUE line in the given category (or branch).
+     * offer carrying a REVENUE line in the given category (or branch), plus
+     * those born without an offer whose own business-function lines are in it
+     * (spec 0431, D-10/D-11: their categories stand for the revenue lines).
      *
      * @param  int|array<int, int>  $categoryIds
      * @return Closure(QueryBuilder): QueryBuilder
@@ -43,6 +45,11 @@ final class WorkOrderSourceQuotes
         return static fn (QueryBuilder $pairs): QueryBuilder => $pairs
             ->select('source_quotes.work_order_id')
             ->fromSub(self::query(), 'source_quotes')
-            ->whereIn('source_quotes.quote_id', RevenueCategoryQuoteIds::subquery($categoryIds));
+            ->whereIn('source_quotes.quote_id', RevenueCategoryQuoteIds::subquery($categoryIds))
+            ->union(
+                DB::table('work_order_product_lines')
+                    ->select('work_order_product_lines.work_order_id')
+                    ->whereIn('work_order_product_lines.product_category_id', (array) $categoryIds)
+            );
     }
 }

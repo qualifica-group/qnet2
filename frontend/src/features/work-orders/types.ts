@@ -224,6 +224,12 @@ export interface WorkOrderDetail {
   internal_notes: string | null
   /** Spec 0267 D-7: true when the lines come from more than one offer (the single-offer fields below are then null). */
   is_multi_quote: boolean
+  /**
+   * Spec 0431: a project work order born without any offer; its client,
+   * company, sites and `product_lines` are its own and edited on the detail.
+   * Optional so the pre-existing fixtures stay valid; missing reads as false.
+   */
+  is_standalone?: boolean
   /** Spec 0267 D-7: always present, one element on a single-offer work order. */
   source_quotes: WorkOrderSourceQuote[]
   /** = `quote.code`, derived, read-only (D-2); `null` on a multi-offer work order. */
@@ -335,10 +341,30 @@ export interface CreateWorkOrderPayload {
  */
 export type UpdateWorkOrderPayload = Partial<
   Omit<CreateWorkOrderPayload, 'code' | 'quote_id' | 'task_template_id'>
-> & {
-  /** Spec 0322: update-only, the create resolves the `open` row server-side. */
-  work_order_workflow_status_id?: number
+> &
+  Partial<StandaloneWorkOrderReferencesPayload> & {
+    /** Spec 0322: update-only, the create resolves the `open` row server-side. */
+    work_order_workflow_status_id?: number
+  }
+
+/**
+ * Spec 0431: the own client, company, sites and business-function rows of a
+ * project work order born without an offer (create, and PATCH on that kind only).
+ */
+export interface StandaloneWorkOrderReferencesPayload {
+  registry_id: number
+  company_id: number
+  company_site_id: number | null
+  operational_site_id: number | null
+  product_lines: { product_category_id: number }[]
 }
+
+/** Payload for POST /project-work-orders (spec 0431): no offer, no lines, the type is always `project`. */
+export type CreateStandaloneProjectWorkOrderPayload = Omit<
+  CreateWorkOrderPayload,
+  'quote_id' | 'quote_line_ids' | 'type' | 'is_force_closed' | 'force_close_reason' | 'force_close_status_id'
+> &
+  StandaloneWorkOrderReferencesPayload & { title: string }
 
 /**
  * Discriminated form mode shared by the form hook/meta-resolver and the

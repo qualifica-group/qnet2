@@ -19,10 +19,13 @@ vi.mock('@/features/modules/module-registry', () => ({
     domain === 'projects' ||
     domain === 'reward-types' ||
     domain === 'request-management' ||
-    domain === 'document-checklist-categories'
+    domain === 'document-checklist-categories' ||
+    domain === 'project-work-orders'
       ? {
           // Spec 0410 D-2: the categories hold no permissions of their own.
           permissionDomain: domain === 'document-checklist-categories' ? 'document-checklists' : undefined,
+          // Spec 0431: viewed with its own permissions, created with the Commesse one.
+          createPermission: domain === 'project-work-orders' ? 'work-orders.create' : undefined,
           // The one module whose FormScreen renders its own visible heading
           // (user directive 2026-08-03): the host must not render a second.
           formOwnsHeader: domain === 'request-management',
@@ -177,6 +180,36 @@ describe('ModuleFormPage', () => {
 
     it('refuses the create form without it', () => {
       renderCategoryCreate(['document-checklists.view'])
+
+      expect(screen.queryByText('form-create')).not.toBeInTheDocument()
+    })
+  })
+
+  /** Spec 0431: a module created with another permission than `${domain}.create`. */
+  describe('with a createPermission', () => {
+    function renderProjectWorkOrderCreate(granted: string[]) {
+      abilities.granted = new Set(granted)
+      render(
+        <MemoryRouter initialEntries={['/project-work-orders/new']}>
+          <Routes>
+            <Route path="/project-work-orders/new" element={<ModuleFormPage domain="project-work-orders" />} />
+          </Routes>
+        </MemoryRouter>,
+      )
+    }
+
+    afterEach(() => {
+      abilities.granted = null
+    })
+
+    it('opens the create form with the declared permission', () => {
+      renderProjectWorkOrderCreate(['work-orders.create'])
+
+      expect(screen.getByText('form-create')).toBeInTheDocument()
+    })
+
+    it('refuses it with the domain permission alone', () => {
+      renderProjectWorkOrderCreate(['project-work-orders.create'])
 
       expect(screen.queryByText('form-create')).not.toBeInTheDocument()
     })

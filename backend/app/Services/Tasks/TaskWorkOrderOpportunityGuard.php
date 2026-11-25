@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Tasks;
 
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderReferences;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -64,7 +65,7 @@ final class TaskWorkOrderOpportunityGuard
             return $this->assertSourceRegistry($registryId, $workOrder);
         }
 
-        $workOrderRegistryId = $workOrder?->quote?->opportunity?->registry_id;
+        $workOrderRegistryId = $workOrder === null ? null : app(WorkOrderReferences::class)->registryId($workOrder);
 
         if ($registryId === null) {
             return $workOrderRegistryId;

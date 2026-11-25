@@ -16,6 +16,8 @@ export const moduleDefinition: ModuleDefinition = {
   defaultMode: OPEN_MODE_PAGE,
   labelKey: 'navigation.projectWorkOrders',
   generateEditRoute: false,
+  // Spec 0431: a project work order born without an offer is created with the Commesse permission.
+  createPermission: 'work-orders.create',
   detailOwnsEditAction: true,
   formOwnsHeader: true,
 }

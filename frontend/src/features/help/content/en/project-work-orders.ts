@@ -24,6 +24,39 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'create-without-offer',
+      title: 'New project work order without an offer',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "With **New project work order** at the top of the page you create a project work order that **does not come from an offer**: an internal project, for instance. The button shows to whoever may **create Work Orders**. Work orders born from an offer are still created as before, from the Contract or the Registry.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Press **New project work order**.',
+            'Type the **Title** and the **Start date**.',
+            'Pick the **Client**, the **Company** and, if needed, the **Company site** and the **Operational site**.',
+            'In **Business functions** pick at least one category: the business function follows from the category, as in opportunities.',
+            'Optionally add Supervisors, Participants and a Task template, then press **Save**.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: "The detail is the one of every work order. Client, Company, sites and Business functions are edited in the **Company references and Business functions** section, and the **Client info** box shows the chosen client's data. The **Type** always stays **Project**.",
+        },
+        {
+          type: 'list',
+          items: [
+            'It has no **product lines** and no **contract**: no **proforma** is requested and the amount stays empty.',
+            'Costs, purchase orders, purchase invoices, tasks, chat and documents work as on any other work order.',
+            'Whoever sees the work orders of their own **site** sees it through its **Operational site**; whoever sees them by **competence**, through its **Business functions**.',
+            'In **Management control** it counts with its own company and sites; its costs are split **in equal parts** among its business functions.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'permissions',
       title: 'Permissions and address',
       blocks: [

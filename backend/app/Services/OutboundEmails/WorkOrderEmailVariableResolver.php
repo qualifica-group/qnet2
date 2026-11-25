@@ -6,7 +6,10 @@ namespace App\Services\OutboundEmails;
 
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\DocumentLayouts\Rendering\OrganizationFieldResolver;
+use App\Services\DocumentLayouts\Rendering\PartyFieldResolver;
 use App\Services\DocumentLayouts\Rendering\VariableResolver;
+use App\Services\WorkOrders\WorkOrderReferences;
 
 /**
  * Resolves every `{category.key}` reference in an email template's subject
@@ -36,7 +39,12 @@ final class WorkOrderEmailVariableResolver
         'quote', 'client', 'opportunity', 'referent', 'commercial', 'commercial_partner', 'reporter', 'supervisor', 'company', 'company_site',
     ];
 
-    public function __construct(private readonly VariableResolver $quoteResolver) {}
+    public function __construct(
+        private readonly VariableResolver $quoteResolver,
+        private readonly PartyFieldResolver $partyFields,
+        private readonly OrganizationFieldResolver $organizationFields,
+        private readonly WorkOrderReferences $references,
+    ) {}
 
     /**
      * @return array{subject: string, body: string}
@@ -72,7 +80,9 @@ final class WorkOrderEmailVariableResolver
         return match ($category) {
             'work_order' => $this->workOrderField($key, $workOrder) ?? '',
             'sender' => $this->senderField($key, $actor) ?? '',
-            default => $this->delegateToQuote($category, $key, $workOrder, $actor),
+            default => $workOrder->is_standalone
+                ? $this->standaloneField($category, $key, $workOrder, $actor) ?? ''
+                : $this->delegateToQuote($category, $key, $workOrder, $actor),
         };
     }
 
@@ -94,6 +104,20 @@ final class WorkOrderEmailVariableResolver
         return match ($key) {
             'name' => (string) $actor->name,
             'email' => (string) $actor->email,
+            default => null,
+        };
+    }
+
+    /**
+     * Spec 0431: a commessa born without an offer resolves the client and the
+     * company from its own references; every offer-only category is empty.
+     */
+    private function standaloneField(string $category, string $key, WorkOrder $workOrder, User $actor): ?string
+    {
+        return match ($category) {
+            'client' => $this->partyFields->registryField($key, $this->references->registry($workOrder), $actor),
+            'company' => $this->organizationFields->companyField($key, $this->references->company($workOrder)),
+            'company_site' => $this->organizationFields->siteField($key, $this->references->companySite($workOrder)),
             default => null,
         };
     }

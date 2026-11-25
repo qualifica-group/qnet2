@@ -3,6 +3,9 @@
 return [
     'attribute_locked' => 'Questo campo e\' aggiornato da un servizio esterno e non puo\' essere modificato.',
     'delete_has_accounting_documents' => 'La commessa non può essere eliminata: ha documenti contabili collegati (richieste proforma, fatture, ordini di acquisto o fatture passive).',
+    'company_site_not_of_company' => "La sede societa' deve essere una sede della societa' scelta.",
+    'standalone_type_is_project' => "Una commessa senza offerta e' sempre una Commessa di Progetto.",
+    'references_owned_by_offer' => "Questi dati si cambiano sull'offerta della commessa.",
     'lines_not_offer_revenue' => 'Le righe scelte devono essere righe di ricavo delle offerte dei contratti selezionati.',
     'line_already_programmed' => 'Una delle righe scelte è già nella commessa :code: ogni riga può stare in una sola commessa.',
     'multi_quote' => [

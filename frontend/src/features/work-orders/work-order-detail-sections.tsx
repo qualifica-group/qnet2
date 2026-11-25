@@ -18,6 +18,8 @@ import { WorkOrderAmountRow } from '@/features/work-orders/work-order-amount-row
 import { WorkOrderInternalNotesRow, WorkOrderWorkflowStatusSection } from '@/features/work-orders/work-order-record-identity'
 import { WorkOrderForceCloseReasonRow, WorkOrderStartDateRow } from '@/features/work-orders/work-order-record-rows'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
+import { WorkOrderReferencesSection } from '@/features/work-orders/work-order-references-section'
+import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -107,6 +109,8 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
   const { inline } = editor
   // Spec 0267: a multi-offer work order has no single client/contract/company; each product line names its own client.
   const hasSingleQuote = !workOrder.is_multi_quote
+  // Spec 0431: born without an offer, its references are its own (editable) and it has no contract.
+  const isStandalone = workOrder.is_standalone === true
 
   return (
     <RecordSectionsGrid>
@@ -125,7 +129,7 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         <WorkOrderContractDataPanel workOrder={workOrder}>
           <WorkOrderAmountRow amount={workOrder.amount} />
           <WorkOrderStartDateRow form={editor} inline={inline} startDate={workOrder.start_date} />
-          {hasSingleQuote ? (
+          {hasSingleQuote && !isStandalone ? (
             <LinkedField
               label={t('workOrders.detail.contract')}
               domain="contracts"
@@ -152,7 +156,28 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         />
       </div>
       <div className={RECORD_COLUMN_CLASS}>
-        {hasSingleQuote ? <WorkOrderCompanySection workOrder={workOrder} /> : null}
+        {isStandalone ? (
+          <WorkOrderReferencesSection
+            values={{
+              registry: workOrder.registry ?? null,
+              company: workOrder.company ?? null,
+              companySite: workOrder.company_site ?? null,
+              operationalSite: workOrder.operational_site
+                ? { id: workOrder.operational_site.id, name: workOrder.operational_site.label }
+                : null,
+              productLines:
+                (workOrder.product_lines ?? EMPTY_PRODUCT_LINES).length > 0 ? (
+                  <ProductLinesReadOnlyList lines={workOrder.product_lines ?? EMPTY_PRODUCT_LINES} />
+                ) : (
+                  <DetailEmpty />
+                ),
+            }}
+            form={editor}
+            inline={inline}
+          />
+        ) : hasSingleQuote ? (
+          <WorkOrderCompanySection workOrder={workOrder} />
+        ) : null}
         <WorkOrderDescriptionSections
           values={{
             code: workOrder.code,

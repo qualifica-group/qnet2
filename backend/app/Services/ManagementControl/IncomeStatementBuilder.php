@@ -66,17 +66,17 @@ final class IncomeStatementBuilder
     private function workOrders(IncomeStatementFilters $filters): Collection
     {
         $query = WorkOrderReferenceQuote::join(DB::table('work_orders'))
-            ->leftJoin('companies', 'companies.id', '=', 'quotes.company_id')
-            ->leftJoin('company_sites', 'company_sites.id', '=', 'quotes.company_site_id')
-            ->leftJoin('operational_sites', 'operational_sites.id', '=', 'quotes.operational_site_id')
+            ->leftJoin('companies', 'companies.id', '=', DB::raw(WorkOrderReferenceQuote::COMPANY_ID))
+            ->leftJoin('company_sites', 'company_sites.id', '=', DB::raw(WorkOrderReferenceQuote::COMPANY_SITE_ID))
+            ->leftJoin('operational_sites', 'operational_sites.id', '=', DB::raw(WorkOrderReferenceQuote::OPERATIONAL_SITE_ID))
             ->leftJoin('referents', 'referents.id', '=', 'quotes.commercial_id')
             // Spec 0417, D-6: second join on the same table, hence the alias.
             ->leftJoin('referents as commercial_partners', 'commercial_partners.id', '=', 'quotes.commercial_partner_id')
             ->select([
                 'work_orders.id', 'work_orders.type',
-                'quotes.company_id', 'companies.denomination as company_name',
-                'quotes.company_site_id', 'company_sites.name as company_site_name',
-                'quotes.operational_site_id', 'operational_sites.alias as operational_site_alias',
+                DB::raw(WorkOrderReferenceQuote::COMPANY_ID.' as company_id'), 'companies.denomination as company_name',
+                DB::raw(WorkOrderReferenceQuote::COMPANY_SITE_ID.' as company_site_id'), 'company_sites.name as company_site_name',
+                DB::raw(WorkOrderReferenceQuote::OPERATIONAL_SITE_ID.' as operational_site_id'), 'operational_sites.alias as operational_site_alias',
                 'quotes.commercial_id', 'referents.name as commercial_name',
                 'quotes.commercial_partner_id', 'commercial_partners.name as commercial_partner_name',
             ]);
@@ -90,12 +90,12 @@ final class IncomeStatementBuilder
             ->when($filters->dateFrom !== null, fn (Builder $q) => $q->where('work_orders.start_date', '>=', $filters->dateFrom))
             ->when($filters->dateTo !== null, fn (Builder $q) => $q->where('work_orders.start_date', '<=', $filters->dateTo))
             ->when($filters->workOrderTypes !== [], fn (Builder $q) => $q->whereIn('work_orders.type', $filters->workOrderTypes))
-            ->when($filters->companyIds !== [], fn (Builder $q) => $q->whereIn('quotes.company_id', $filters->companyIds))
-            ->when($filters->companySiteIds !== [], fn (Builder $q) => $q->whereIn('quotes.company_site_id', $filters->companySiteIds))
-            ->when($filters->operationalSiteIds !== [], fn (Builder $q) => $q->whereIn('quotes.operational_site_id', $filters->operationalSiteIds))
+            ->when($filters->companyIds !== [], fn (Builder $q) => $q->whereIn(DB::raw(WorkOrderReferenceQuote::COMPANY_ID), $filters->companyIds))
+            ->when($filters->companySiteIds !== [], fn (Builder $q) => $q->whereIn(DB::raw(WorkOrderReferenceQuote::COMPANY_SITE_ID), $filters->companySiteIds))
+            ->when($filters->operationalSiteIds !== [], fn (Builder $q) => $q->whereIn(DB::raw(WorkOrderReferenceQuote::OPERATIONAL_SITE_ID), $filters->operationalSiteIds))
             ->when($filters->commercialIds !== [], fn (Builder $q) => $q->whereIn('quotes.commercial_id', $filters->commercialIds))
             ->when($filters->commercialPartnerIds !== [], fn (Builder $q) => $q->whereIn('quotes.commercial_partner_id', $filters->commercialPartnerIds))
-            ->when($filters->businessFunctionIds !== [], fn (Builder $q) => $q->whereExists(
+            ->when($filters->businessFunctionIds !== [], fn (Builder $q) => $q->where(fn (Builder $byFunction) => $byFunction->whereExists(
                 DB::table('quote_line_work_order')
                     ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')
                     ->join('products', 'products.id', '=', 'quote_lines.product_id')
@@ -103,7 +103,13 @@ final class IncomeStatementBuilder
                     ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
                     ->whereIn('products.category_id', $this->categoriesOfFunctions($filters->businessFunctionIds))
                     ->select(DB::raw(1))
-            ));
+                // Spec 0431: a commessa born without an offer, by its own business-function rows.
+            )->orWhereExists(
+                DB::table('work_order_product_lines')
+                    ->whereColumn('work_order_product_lines.work_order_id', 'work_orders.id')
+                    ->whereIn('work_order_product_lines.product_category_id', $this->categoriesOfFunctions($filters->businessFunctionIds))
+                    ->select(DB::raw(1))
+            )));
     }
 
     /**

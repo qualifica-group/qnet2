@@ -15,6 +15,8 @@ interface WorkOrderFormProps {
   onCancel: () => void
   /** Spec 0199: narrows the Offerta picker to one anagrafica's offers (create from its Commesse tab). */
   registryId?: number | null
+  /** Spec 0431: a project work order born without an offer (its own client, company, sites and functions). */
+  standalone?: boolean
 }
 
 /**
@@ -25,7 +27,7 @@ interface WorkOrderFormProps {
  * (`GET /work-orders/next-code`, D-1), kept uncached (`staleTime`/`gcTime` 0,
  * mirrors `QuoteForm`) so every new form gets a fresh suggestion.
  */
-export function WorkOrderForm({ onSuccess, onCancel, registryId = null }: WorkOrderFormProps) {
+export function WorkOrderForm({ onSuccess, onCancel, registryId = null, standalone = false }: WorkOrderFormProps) {
   const { t } = useTranslation()
   const metaQuery = useResourceMeta('work-orders', true)
 
@@ -60,6 +62,7 @@ export function WorkOrderForm({ onSuccess, onCancel, registryId = null }: WorkOr
         onCancel={onCancel}
         initialCode={nextCode.data ?? ''}
         registryId={registryId}
+        standalone={standalone}
       />
     </ResourcePermissionsProvider>
   )

@@ -15,6 +15,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Opportunities\OpportunityStatusResolver;
+use App\Services\WorkOrders\WorkOrderReferences;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -69,7 +70,7 @@ final class RecordDetails
      * @var array<int, string>
      */
     private const array WORK_ORDER_RELATIONS = [
-        'quote.opportunity.registry', 'workOrderWorkflowStatus', 'supervisors', 'participants',
+        'quote.opportunity.registry', 'registry', 'workOrderWorkflowStatus', 'supervisors', 'participants',
     ];
 
     /**
@@ -197,7 +198,7 @@ final class RecordDetails
 
         return DetailFields::compact([
             'notifications.fields.title' => self::labelFor($workOrder),
-            'notifications.fields.client' => $workOrder->quote?->opportunity?->registry?->name,
+            'notifications.fields.client' => app(WorkOrderReferences::class)->registry($workOrder)?->name,
             'notifications.fields.status' => $workOrder->workOrderWorkflowStatus?->name,
             'notifications.fields.start_date' => $workOrder->start_date?->format('d/m/Y'),
             'notifications.fields.supervisors' => $workOrder->supervisors->pluck('name')->implode(', '),

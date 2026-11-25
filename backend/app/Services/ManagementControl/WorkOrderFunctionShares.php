@@ -53,6 +53,30 @@ final class WorkOrderFunctionShares
             $weights[$id] = $this->fromLines($ownLines, $categoryFunctions);
         }
 
+        return $this->withOwnLines($weights);
+    }
+
+    /**
+     * Spec 0431 (D-12): a commessa born without an offer has no revenue to weigh
+     * its functions by; its own business-function rows split the figures in
+     * equal parts. Only commesse still without a positive weight are looked up.
+     *
+     * @param  array<int, array<int, int>>  $weights  by business function id by work order id
+     * @return array<int, array<int, int>>
+     */
+    public function withOwnLines(array $weights): array
+    {
+        $unweighted = array_keys(array_filter($weights, fn (array $byFunction): bool => array_filter($byFunction, fn (int $weight): bool => $weight > 0) === []));
+
+        if ($unweighted === []) {
+            return $weights;
+        }
+
+        $rows = DB::table('work_order_product_lines')->whereIn('work_order_id', $unweighted)->distinct()->get(['work_order_id', 'business_function_id']);
+        foreach ($rows->groupBy('work_order_id') as $workOrderId => $functions) {
+            $weights[(int) $workOrderId] = $functions->mapWithKeys(fn (object $row): array => [(int) $row->business_function_id => 1])->all();
+        }
+
         return $weights;
     }
 

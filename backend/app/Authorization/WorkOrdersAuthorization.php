@@ -64,6 +64,12 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('task_template_id', 'select'),
             // Spec 0322: the "Stato lavorazione", editable after create like any plain field.
             new FieldDefinition('work_order_workflow_status_id', 'select'),
+            // Spec 0431: the own references of a commessa born without an offer.
+            new FieldDefinition('registry_id', 'select'),
+            new FieldDefinition('company_id', 'select'),
+            new FieldDefinition('company_site_id', 'select'),
+            new FieldDefinition('operational_site_id', 'select'),
+            new FieldDefinition('product_lines', 'custom'),
         ];
     }
 
@@ -88,6 +94,10 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
         $mayWriteOnlyAtCreate = $mayWrite && $model === null;
         // The closure is a detail action of whoever runs the commessa (WorkOrderPolicy::manage).
         $mayClose = $mayWrite || ($model instanceof WorkOrder && $actor->can('manage', $model));
+        // Spec 0431: the commessa's own references exist only without an offer; otherwise the offer owns them.
+        $references = $mayWrite && ($model === null || ($model instanceof WorkOrder && $model->is_standalone))
+            ? FieldPermission::visibleEditable()
+            : FieldPermission::visibleReadonly();
 
         return [
             'code' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -108,6 +118,11 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'task_template_id' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'work_order_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'registry_id' => $references,
+            'company_id' => $references,
+            'company_site_id' => $references,
+            'operational_site_id' => $references,
+            'product_lines' => $references,
         ];
     }
 
@@ -162,7 +177,8 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // Ticket #427857: the grid's "€" action in the detail header. Reaching
             // the detail already proves the record-level `view` the endpoint asks;
             // whether a request may still be raised is the summary's call (spec 0193).
-            'request_proforma' => $model instanceof WorkOrder && $actor->can('proforma-requests.create'),
+            // Spec 0431 (D-9): a commessa born without an offer has no line to bill.
+            'request_proforma' => $model instanceof WorkOrder && ! $model->is_standalone && $actor->can('proforma-requests.create'),
             // "Lista avanzamenti commessa": recording and deleting run the commessa, not its form.
             'record_progress' => $model instanceof WorkOrder && $actor->can('manage', $model),
         ];

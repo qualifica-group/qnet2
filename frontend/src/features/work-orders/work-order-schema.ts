@@ -52,6 +52,33 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     // creazione che in modifica: il set risolto dalle righe offerta e'
     // sempre quello che il form renderizza (D-6).
     attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
+    // Spec 0431: the own references of a project work order born without an
+    // offer; null / [] on every other one (the offer owns them, never sent).
+    registry_id: z.number().nullable(),
+    company_id: z.number().nullable(),
+    company_site_id: z.number().nullable(),
+    operational_site_id: z.number().nullable(),
+    // `root_category_id` is UI-only state of the shared row editor (spec 0132 D-3).
+    product_lines: z.array(z.object({ root_category_id: z.number().nullable(), product_category_id: z.number().nullable() })),
+  }
+}
+
+/** Spec 0431, D-8: client, company and at least one complete business-function row are mandatory. */
+function addMissingStandaloneReferences(
+  values: { registry_id: number | null; company_id: number | null; product_lines: { product_category_id: number | null }[] },
+  t: TFunction,
+  ctx: z.RefinementCtx,
+): void {
+  if (values.registry_id === null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['registry_id'], message: t('workOrders.form.registryRequired') })
+  }
+  if (values.company_id === null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['company_id'], message: t('workOrders.form.companyRequired') })
+  }
+  if (values.product_lines.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['product_lines'], message: t('productLines.required') })
+  } else if (values.product_lines.some((row) => row.product_category_id === null)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['product_lines'], message: t('productLines.rowIncomplete') })
   }
 }
 
@@ -124,6 +151,36 @@ export function buildCreateWorkOrderSchema(
 }
 
 /**
+ * Create schema of a project work order born without an offer (spec 0431):
+ * no offer nor lines, the own references instead, and a title, since without
+ * lines the automatic one would be just the code.
+ */
+export function buildCreateStandaloneWorkOrderSchema(
+  t: TFunction,
+  attributes: ApplicableAttributeSummary[] = [],
+  layout: LayoutBlob | null = null,
+) {
+  return z
+    .object({
+      ...baseFields(t, attributes),
+      code: z
+        .string()
+        .min(1, t('workOrders.form.codeRequired'))
+        .max(CODE_MAX_LENGTH, t('workOrders.form.codeMax')),
+      title: z.string().trim().min(1, t('workOrders.form.titleRequired')).max(TITLE_MAX_LENGTH, t('workOrders.form.titleMax')),
+    })
+    .superRefine((values, ctx) => {
+      addMissingStandaloneReferences(values, t, ctx)
+      addMissingRequiredAttributes(
+        values.attribute_values,
+        requiredAttributeCodes(attributes, layout, values.attribute_values),
+        t,
+        ctx,
+      )
+    })
+}
+
+/**
  * Edit schema; the partial PATCH diff is computed by the caller. `code`/
  * `quote_id` stay in the shape (the form still displays them) but render
  * read-only, enforced by field permissions (D-1/D-5), never by this schema.
@@ -132,8 +189,14 @@ export function buildUpdateWorkOrderSchema(
   t: TFunction,
   attributes: ApplicableAttributeSummary[] = [],
   layout: LayoutBlob | null = null,
+  standalone = false,
 ) {
   return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
+    // Spec 0431: an own reference may be changed, never emptied. Only a work
+    // order born without an offer has them set; on any other they stay null.
+    if (standalone) {
+      addMissingStandaloneReferences(values, t, ctx)
+    }
     addMissingRequiredAttributes(
       values.attribute_values,
       requiredAttributeCodes(attributes, layout, values.attribute_values),

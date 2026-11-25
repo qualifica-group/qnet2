@@ -14,8 +14,10 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Notifications\AssignmentNotifier;
+use App\Services\ProductLines\ProductLineWriter;
 use App\Services\WorkOrders\WorkOrderAssignmentDateStamper;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
+use App\Services\WorkOrders\WorkOrderDetailRelations;
 use App\Services\WorkOrders\WorkOrderLineWriter;
 use App\Services\WorkOrders\WorkOrderProgressEntryService;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
@@ -58,71 +60,6 @@ class WorkOrderService
 
     private const string CODE_COLUMN = 'code';
 
-    /**
-     * Relations eager-loaded for the detail read tree (WorkOrderResource), so
-     * a single query never N+1s.
-     *
-     * @var array<int, string>
-     */
-    private const array DETAIL_RELATIONS = [
-        // `.contract`: the Contratto WorkOrderResource names instead of the offer.
-        'quote.contract',
-        // Spec 0098, AC-016: `.category` deepened so WorkOrderResource's
-        // attribute trio (`applicable_attributes`/`attribute_layout`) never
-        // N+1s on top of the pre-existing `quote_lines` projection.
-        'quoteLines.product.category',
-        // The typology badge (Consulenza/Ente) on each line's "Stato pagamento".
-        'quoteLines.product.productTypology',
-        // Spec 0267: the client each line comes from, shown on the line of a multi-offer commessa.
-        'quoteLines.quote.opportunity.registry',
-        'supervisors',
-        'participants',
-        // Spec 0322: the "Stato lavorazione" WorkOrderResource exposes.
-        'workOrderWorkflowStatus',
-        // Spec 0124: the `task_template` summary WorkOrderResource exposes —
-        // null on the (majority) commessa generated without one, so this
-        // never N+1s the detail read either way.
-        'taskTemplate',
-        // Spec 0173: the `registry` summary WorkOrderResource exposes, whose
-        // documents the detail mounts read-only.
-        'quote.opportunity.registry',
-        // The Societa' e sedi block WorkOrderResource projects off the quote,
-        // the same tree ContractService loads for the Contract detail.
-        'quote.company',
-        'quote.companySite',
-        'quote.operationalSite.addresses.city',
-        // Spec 0331: the offer data WorkOrderResource projects read-only.
-        'quote.opportunity.referent.referentType',
-        // Task 428287: the client and its Referente (the offer's own, else the
-        // anagrafica's primary one) carry their primary contacts on the detail.
-        'quote.opportunity.referent.personalData.contacts',
-        'quote.opportunity.registry.personalData.contacts',
-        'quote.opportunity.registry.primaryReferent.referentType',
-        'quote.opportunity.registry.primaryReferent.personalData.contacts',
-        // Spec 0400: the "Info cliente" block (legal seat, contacts, tags, referents, sectors).
-        'quote.opportunity.registry.personalData.addresses.city',
-        'quote.opportunity.registry.personalData.addresses.province',
-        'quote.opportunity.registry.personalData.addresses.state',
-        'quote.opportunity.registry.personalData.addresses.country',
-        'quote.opportunity.registry.secondaryReferent.referentType',
-        'quote.opportunity.registry.secondaryReferent.personalData.contacts',
-        'quote.opportunity.registry.commercial.referentType',
-        'quote.opportunity.registry.commercialPartner.referentType',
-        'quote.opportunity.registry.sectors',
-        'quote.opportunity.registry.customFieldValueRow',
-        // Spec 0403: the payment status of each line in THIS commessa.
-        'linePayments.status',
-        'quote.source',
-        'quote.opportunity.productLines.productCategory',
-        'quote.opportunity.productLines.businessFunction',
-        'quote.commercial',
-        'quote.commercialPartner',
-        'quote.reporter',
-        'quote.layout',
-        'quote.paymentMethod',
-        'quote.rewards.rewardType',
-    ];
-
     public function __construct(
         private readonly WorkOrderLineWriter $lineWriter,
         private readonly WorkOrderAttributeValueWriter $attributeValueWriter,
@@ -135,11 +72,12 @@ class WorkOrderService
         private readonly AssignmentNotifier $assignmentNotifier,
         private readonly WorkOrderAssignmentDateStamper $assignmentDateStamper,
         private readonly WorkOrderWorkPhaseTracker $workPhaseTracker,
+        private readonly ProductLineWriter $productLineWriter,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
     {
-        return $workOrder->load(self::DETAIL_RELATIONS);
+        return $workOrder->load(WorkOrderDetailRelations::all());
     }
 
     /**
@@ -206,11 +144,13 @@ class WorkOrderService
     {
         return WorkOrderVisibilityScope::scopeToActor(
             WorkOrder::query()
-                ->select(['work_orders.id', 'work_orders.code', 'work_orders.title', 'work_orders.quote_id'])
+                ->select(['work_orders.id', 'work_orders.code', 'work_orders.title', 'work_orders.quote_id', 'work_orders.is_standalone', 'work_orders.registry_id'])
                 ->with([
                     'quote:id,opportunity_id',
                     'quote.opportunity:id,registry_id',
                     'quote.opportunity.registry:id,name',
+                    // Spec 0431: the own client of a commessa born without an offer.
+                    'registry:id,name',
                 ]),
             Auth::user(),
         );
@@ -259,8 +199,16 @@ class WorkOrderService
             $workOrder->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
             // Spec 0322: NOT NULL placeholder, remapped in Step 2a-bis once the lines exist.
             $workOrder->work_order_workflow_status_id = $this->statusAssigner->globalDefaultOpenStatusId();
+            // Spec 0431: born without an offer, for good.
+            $workOrder->is_standalone = $data->standaloneReferences !== null;
             $this->enforceForceCloseInvariant($workOrder);
             $workOrder->save();
+
+            // Step 1b (spec 0431, D-7/D-11): the own business-function lines, before the
+            // workflow set and the "Informazioni aggiuntive" that resolve off them.
+            if ($data->standaloneReferences !== null) {
+                $this->productLineWriter->sync($workOrder, $data->standaloneReferences->productLines);
+            }
 
             // Step 2: validate + sync the REVENUE line membership (D-7).
             $this->lineWriter->writeSubmitted($workOrder, $data->allowedQuoteIds(), $data->quoteLineIds);
@@ -359,6 +307,10 @@ class WorkOrderService
             }
 
             $this->lineWriter->writeSubmitted($workOrder, $this->allowedQuoteIds($workOrder), $data->quoteLineIds);
+            // Spec 0431: the own business-function lines of a commessa born without an offer.
+            if ($data->productLines !== null) {
+                $this->productLineWriter->sync($workOrder, $data->productLines);
+            }
 
             // Spec 0215, D-2: a submitted title (even null) is applied against
             // the lines as they are NOW; otherwise new lines re-derive an
@@ -371,7 +323,7 @@ class WorkOrderService
 
             // Spec 0322, D-8/AC-008/AC-010: new lines may change the resolved set; an
             // explicit status must belong to it.
-            if ($data->hasQuoteLineIds() || $data->workOrderWorkflowStatusId !== null) {
+            if ($data->hasQuoteLineIds() || $data->productLines !== null || $data->workOrderWorkflowStatusId !== null) {
                 $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: true);
                 $this->applyManualStatusProgress($workOrder, $previousStatusId, $data->workOrderWorkflowStatusId);
             }

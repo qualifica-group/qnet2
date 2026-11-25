@@ -68,9 +68,18 @@ use Illuminate\Support\Facades\DB;
  * `work_phase` / `work_phase_before_termination` (spec 0395, the legacy
  * `orders.status` / `last_status`) are absent from #[Fillable]: moved only
  * by WorkOrderWorkPhaseTracker and the legacy import.
+ *
+ * Spec 0431: `is_standalone` (absent from #[Fillable], set once by the
+ * service) marks a project commessa born without any offer; only then are
+ * `registry_id`/`company_id`/`company_site_id`/`operational_site_id` and
+ * `productLines()` filled. Read them through WorkOrderReferences, never here.
  */
 #[Fillable([
     'quote_id',
+    'registry_id',
+    'company_id',
+    'company_site_id',
+    'operational_site_id',
     'title',
     'type',
     'start_date',
@@ -102,6 +111,7 @@ class WorkOrder extends BaseModel
             'start_date' => 'date:Y-m-d',
             'callback_date' => 'date:Y-m-d',
             'title_is_manual' => 'boolean',
+            'is_standalone' => 'boolean',
             'is_force_closed' => 'boolean',
             'work_phase' => WorkOrderWorkPhase::class,
             'work_phase_before_termination' => WorkOrderWorkPhase::class,
@@ -117,6 +127,33 @@ class WorkOrder extends BaseModel
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
+    }
+
+    /** Spec 0431: the own client of a commessa born without an offer. */
+    public function registry(): BelongsTo
+    {
+        return $this->belongsTo(Registry::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function companySite(): BelongsTo
+    {
+        return $this->belongsTo(CompanySite::class);
+    }
+
+    public function operationalSite(): BelongsTo
+    {
+        return $this->belongsTo(OperationalSite::class);
+    }
+
+    /** @return HasMany<WorkOrderProductLine, $this> */
+    public function productLines(): HasMany
+    {
+        return $this->hasMany(WorkOrderProductLine::class);
     }
 
     /**
@@ -162,11 +199,12 @@ class WorkOrder extends BaseModel
     }
 
     /**
-     * Multi-offer commessa (spec 0267, D-4): no offer of its own.
+     * Multi-offer commessa (spec 0267, D-4): no offer of its own, but lines
+     * of several. A commessa born without any offer (spec 0431) is not one.
      */
     public function isMultiQuote(): bool
     {
-        return $this->quote_id === null;
+        return $this->quote_id === null && ! $this->is_standalone;
     }
 
     /**
@@ -207,7 +245,8 @@ class WorkOrder extends BaseModel
     /**
      * Work orders with at least one source offer (`quote_id`, or the offers of
      * its pivot lines, spec 0267) located in one of the given operational
-     * sites. A NULL site never matches; an empty list matches nothing.
+     * sites, or born without an offer in one of them (spec 0431, D-10). A
+     * NULL site never matches; an empty list matches nothing.
      *
      * @param  Builder<WorkOrder>  $query
      * @param  array<int, int>  $siteIds
@@ -224,13 +263,14 @@ class WorkOrder extends BaseModel
                 self::pivotLinesQuery()
                     ->join('quotes', 'quotes.id', '=', 'quote_lines.quote_id')
                     ->whereIn('quotes.operational_site_id', $siteIds)
-            );
+            )->orWhereIn('work_orders.operational_site_id', $siteIds);
         });
     }
 
     /**
      * Work orders of a registry (customer), directly or through one of their
-     * lines' offers (quotes.opportunity_id -> opportunities.registry_id).
+     * lines' offers (quotes.opportunity_id -> opportunities.registry_id), or
+     * as the own client of one born without an offer (spec 0431).
      *
      * @param  Builder<WorkOrder>  $query
      * @param  int|array<int, int>  $registryIds
@@ -251,7 +291,7 @@ class WorkOrder extends BaseModel
                     ->join('quotes', 'quotes.id', '=', 'quote_lines.quote_id')
                     ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
                     ->whereIn('opportunities.registry_id', $registryIds)
-            );
+            )->orWhereIn('work_orders.registry_id', $registryIds);
         });
     }
 

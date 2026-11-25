@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCreatePayload,
+  buildStandaloneCreatePayload,
   buildUpdatePayload,
 } from '@/features/work-orders/work-order-form-payload'
 import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
@@ -22,6 +23,12 @@ const formValues: WorkOrderFormValues = {
   task_template_id: null,
   work_order_workflow_status_id: null,
   attribute_values: {},
+  // Spec 0431: the own references, empty on a work order born from an offer.
+  registry_id: null,
+  company_id: null,
+  company_site_id: null,
+  operational_site_id: null,
+  product_lines: [],
 }
 
 function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
@@ -275,5 +282,66 @@ describe('buildUpdatePayload — Stato lavorazione (spec 0322)', () => {
     expect(buildCreatePayload({ ...formValues, work_order_workflow_status_id: 2 })).not.toHaveProperty(
       'work_order_workflow_status_id',
     )
+  })
+})
+
+describe('standalone project work order (spec 0431)', () => {
+  const standaloneValues: WorkOrderFormValues = {
+    ...formValues,
+    quote_id: null,
+    quote_line_ids: [],
+    type: 'project',
+    title: '  Progetto interno  ',
+    registry_id: 5,
+    company_id: 6,
+    company_site_id: 7,
+    operational_site_id: null,
+    product_lines: [
+      { root_category_id: 1, product_category_id: 2 },
+      { root_category_id: null, product_category_id: null },
+    ],
+  }
+
+  it('creates without offer, lines and type, with the own references and only complete rows', () => {
+    const payload = buildStandaloneCreatePayload(standaloneValues, 'COM-0001')
+
+    expect(payload).not.toHaveProperty('quote_id')
+    expect(payload).not.toHaveProperty('quote_line_ids')
+    expect(payload).not.toHaveProperty('type')
+    expect(payload).toMatchObject({
+      title: 'Progetto interno',
+      registry_id: 5,
+      company_id: 6,
+      company_site_id: 7,
+      operational_site_id: null,
+      product_lines: [{ product_category_id: 2 }],
+    })
+  })
+
+  it('patches only the own references that changed, on a work order born without an offer', () => {
+    const persisted = original({
+      is_standalone: true,
+      quote: null,
+      quote_lines: [],
+      registry: { id: 5, name: 'Cliente' },
+      company: { id: 6, name: 'Societa' },
+      company_site: { id: 7, name: 'Sede' },
+      operational_site: null,
+      product_lines: [
+        { id: 1, business_function: { id: 3, name: 'F' }, product_category: { id: 2, name: 'C' } },
+      ],
+    })
+
+    expect(buildUpdatePayload({ ...standaloneValues, title: persisted.title }, persisted)).not.toHaveProperty('registry_id')
+    expect(buildUpdatePayload({ ...standaloneValues, title: persisted.title, company_site_id: null }, persisted)).toMatchObject({
+      company_site_id: null,
+    })
+  })
+
+  it('never sends own references for a work order born from an offer', () => {
+    const payload = buildUpdatePayload({ ...formValues, registry_id: 9, company_id: 9 }, original())
+
+    expect(payload).not.toHaveProperty('registry_id')
+    expect(payload).not.toHaveProperty('company_id')
   })
 })

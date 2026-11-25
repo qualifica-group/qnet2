@@ -23,7 +23,7 @@ return [
     ],
     'PUT /work-orders/{workOrder}' => [
         'summary' => 'Update a work order',
-        'description' => 'Partially updates a work order; code, quote_id and task_template_id cannot be sent. quote_line_ids, supervisor_ids and participant_slots replace the whole list when sent. Setting is_force_closed to true (with force_close_reason) force-closes its open tasks and moves it to a closed status. A manually chosen workflow status whose positive progress percentage is not above the progress already reached is refused with 422; a higher one adds a progress entry. Newly added members are notified. Requires work-orders.update on a visible work order.',
+        'description' => 'Partially updates a work order; code, quote_id and task_template_id cannot be sent. quote_line_ids, supervisor_ids and participant_slots replace the whole list when sent. On a project work order born without an offer (is_standalone) registry_id, company_id, company_site_id, operational_site_id and product_lines can be changed (never emptied, type stays project); on any other they cannot be sent. Setting is_force_closed to true (with force_close_reason) force-closes its open tasks and moves it to a closed status. A manually chosen workflow status whose positive progress percentage is not above the progress already reached is refused with 422; a higher one adds a progress entry. Newly added members are notified. Requires work-orders.update on a visible work order.',
     ],
     'DELETE /work-orders/{workOrder}' => [
         'summary' => 'Delete a work order',

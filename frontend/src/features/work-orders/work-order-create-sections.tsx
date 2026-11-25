@@ -21,6 +21,13 @@ import {
   WorkOrderQuoteField,
   WorkOrderQuoteLinesFormField,
 } from '@/features/work-orders/work-order-relation-fields'
+import { WorkOrderReferencesSection } from '@/features/work-orders/work-order-references-section'
+import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
+import { COMPANY_SITES_FOR_SELECT_RESOURCE } from '@/features/company-sites/for-select-api'
+import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
+import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
+import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
+import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { WorkOrderFormState } from '@/features/work-orders/use-work-order-form'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
@@ -104,6 +111,60 @@ function WorkOrderOfferSection({ workOrderForm, draft, registryId = null }: Draf
   )
 }
 
+/** Label of one id through the shared for-select cache; null when nothing is picked. */
+function refOf(id: number | null | undefined, labels: ReturnType<typeof useForSelectLabels>): RelationFieldRef | null {
+  return id != null ? { id, name: labels.get(id)?.label ?? PENDING_LABEL } : null
+}
+
+/**
+ * Spec 0431: the draft of a project work order born without an offer picks
+ * its own client, company, sites and business functions in place of the
+ * offer; the closed rows name them through the pickers' label cache.
+ */
+function WorkOrderDraftReferencesSection({ workOrderForm, draft }: Omit<DraftProps, 'registryId'>) {
+  const [registryId, companyId, companySiteId, operationalSiteId, productLines] = useWatch({
+    control: workOrderForm.form.control,
+    name: ['registry_id', 'company_id', 'company_site_id', 'operational_site_id', 'product_lines'],
+  })
+  const categoryIds = useMemo(
+    () => productLines.flatMap((row) => (row.product_category_id !== null ? [row.product_category_id] : [])),
+    [productLines],
+  )
+  const registries = useForSelectLabels({ resource: REGISTRIES_FOR_SELECT_RESOURCE, ids: idsOf(registryId) })
+  const companies = useForSelectLabels({ resource: COMPANIES_FOR_SELECT_RESOURCE, ids: idsOf(companyId) })
+  const companySites = useForSelectLabels({ resource: COMPANY_SITES_FOR_SELECT_RESOURCE, ids: idsOf(companySiteId) })
+  const operationalSites = useForSelectLabels({
+    resource: OPERATIONAL_SITES_FOR_SELECT_RESOURCE,
+    ids: idsOf(operationalSiteId),
+  })
+  const categories = useForSelectLabels({ resource: PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE, ids: categoryIds })
+
+  return (
+    <WorkOrderReferencesSection
+      values={{
+        registry: refOf(registryId, registries),
+        company: refOf(companyId, companies),
+        companySite: refOf(companySiteId, companySites),
+        operationalSite: refOf(operationalSiteId, operationalSites),
+        productLines:
+          categoryIds.length > 0 ? (
+            <ul className="flex flex-col gap-1">
+              {categoryIds.map((id) => (
+                <li key={id} className="min-w-0 font-medium">
+                  {categories.get(id)?.label ?? PENDING_LABEL}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <DetailEmpty />
+          ),
+      }}
+      form={workOrderForm}
+      inline={draft}
+    />
+  )
+}
+
 /**
  * The create form as a replica of the work order detail (spec 0195 D-8
  * applied to Commesse, user directive 2026-10-06): the detail's sections,
@@ -166,7 +227,11 @@ export function WorkOrderCreateSections({ workOrderForm, draft, registryId = nul
         inline={draft}
       />
 
-      <WorkOrderOfferSection workOrderForm={workOrderForm} draft={draft} registryId={registryId} />
+      {workOrderForm.isStandalone ? (
+        <WorkOrderDraftReferencesSection workOrderForm={workOrderForm} draft={draft} />
+      ) : (
+        <WorkOrderOfferSection workOrderForm={workOrderForm} draft={draft} registryId={registryId} />
+      )}
 
       {attributesLoading ? (
         <AdditionalInformationSection

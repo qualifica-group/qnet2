@@ -22,6 +22,8 @@ interface WorkOrderFormBodyProps {
   initialCode?: string
   /** Spec 0199: narrows the Offerta picker to one anagrafica's offers (create from its Commesse tab). */
   registryId?: number | null
+  /** Spec 0431: a project work order born without an offer. */
+  standalone?: boolean
 }
 
 /**
@@ -36,9 +38,15 @@ interface WorkOrderFormBodyProps {
  * `ResourcePermissions`. Pure composition: every non-render concern lives in
  * `useWorkOrderForm`.
  */
-export function WorkOrderFormBody({ onSuccess, onCancel, initialCode, registryId = null }: WorkOrderFormBodyProps) {
+export function WorkOrderFormBody({
+  onSuccess,
+  onCancel,
+  initialCode,
+  registryId = null,
+  standalone = false,
+}: WorkOrderFormBodyProps) {
   const { t } = useTranslation()
-  const workOrderForm = useWorkOrderForm({ mode: CREATE_MODE, onSuccess, initialCode })
+  const workOrderForm = useWorkOrderForm({ mode: CREATE_MODE, onSuccess, initialCode, standalone })
   const { form, serverError, onSubmit } = workOrderForm
   const draft = useDraftInlineEdit(form)
   const { isSubmitting } = form.formState

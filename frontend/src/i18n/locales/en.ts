@@ -457,6 +457,8 @@ export const en = {
   quoteSystemStatuses,
   contracts,
   workOrders,
+  // Spec 0431: the generic create page of "Commesse di Progetto" (module namespace).
+  projectWorkOrders: { forbidden: 'You are not allowed to create a project work order.' },
   outboundEmails,
   emailTemplates,
   documentBundles,

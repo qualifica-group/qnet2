@@ -88,7 +88,8 @@ export function WorkOrderContractDataPanel({ workOrder, children }: WorkOrderCon
   const { t } = useTranslation()
   const { can } = useAbilities()
   const { actions } = workOrder.permissions
-  const hasProductLines = !workOrder.is_multi_quote
+  // Spec 0431: born without an offer, its functions are edited in the Riferimenti section, not repeated here.
+  const hasProductLines = !workOrder.is_multi_quote && workOrder.is_standalone !== true
 
   return (
     <RecordSection title={t('workOrders.contractData.title')} icon={<FileText />} full>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0431-standalone-project-work-order" status="approved" owner="nicola" date="2026-11-25">
+
+  <goal>
+    Si puo' creare una Commessa di Progetto che non nasce da nessuna offerta. Ha gli stessi campi che oggi si vedono
+    sulla commessa: Cliente (con "Info cliente") e la sezione "Riferimenti Societa' e Funzioni Aziendali" (Societa',
+    Sede societa', Sede operativa, Funzioni aziendali).
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-11-25.
+    - Oggi cliente, societa', sedi e funzioni aziendali di una commessa si leggono SEMPRE dall'offerta
+      (quote -> opportunity -> registry; quote.company / companySite / operationalSite; opportunity.productLines).
+      `work_orders` non ha colonne proprie per questi dati.
+    - `quote_id` NULL significa oggi "commessa multi-offerta" (spec 0267 D-4, `WorkOrder::isMultiQuote()`).
+    - Spec 0093 D-13: nessuna creazione dalla lista perche' una commessa nasce sempre da un'offerta. Questa spec la
+      supera SOLO per le Commesse di Progetto senza offerta.
+
+    Decisioni utente 2026-11-25:
+    D-1 Strada "A": i campi propri valgono SOLO per le commesse senza offerta. Le commesse nate da offerta (singola o
+        multi) restano come sono, nessuna migrazione dei dati, nessuna copia: continuano a leggere dall'offerta.
+    D-2 La commessa senza offerta ha Cliente, Societa', Sede societa', Sede operativa e Funzioni aziendali.
+    D-3 Statistiche: restano "in tempo reale" come oggi; per le commesse senza offerta le dimensioni vengono dai campi
+        propri.
+
+    Decisioni di progetto:
+    D-4 Discriminatore esplicito `work_orders.is_standalone` (bool, default false), fissato alla creazione e mai piu'
+        modificabile. `isMultiQuote()` diventa `quote_id === null && ! is_standalone`: le multi-offerta non cambiano.
+    D-5 Solo `type = project` puo' essere senza offerta (422 altrimenti). Il tipo di una commessa senza offerta non si
+        cambia piu' in `processing` (422).
+    D-6 Un solo punto di lettura: `App\Services\WorkOrders\WorkOrderReferences` restituisce cliente, societa', sedi e
+        righe funzione/categoria di una commessa (propri se senza offerta, dall'offerta altrimenti). Ogni lettore lo
+        usa; nessun lettore ramifica da solo su `is_standalone`.
+    D-7 Funzioni aziendali = righe `work_order_product_lines` (categoria prodotto -> funzione derivata), stesso
+        writer (`ProductLineWriter`) e stessa validazione (`ValidatesProductLines`) di opportunita'/progetti. Almeno
+        una riga obbligatoria.
+    D-8 Obbligatori: cliente, societa', almeno una funzione aziendale. Facoltative: sede societa', sede operativa
+        (come sull'offerta). La sede societa' deve appartenere alla societa' (422).
+    D-9 Nessuna offerta = nessuna riga di ricavo: niente proforma, niente importo, niente dati contrattuali. Costi
+        manuali, ordini e fatture passive funzionano come oggi.
+    D-10 Visibilita': il gradino "sede" usa la sede operativa propria, il gradino "competenza" le categorie delle
+        righe proprie.
+    D-11 "Informazioni aggiuntive" e set dello "Stato lavorazione" si risolvono dalle categorie/funzioni delle righe
+        proprie (come dalle righe di ricavo per le altre commesse).
+    D-12 Statistiche (Controllo di gestione): societa'/sedi dai campi propri; i costi si dividono in parti uguali fra
+        le funzioni aziendali della commessa (non ha ricavi su cui pesarle); nessun commerciale.
+    D-13 Creazione: pulsante "Nuova commessa di progetto" nella lista Commesse di Progetto, permesso
+        `work-orders.create`. Endpoint dedicato, la creazione da offerta resta invariata.
+    D-14 (in implementazione) Il titolo e' obbligatorio: senza righe quello automatico sarebbe solo il codice.
+    D-15 (in implementazione) Variabili email: `client.*`, `company.*`, `company_site.*` si risolvono dai campi
+        propri; le categorie solo-offerta (`quote`, `opportunity`, `referent`, `commercial`...) restano vuote.
+        Referente del dettaglio: il referente principale del cliente.
+    D-16 (in implementazione) "Informazioni aggiuntive" non compaiono nel modulo di creazione (l'anteprima
+        `form-context` lavora sulle righe offerta): si compilano dal dettaglio, dove il set viene dalle righe proprie.
+  </context>
+
+  <data_contract>
+    <db>
+      `work_orders`: + `is_standalone` bool default false; + `registry_id`, `company_id`, `company_site_id`,
+      `operational_site_id` nullable FK restrictOnDelete, indicizzate. Valorizzate solo se `is_standalone`.
+      `work_order_product_lines`: id, work_order_id (FK cascadeOnDelete), business_function_id (FK restrictOnDelete),
+      product_category_id (FK restrictOnDelete), timestamps; unique (work_order_id, business_function_id,
+      product_category_id); indici sulle due FK di classificazione. Migrazione reversibile (down toglie tutto).
+    </db>
+    <endpoint method="POST" path="/api/project-work-orders">
+      <request>
+        Come POST /api/work-orders senza `quote_id`/`quote_line_ids`/`type` (tipo fisso `project`) e senza chiusura
+        forzata, con `title` obbligatorio (D-14), piu':
+        `registry_id` int required exists; `company_id` int required exists; `company_site_id` int|null exists,
+        della societa'; `operational_site_id` int|null exists; `product_lines` [{product_category_id}] min 1.
+      </request>
+      <response>201, envelope del progetto, `data` = WorkOrderDetail con `is_standalone: true`, `is_multi_quote:
+        false`, `registry`/`client_info`/`company`/`company_site`/`operational_site`/`product_lines` valorizzati.
+      </response>
+      <errors>403 senza `work-orders.create`; 422 validazione.</errors>
+    </endpoint>
+    <endpoint method="PUT|PATCH" path="/api/work-orders/{id}">
+      <request>
+        Su una commessa senza offerta accetta anche `registry_id`, `company_id`, `company_site_id`,
+        `operational_site_id`, `product_lines` (stesse regole, `sometimes`). Su una commessa da offerta sono
+        `prohibited`. `type` = processing su una commessa senza offerta: 422.
+      </request>
+    </endpoint>
+    <resource>WorkOrderDetail: + `is_standalone: bool`. Le chiavi esistenti non cambiano forma.</resource>
+  </data_contract>
+
+  <acceptance>
+    AC-001 POST /api/project-work-orders valido crea una commessa `project`, `is_standalone`, `quote_id` null,
+           codice COM-, righe proprie, e il dettaglio mostra cliente, info cliente, societa', sedi, funzioni.
+    AC-002 Senza cliente, societa' o funzioni -> 422; sede societa' di un'altra societa' -> 422.
+    AC-003 Senza `work-orders.create` -> 403.
+    AC-004 Una commessa senza offerta non e' multi-offerta (`is_multi_quote` false); le multi-offerta esistenti lo
+           restano.
+    AC-005 PATCH dei campi propri su commessa senza offerta li aggiorna; sugli stessi campi di una commessa da offerta
+           -> 422; `type` processing su commessa senza offerta -> 422.
+    AC-006 Griglia Commesse di Progetto: colonna/filtro/ricerca Cliente trovano la commessa senza offerta; la scheda
+           Commesse dell'anagrafica la elenca.
+    AC-007 Visibilita': chi vede la sede operativa propria della commessa (gradino sede) la vede; chi non ha nessun
+           gradino non la vede.
+    AC-008 Controllo di gestione: la commessa senza offerta compare con la societa'/sede propria e i costi divisi in
+           parti uguali fra le sue funzioni.
+    AC-009 Frontend: pulsante "Nuova commessa di progetto", modulo con i campi sopra, dettaglio con la sezione
+           Riferimenti modificabile; niente badge multi-offerta ne' azione proforma.
+  </acceptance>
+
+  <microtasks>
+    MT-1 Migrazione, model (relazioni, `isMultiQuote`), `WorkOrderReferences`, endpoint di creazione, resource. Test.
+    MT-2 Update dei campi propri e del tipo, permessi di campo, lettori del dettaglio (contatti, info cliente, email,
+         task, notifiche). Test.
+    MT-3 Griglie e filtri, scheda anagrafica, for-select, visibilita', attributi e stato lavorazione. Test.
+    MT-4 Controllo di gestione (riferimento e quote funzioni). Test.
+    MT-5 Frontend: pulsante, modulo, dettaglio modificabile, badge/proforma. Test.
+    MT-6 Guide in-app IT/EN, manuale Claude Docs, HANDOFF.
+  </microtasks>
+</spec>

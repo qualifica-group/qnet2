@@ -34,6 +34,10 @@ use App\Enums\WorkOrderType;
  * `workOrderWorkflowStatusId` (spec 0322): the optional explicit "Stato
  * lavorazione"; null lets the resolver pick the open row of the set. Out of
  * attributes() — the column is not fillable.
+ *
+ * `standaloneReferences` (spec 0431): set only on a project commessa born
+ * without an offer (forStandaloneProject()); its FKs join attributes(), its
+ * business-function lines are synced by the service.
  */
 final readonly class CreateWorkOrderData
 {
@@ -63,6 +67,7 @@ final readonly class CreateWorkOrderData
         public array $multiQuoteIds = [],
         public ?int $workOrderWorkflowStatusId = null,
         public ?int $forceCloseStatusId = null,
+        public ?StandaloneWorkOrderReferences $standaloneReferences = null,
     ) {}
 
     /**
@@ -76,7 +81,7 @@ final readonly class CreateWorkOrderData
 
         return new self(
             code: ($code === null || $code === '') ? null : $code,
-            quoteId: (int) $data['quote_id'],
+            quoteId: isset($data['quote_id']) ? (int) $data['quote_id'] : null,
             title: self::normalizeTitle($data['title'] ?? null),
             type: WorkOrderType::from((string) $data['type']),
             startDate: (string) $data['start_date'],
@@ -197,6 +202,37 @@ final readonly class CreateWorkOrderData
     }
 
     /**
+     * Built from StoreStandaloneProjectWorkOrderRequest (spec 0431): no offer,
+     * no lines, type fixed to `project`, the own references instead.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function forStandaloneProject(array $data): self
+    {
+        $base = self::fromValidated([...$data, 'quote_id' => null, 'type' => WorkOrderType::Project->value]);
+
+        return new self(
+            code: $base->code,
+            quoteId: null,
+            title: $base->title,
+            type: WorkOrderType::Project,
+            startDate: $base->startDate,
+            callbackDate: $base->callbackDate,
+            description: $base->description,
+            internalNotes: $base->internalNotes,
+            isForceClosed: false,
+            forceCloseReason: null,
+            quoteLineIds: [],
+            supervisorIds: $base->supervisorIds,
+            participantSlots: $base->participantSlots,
+            attributeValues: $base->attributeValues,
+            taskTemplateId: $base->taskTemplateId,
+            workOrderWorkflowStatusId: $base->workOrderWorkflowStatusId,
+            standaloneReferences: StandaloneWorkOrderReferences::fromValidated($data),
+        );
+    }
+
+    /**
      * Offers the submitted lines may belong to: the own offer, or the selected contracts' ones.
      *
      * @return array<int, int>
@@ -223,6 +259,7 @@ final readonly class CreateWorkOrderData
             'is_force_closed' => $this->isForceClosed,
             'force_close_reason' => $this->forceCloseReason,
             'task_template_id' => $this->taskTemplateId,
+            ...($this->standaloneReferences?->attributes() ?? []),
         ];
     }
 

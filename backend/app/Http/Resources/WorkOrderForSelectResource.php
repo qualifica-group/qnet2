@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Registry;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderReferences;
 use Illuminate\Http\Request;
 
 /**
@@ -46,8 +47,8 @@ class WorkOrderForSelectResource extends ForSelectResource
             'id' => $this->id,
             'label' => $title === '' ? (string) $this->code : $this->code.self::LABEL_SEPARATOR.$title,
             'meta' => [
-                'registry' => $this->registryRef($this->quote?->opportunity?->registry),
-                'registry_id' => $this->quote?->opportunity?->registry_id,
+                'registry' => $this->registryRef(app(WorkOrderReferences::class)->registry($this->resource)),
+                'registry_id' => app(WorkOrderReferences::class)->registryId($this->resource),
             ],
         ];
     }

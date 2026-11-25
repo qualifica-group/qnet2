@@ -2,6 +2,7 @@ import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
+  CreateStandaloneProjectWorkOrderPayload,
   CreateWorkOrderPayload,
   RequestWorkOrderUpdatePayload,
   UpdateWorkOrderPayload,
@@ -64,6 +65,14 @@ export async function fetchWorkOrderNextCode(): Promise<string> {
 /** Creates a work order. `code` falls back to server-side generation when omitted/empty. */
 export async function createWorkOrder(payload: CreateWorkOrderPayload): Promise<WorkOrderDetail> {
   const { data } = await apiClient.post<ApiResponse<WorkOrderDetail>>('/work-orders', payload)
+  return data.data
+}
+
+/** Spec 0431: creates a project work order born without any offer. */
+export async function createStandaloneProjectWorkOrder(
+  payload: CreateStandaloneProjectWorkOrderPayload,
+): Promise<WorkOrderDetail> {
+  const { data } = await apiClient.post<ApiResponse<WorkOrderDetail>>('/project-work-orders', payload)
   return data.data
 }
 

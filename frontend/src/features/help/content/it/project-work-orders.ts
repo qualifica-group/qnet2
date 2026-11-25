@@ -24,6 +24,39 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'create-without-offer',
+      title: 'Nuova commessa di progetto senza offerta',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Con **Nuova commessa di progetto** in alto nella pagina crei una commessa di progetto che **non nasce da un'offerta**: per esempio un progetto interno. Il pulsante compare a chi ha il permesso di **creare le Commesse**. Le commesse nate da un'offerta si creano come prima, dal Contratto o dall'Anagrafica.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Premi **Nuova commessa di progetto**.',
+            'Scrivi il **Titolo** e la **Data inizio**.',
+            'Scegli il **Cliente**, la **Società** e, se servono, la **Società sede** e la **Sede operativa**.',
+            "In **Funzioni aziendali** scegli almeno una categoria: la funzione aziendale si ricava dalla categoria, come nelle opportunità.",
+            'Se vuoi, aggiungi Responsabili, Partecipanti e un Modello di Task, poi premi **Salva**.',
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: "Il dettaglio è quello di ogni commessa. Cliente, Società, sedi e Funzioni aziendali si modificano dalla sezione **Riferimenti Società e Funzioni Aziendali**, e il riquadro **Info cliente** mostra i dati del cliente scelto. Il **Tipo** resta sempre **Progetto**.",
+        },
+        {
+          type: 'list',
+          items: [
+            "Non ha **righe di prodotto** né **contratto**: non si chiedono **proforma** e l'importo resta vuoto.",
+            'Costi, ordini di acquisto, fatture passive, task, chat e documenti funzionano come nelle altre commesse.',
+            "Chi vede le commesse della propria **sede** la vede tramite la sua **Sede operativa**; chi le vede per **competenza**, tramite le sue **Funzioni aziendali**.",
+            "Nel **Controllo di gestione** conta con la sua società e le sue sedi; i costi si dividono **in parti uguali** fra le sue funzioni aziendali.",
+          ],
+        },
+      ],
+    },
+    {
       id: 'permissions',
       title: 'Permessi e indirizzo',
       blocks: [

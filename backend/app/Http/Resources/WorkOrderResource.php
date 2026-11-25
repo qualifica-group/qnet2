@@ -14,6 +14,7 @@ use App\Models\QuoteLine;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\RequestManagement\ApplicableAttribute;
+use App\Services\WorkOrders\WorkOrderReferences;
 use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
@@ -96,6 +97,8 @@ class WorkOrderResource extends JsonResource
             'contract_number' => $this->quote?->code,
             'task_template' => $this->summarizeTaskTemplate(),
             'is_multi_quote' => $this->isMultiQuote(),
+            // Spec 0431: born without an offer, its client and references are its own.
+            'is_standalone' => $this->is_standalone,
             'source_quotes' => $this->summarizeSourceQuotes(),
             'quote' => $this->summarizeQuote(),
             'contract' => $this->summarizeContract(),
@@ -104,7 +107,7 @@ class WorkOrderResource extends JsonResource
             'client_info' => $this->summarizeClientInfo($request),
             'company' => $this->summarizeCompany(),
             'company_site' => $this->summarizeCompanySite(),
-            'operational_site' => OperationalSiteLabel::summarize($this->quote?->operationalSite),
+            'operational_site' => OperationalSiteLabel::summarize(app(WorkOrderReferences::class)->operationalSite($this->resource)),
             // Spec 0331: read-only projection of the single offer; a multi-offer
             // commessa has no `quote`, so these are null / [].
             'referent' => $this->summarizeReferent($request),
@@ -112,7 +115,7 @@ class WorkOrderResource extends JsonResource
             'commercial_partner' => $this->summarizeByName($this->quote?->commercialPartner),
             'reporter' => $this->summarizeByName($this->quote?->reporter),
             'source' => $this->summarizeByName($this->quote?->source),
-            'product_lines' => $this->summarizeProductLines($this->quote?->opportunity?->productLines ?? []),
+            'product_lines' => $this->summarizeProductLines(app(WorkOrderReferences::class)->productLines($this->resource)),
             'rewards' => $this->summarizeRewards($this->quote?->rewards ?? []),
             'layout' => $this->summarizeByName($this->quote?->layout),
             'payment_method' => $this->summarizeByName($this->quote?->paymentMethod),
@@ -305,7 +308,7 @@ class WorkOrderResource extends JsonResource
     }
 
     /**
-     * The Societa' of the linked quote, the same live projection the Contract
+     * The Societa' of the linked quote (or the commessa's own, spec 0431), the same live projection the Contract
      * detail shows (ContractResource::summarizeCompany()): `companies` has no
      * `name` column, its display name IS `denomination`.
      *
@@ -313,7 +316,7 @@ class WorkOrderResource extends JsonResource
      */
     private function summarizeCompany(): ?array
     {
-        $company = $this->quote?->company;
+        $company = app(WorkOrderReferences::class)->company($this->resource);
 
         return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
     }
@@ -331,7 +334,7 @@ class WorkOrderResource extends JsonResource
      */
     private function summarizeCompanySite(): ?array
     {
-        $site = $this->quote?->companySite;
+        $site = app(WorkOrderReferences::class)->companySite($this->resource);
 
         return $site === null ? null : ['id' => $site->id, 'name' => $site->name];
     }

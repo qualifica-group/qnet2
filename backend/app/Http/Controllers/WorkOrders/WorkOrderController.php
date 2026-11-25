@@ -7,6 +7,7 @@ use App\Authorization\ResourcePermissionsBuilder;
 use App\Enums\FormMode;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\WorkOrders\StoreStandaloneProjectWorkOrderRequest;
 use App\Http\Requests\WorkOrders\StoreWorkOrderRequest;
 use App\Http\Requests\WorkOrders\UpdateWorkOrderRequest;
 use App\Http\Requests\WorkOrders\WorkOrderFormContextRequest;
@@ -106,6 +107,28 @@ class WorkOrderController extends BaseApiController
      * POST /api/work-orders — create a new work order.
      */
     public function store(StoreWorkOrderRequest $request): JsonResponse
+    {
+        try {
+            $this->authorize('create', WorkOrder::class);
+
+            $workOrder = $this->service->create($request->toData());
+
+            return $this->okWithPermissions(
+                new WorkOrderResource($workOrder),
+                $this->buildPermissions($request->user(), $workOrder),
+                'Created',
+                HttpStatusEnum::CREATED,
+            );
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * POST /api/project-work-orders — a project commessa born without any
+     * offer (spec 0431). Same ability as the create from an offer.
+     */
+    public function storeStandaloneProject(StoreStandaloneProjectWorkOrderRequest $request): JsonResponse
     {
         try {
             $this->authorize('create', WorkOrder::class);

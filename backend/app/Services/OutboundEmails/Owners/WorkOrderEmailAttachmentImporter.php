@@ -16,6 +16,7 @@ use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
 use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use App\Services\OutboundEmails\OutboundEmailAttachmentService;
+use App\Services\WorkOrders\WorkOrderReferences;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -51,7 +52,7 @@ final class WorkOrderEmailAttachmentImporter
      */
     private function importDocuments(WorkOrder $workOrder, OutboundEmail $email, User $actor, array $attachmentIds): OutboundEmail
     {
-        $registry = $workOrder->quote?->opportunity?->registry;
+        $registry = app(WorkOrderReferences::class)->registry($workOrder);
 
         $sources = Attachment::query()
             ->whereIn('id', $attachmentIds)

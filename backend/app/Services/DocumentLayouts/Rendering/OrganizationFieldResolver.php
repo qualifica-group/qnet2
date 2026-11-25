@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\DocumentLayouts\Rendering;
 
+use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\CompanySiteBank;
 use App\Models\Quote;
@@ -21,7 +22,15 @@ final class OrganizationFieldResolver
 {
     public function company(string $key, Quote $quote): ?string
     {
-        $company = $quote->company;
+        return $this->companyField($key, $quote->company);
+    }
+
+    /**
+     * The `company` variables for a company that does not come from a Quote
+     * (a commessa born without an offer, spec 0431): same keys, same formatting.
+     */
+    public function companyField(string $key, ?Company $company): ?string
+    {
         $address = $company?->primaryAddress;
 
         return match ($key) {

@@ -443,6 +443,8 @@ export const it: TranslationResources = {
   quoteSystemStatuses,
   contracts,
   workOrders,
+  // Spec 0431: the generic create page of "Commesse di Progetto" (module namespace).
+  projectWorkOrders: { forbidden: 'Non hai i permessi per creare una commessa di progetto.' },
   outboundEmails,
   emailTemplates,
   documentBundles,

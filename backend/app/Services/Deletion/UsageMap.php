@@ -28,6 +28,8 @@ final class UsageMap
             'employment_product_lines.business_function_id' => 'employment_product_lines',
             'opportunity_product_lines.business_function_id' => 'opportunity_product_lines',
             'project_product_lines.business_function_id' => 'project_product_lines',
+            // Spec 0431: the business functions of a project work order born without an offer.
+            'work_order_product_lines.business_function_id' => 'work_orders',
             'product_categories.business_function_id' => 'product_categories',
             'purchase_requests.business_function_id' => 'purchase_requests',
         ],
@@ -75,6 +77,8 @@ final class UsageMap
         'operational_sites' => [
             'business_function_operational_site.operational_site_id' => 'business_functions',
             'campaigns.operational_site_id' => 'campaigns',
+            // Spec 0431: the own operational site of a project work order born without an offer.
+            'work_orders.operational_site_id' => 'work_orders',
             'company_closure_operational_site.operational_site_id' => 'company_closures',
             'employment_profile_operational_site.operational_site_id' => 'employment_profiles',
             'import_run_rows.operational_site_id' => 'import_run_rows',
@@ -112,6 +116,7 @@ final class UsageMap
             'employment_product_lines.product_category_id' => 'employment_product_lines',
             'opportunity_product_lines.product_category_id' => 'opportunity_product_lines',
             'project_product_lines.product_category_id' => 'project_product_lines',
+            'work_order_product_lines.product_category_id' => 'work_orders',
         ],
         'product_typologies' => [
             'products.product_typology_id' => 'products',

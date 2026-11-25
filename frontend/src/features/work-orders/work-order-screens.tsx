@@ -81,7 +81,17 @@ export function WorkOrderDetailScreen({ id, onChanged, onSaved, initialTab }: Mo
   )
 }
 
-export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+/**
+ * The create screen. `standalone` (spec 0431, the "Commesse di Progetto"
+ * module) creates a project work order without an offer; otherwise it is
+ * created from an offer.
+ */
+export function WorkOrderFormScreen({
+  mode,
+  onSuccess,
+  onCancel,
+  standalone = false,
+}: ModuleFormScreenProps & { standalone?: boolean }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   // Leaving a work order being created — Cancel, the Sheet's X/overlay/Esc,
@@ -120,6 +130,7 @@ export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScr
         registryId={parseEntityId(String(mode.params?.registry_id ?? ''))}
         onSuccess={handleSuccess}
         onCancel={() => void handleCancel()}
+        standalone={standalone}
       />
     </>
   )

@@ -3,6 +3,9 @@
 return [
     'attribute_locked' => 'This field is updated by an external service and cannot be changed.',
     'delete_has_accounting_documents' => 'The work order cannot be deleted: it has linked accounting documents (proforma requests, invoices, purchase orders or purchase invoices).',
+    'company_site_not_of_company' => 'The company site must belong to the chosen company.',
+    'standalone_type_is_project' => 'A commessa without an offer is always a project commessa.',
+    'references_owned_by_offer' => "These data are changed on the commessa's offer.",
     'lines_not_offer_revenue' => 'The selected lines must be revenue lines of the selected contracts\' offers.',
     'line_already_programmed' => 'One of the selected lines is already in work order :code: each line can belong to one work order only.',
     'multi_quote' => [

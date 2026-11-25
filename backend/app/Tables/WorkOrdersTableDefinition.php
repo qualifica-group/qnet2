@@ -9,6 +9,7 @@ use App\Enums\WorkOrderWorkPhase;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderReferences;
 use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTypeAccess;
@@ -79,6 +80,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
         private readonly WorkOrderLinePaymentStatusColumn $linePaymentStatusColumn,
         private readonly WorkOrderAmountColumns $amountColumns,
+        private readonly WorkOrderReferences $references,
     ) {}
 
     /**
@@ -131,6 +133,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // `completion_recorded_on` (spec 0321) without one query per row.
         $query = $this->statusResolver->withProgress(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), Auth::user())->with([
             'quote.opportunity.registry',
+            // Spec 0431: the own client and rows of a commessa born without an offer.
+            'registry',
+            'productLines',
             'quote.contract',
             'supervisors.avatar',
             'participants.avatar',
@@ -329,7 +334,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'contract_expiry_date' => $row->quote?->contract?->expiry_date,
             WorkOrderRenewalColumn::COLUMN => $this->renewalColumn->project($row),
             'registry' => $sourceQuotes === null
-                ? $this->registrySummary($row->quote?->opportunity?->registry)
+                ? $this->registrySummary($this->references->registry($row))
                 : $this->joinDistinct($sourceQuotes->map(static fn ($quote) => $quote->opportunity?->registry?->name)->sort()),
             'type' => $row->type?->value,
             'start_date' => $row->start_date,

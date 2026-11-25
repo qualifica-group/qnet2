@@ -268,6 +268,11 @@ final class WorkOrderVisibilityScope
      */
     private static function isInSitesInMemory(WorkOrder $workOrder, array $siteIds): ?bool
     {
+        // Spec 0431, D-10: a commessa born without an offer sits in its own operational site.
+        if ($workOrder->is_standalone) {
+            return in_array($workOrder->operational_site_id, $siteIds, true);
+        }
+
         if ($workOrder->quote_id !== null) {
             return $workOrder->relationLoaded('quote')
                 ? in_array($workOrder->quote?->operational_site_id, $siteIds, true)

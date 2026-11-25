@@ -26,9 +26,16 @@ use App\Enums\WorkOrderType;
  *
  * `workOrderWorkflowStatusId` (spec 0322): the explicit "Stato lavorazione";
  * null (absent, or sent as null) leaves the resolver's baseline untouched.
+ *
+ * `referenceAttributes` / `productLines` (spec 0431): the submitted own
+ * client, company and sites (joining submittedAttributes()) and the
+ * business-function lines (null = untouched) of a commessa born without an
+ * offer; the request prohibits them on any other.
  */
 final readonly class UpdateWorkOrderData
 {
+    private const array REFERENCE_KEYS = ['registry_id', 'company_id', 'company_site_id', 'operational_site_id'];
+
     /**
      * @param  array<string, mixed>|null  $attributeValues
      */
@@ -55,6 +62,10 @@ final readonly class UpdateWorkOrderData
         public ?array $attributeValues = null,
         public ?int $workOrderWorkflowStatusId = null,
         public ?int $forceCloseStatusId = null,
+        /** @var array<string, int|null> */
+        public array $referenceAttributes = [],
+        /** @var array<int, array{product_category_id: int}>|null */
+        public ?array $productLines = null,
     ) {}
 
     /**
@@ -88,6 +99,10 @@ final readonly class UpdateWorkOrderData
                 ? (int) $data['work_order_workflow_status_id']
                 : null,
             forceCloseStatusId: isset($data['force_close_status_id']) ? (int) $data['force_close_status_id'] : null,
+            referenceAttributes: array_intersect_key($data, array_flip(self::REFERENCE_KEYS)),
+            productLines: array_key_exists('product_lines', $data)
+                ? array_values(array_map(static fn (array $line): array => ['product_category_id' => (int) $line['product_category_id']], (array) $data['product_lines']))
+                : null,
         );
     }
 
@@ -136,7 +151,7 @@ final readonly class UpdateWorkOrderData
             $attributes['force_close_reason'] = $this->forceCloseReason;
         }
 
-        return $attributes;
+        return [...$attributes, ...$this->referenceAttributes];
     }
 
     /** `title` was in the payload, even as null (= back to automatic). */

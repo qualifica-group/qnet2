@@ -96,7 +96,7 @@ final class WorkOrderFigureSources
             $weights[$id] = $this->functionShares->fromLines($ownLines, $categoryFunctions);
         }
 
-        return ['figures' => $figures, 'weights' => $weights];
+        return ['figures' => $figures, 'weights' => $this->functionShares->withOwnLines($weights)];
     }
 
     /**

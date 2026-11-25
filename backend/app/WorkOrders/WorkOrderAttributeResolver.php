@@ -113,6 +113,11 @@ final class WorkOrderAttributeResolver
      */
     private function categoryIdsForWorkOrder(WorkOrder $workOrder): array
     {
+        // Spec 0431 (D-11): born without an offer, the own business-function rows give the categories.
+        if ($workOrder->is_standalone) {
+            return $workOrder->loadMissing('productLines')->productLines->pluck('product_category_id')->unique()->values()->all();
+        }
+
         $workOrder->loadMissing('quoteLines.product.category');
 
         return $workOrder->quoteLines

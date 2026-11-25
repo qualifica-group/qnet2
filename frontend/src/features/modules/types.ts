@@ -117,6 +117,12 @@ export interface ModuleRegistryEntry {
    */
   permissionDomain?: string
   /**
+   * The permission of the generic create page, when it is not
+   * `${permissionDomain ?? domain}.create`: "Commesse di Progetto" is viewed
+   * with its own permissions but created with `work-orders.create` (spec 0431).
+   */
+  createPermission?: string
+  /**
    * When `false`, the generic `new`/`:id`/`:id/edit` routes are NOT generated
    * for this module: it keeps its own bespoke dedicated pages (declared by hand
    * in `router.tsx`), e.g. registries/referents/products whose detail pages own

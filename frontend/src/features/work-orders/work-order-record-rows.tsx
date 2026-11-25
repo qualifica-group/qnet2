@@ -94,6 +94,11 @@ export function WorkOrderCodeRow({ form, inline, code }: RowProps & { code: stri
 export function WorkOrderTypeRow({ form, inline, type }: RowProps & { type: WorkOrderType }) {
   const { t } = useTranslation()
 
+  // Spec 0431, D-5: born without an offer, a work order is always a project one.
+  if (form.isStandalone) {
+    return <RecordField label={t('workOrders.form.type')}>{t(`workOrders.options.type.${type}`)}</RecordField>
+  }
+
   return (
     <RecordInlineField
       field="type"

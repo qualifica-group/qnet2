@@ -12,6 +12,7 @@ use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
 use App\Models\Tag;
+use App\Services\WorkOrders\WorkOrderReferences;
 use App\Support\AddressLabel;
 use App\Support\ReferentRef;
 use App\Tables\Shared\PrimaryContactColumn;
@@ -41,8 +42,7 @@ trait SummarizesWorkOrderClientInfo
      */
     private function summarizeClientInfo(Request $request): ?array
     {
-        /** @var Registry|null $registry */
-        $registry = $this->quote?->opportunity?->registry;
+        $registry = app(WorkOrderReferences::class)->registry($this->resource);
 
         if ($registry === null) {
             return null;

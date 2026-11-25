@@ -22,6 +22,9 @@ use Illuminate\Support\Collection;
  * QuoteClassificationSource, which reads the category's own column only
  * (reported separately, spec 0322 "out").
  *
+ * Spec 0431 (D-11): a commessa born without an offer has no lines; its own
+ * business-function rows (`productLines`) give the categories instead.
+ *
  * Assumes the caller already eager-loaded `quoteLines.product` — the
  * contract WorkOrderWorkflowResolver::resolve() enforces with its own
  * `loadMissing()`, so nothing here lazy-loads under preventLazyLoading.
@@ -44,6 +47,10 @@ final class WorkOrderClassificationSource
      */
     public function categoryIds(WorkOrder $workOrder): array
     {
+        if ($workOrder->is_standalone) {
+            return $this->distinctIds($workOrder->productLines->pluck('product_category_id'));
+        }
+
         return $this->distinctIds(
             $this->revenueLines($workOrder)->map(static fn (QuoteLine $line): ?int => $line->product?->category_id),
         );

@@ -7,6 +7,7 @@ use App\Enums\WorkOrderType;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\RejectsLockedWorkOrderAttributes;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
+use App\Http\Requests\Concerns\ValidatesStandaloneWorkOrderReferences;
 use App\Models\WorkOrder;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +32,7 @@ use Illuminate\Validation\Rule;
  */
 class UpdateWorkOrderRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, RejectsLockedWorkOrderAttributes, ValidatesManagerSlots;
+    use EnforcesFieldPermissions, RejectsLockedWorkOrderAttributes, ValidatesManagerSlots, ValidatesStandaloneWorkOrderReferences;
 
     private const string PARTICIPANT_SLOTS_FIELD = 'participant_slots';
 
@@ -92,7 +93,22 @@ class UpdateWorkOrderRequest extends FormRequest
             // Full-replace of the partecipanti pivot when — and only when —
             // the key is submitted (spec 0096, D-3/AC-024).
             ...$this->managerSlotsRules(self::PARTICIPANT_SLOTS_FIELD),
+            // Spec 0431: the own references exist only on a commessa born without an offer.
+            ...($this->workOrder()->is_standalone
+                ? $this->standaloneReferenceRules(required: false)
+                : array_fill_keys(self::STANDALONE_REFERENCE_KEYS, ['prohibited'])),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return array_fill_keys(
+            array_map(static fn (string $key): string => $key.'.prohibited', self::STANDALONE_REFERENCE_KEYS),
+            __('work_orders.references_owned_by_offer'),
+        );
     }
 
     public function withValidator(Validator $validator): void
@@ -101,10 +117,25 @@ class UpdateWorkOrderRequest extends FormRequest
             $this->validateManagerSlots($validator, self::PARTICIPANT_SLOTS_FIELD);
             $this->enforceFieldPermissions($validator);
 
-            /** @var WorkOrder $workOrder */
-            $workOrder = $this->route('workOrder');
+            $workOrder = $this->workOrder();
             $this->rejectLockedAttributeChangesOf($validator, $workOrder);
+
+            if ($workOrder->is_standalone) {
+                $this->validateStandaloneReferences($validator, $workOrder->company_id, $workOrder->company_site_id);
+                // Spec 0431, D-5: without an offer the commessa stays a project one.
+                if ($this->has('type') && $this->input('type') !== WorkOrderType::Project->value) {
+                    $validator->errors()->add('type', __('work_orders.standalone_type_is_project'));
+                }
+            }
         });
+    }
+
+    private function workOrder(): WorkOrder
+    {
+        /** @var WorkOrder $workOrder */
+        $workOrder = $this->route('workOrder');
+
+        return $workOrder;
     }
 
     /**
@@ -126,10 +157,7 @@ class UpdateWorkOrderRequest extends FormRequest
 
     protected function authorizationModel(): ?Model
     {
-        /** @var WorkOrder $workOrder */
-        $workOrder = $this->route('workOrder');
-
-        return $workOrder;
+        return $this->workOrder();
     }
 
     /**

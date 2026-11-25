@@ -51,6 +51,8 @@ Route::post('work-orders/form-context', [WorkOrderController::class, 'formContex
 // endpoint.
 Route::get('work-orders/{workOrder}', [WorkOrderController::class, 'show']);
 Route::post('work-orders', [WorkOrderController::class, 'store']);
+// Spec 0431: a project commessa born without any offer (authorized in the controller, WorkOrderPolicy::create).
+Route::post('project-work-orders', [WorkOrderController::class, 'storeStandaloneProject']);
 Route::match(['put', 'patch'], 'work-orders/{workOrder}', [WorkOrderController::class, 'update']);
 Route::delete('work-orders/{workOrder}', [WorkOrderController::class, 'destroy']);
 
