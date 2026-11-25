@@ -3,7 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Stato legacy 1002 "X _ RICHIESTA PENALI" = chiusura negativa (segnalazione utente su COM-9831, 2026-11-25, spec 0324 D-11) — VERDE, APPLICATO AL DB LOCALE, NON COMMITTATO
+## Stato commessa con le parole e i colori del vecchio QNet (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Come il legacy (lista `OrdersTable` + `manageorder`): badge/colonna Stato IT = In programmazione, In lavorazione, Chiusa, Annullata, Disdetta (`it-enums.ts` `work_order_work_phase`); tab = Da pianificare, In lavorazione, Concluse, Annullate, Disdette (`it-work-orders.ts` invariato). EN invariato.
+- Colori: Chiusa `slate` (era green), Disdetta `gray` (era slate): `WorkOrderWorkPhase` `#[Color]` + `STATUS_TONES` in `work-order-detail-header.tsx`. Guide IT `work-orders.ts` / `project-work-orders.ts` aggiornate.
+- Verdi: Vitest 802 (work-orders, help, i18n), tsc -b, ESLint, Pint, Pest 140 (test con work phase).
+
+## Stato legacy 1002 "X _ RICHIESTA PENALI" = chiusura negativa (segnalazione utente su COM-9831, 2026-11-25, spec 0324 D-11) — VERDE, APPLICATO AL DB LOCALE, COMMITTATO (qnet-2 00fb4319c, legacy 375e0ae8)
 
 - Causa: COM-9831 Chiusa nel legacy con stato 1002, che D-2 classificava `in_progress`; D-10 la portava sulla chiave `completed` ("8.b", esito positivo).
 - Fix SOLO nel legacy: `../qnet/app/Support/Migration/LegacyWorkOrderStatusRoles.php`, 1002 aggiunto a `CLOSED_GROUP_IDS` (verificato con tinker sul feed `work-order-workflows`, `php -l`). qnet-2 nessun codice: il re-run riallinea il gruppo (D-4). Test qnet-2 delle sorgenti verdi (39).

@@ -203,11 +203,12 @@ export const enums = {
     processing: 'Lavorazione',
     project: 'Progetto',
   },
-  // Stato commessa (spec 0395, fase del vecchio QNet): colonna `status`, tab e badge del dettaglio.
+  // Stato commessa (spec 0395, fase del vecchio QNet): colonna `status` e badge del dettaglio, con le parole
+  // della colonna e del dettaglio del vecchio QNet (i tab hanno le loro, in `workOrders.workPhaseTabs`).
   work_order_work_phase: {
-    to_plan: 'Da pianificare',
+    to_plan: 'In programmazione',
     in_progress: 'In lavorazione',
-    completed: 'Conclusa',
+    completed: 'Chiusa',
     cancelled: 'Annullata',
     terminated: 'Disdetta',
   },

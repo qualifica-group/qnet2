@@ -26,7 +26,7 @@ enum WorkOrderWorkPhase: string
     case InProgress = 'in_progress';
 
     #[Label('Completed')]
-    #[Color('green')]
+    #[Color('slate')]
     case Completed = 'completed';
 
     #[Label('Cancelled')]
@@ -34,7 +34,7 @@ enum WorkOrderWorkPhase: string
     case Cancelled = 'cancelled';
 
     #[Label('Terminated')]
-    #[Color('slate')]
+    #[Color('gray')]
     case Terminated = 'terminated';
 
     /**

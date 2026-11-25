@@ -119,7 +119,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. La fase è lo **Stato** della commessa (colonna **Stato** della tabella e badge in alto nel dettaglio), è distinta dallo **Stato lavorazione** e dall'avanzamento, e si muove da sola come nel vecchio QNet: una commessa nuova è **Da pianificare**; passa **In lavorazione** quando le aggiungi un **Responsabile**; con la chiusura forzata va in **Concluse** (stato di chiusura positivo) o **Annullate** (negativo); se la riapri torna **In lavorazione**, o **Da pianificare** se non ha Responsabili. Dal contratto: **Annullato** porta tutte le sue commesse in **Annullate**; **Disdetto** porta in **Disdette** solo quelle da pianificare o in lavorazione, e riattivando il contratto tornano dov'erano. **Tutte** toglie il filtro. Accanto a ogni tab, tranne **Tutte**, c'è il numero di commesse (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri, compresa la **Categoria madre**: se non vedi una commessa, controlla anche quelli.",
+          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. La fase è lo **Stato** della commessa (colonna **Stato** della tabella e badge in alto nel dettaglio), che come nel vecchio QNet usa parole sue: **In programmazione** (tab Da pianificare), **In lavorazione**, **Chiusa** (tab Concluse), **Annullata**, **Disdetta**. È distinta dallo **Stato lavorazione** e dall'avanzamento, e si muove da sola come nel vecchio QNet: una commessa nuova è **In programmazione**; passa **In lavorazione** quando le aggiungi un **Responsabile**; con la chiusura forzata va in **Concluse** (stato di chiusura positivo) o **Annullate** (negativo); se la riapri torna **In lavorazione**, o **In programmazione** se non ha Responsabili. Dal contratto: **Annullato** porta tutte le sue commesse in **Annullate**; **Disdetto** porta in **Disdette** solo quelle da pianificare o in lavorazione, e riattivando il contratto tornano dov'erano. **Tutte** toglie il filtro. Accanto a ogni tab, tranne **Tutte**, c'è il numero di commesse (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri, compresa la **Categoria madre**: se non vedi una commessa, controlla anche quelli.",
         },
       ],
     },
@@ -201,7 +201,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio della commessa; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **Da pianificare** o **In lavorazione** (non su una Conclusa, Annullata o Disdetta). La commessa non viene modificata.',
+          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio della commessa; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **In programmazione** o **In lavorazione** (non su una Chiusa, Annullata o Disdetta). La commessa non viene modificata.',
         },
         {
           type: 'table',
@@ -224,7 +224,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Oltre allo **Stato** (la fase: Da pianificare, In lavorazione, Conclusa, Annullata, Disdetta, vedi **Fasi di lavorazione**), ogni commessa ha il campo **Stato lavorazione**: lo stato di avanzamento operativo scelto da te. Lo trovi nel dettaglio e come colonna della tabella, con badge colorato e nome.",
+          text: "Oltre allo **Stato** (la fase: In programmazione, In lavorazione, Chiusa, Annullata, Disdetta, vedi **Fasi di lavorazione**), ogni commessa ha il campo **Stato lavorazione**: lo stato di avanzamento operativo scelto da te. Lo trovi nel dettaglio e come colonna della tabella, con badge colorato e nome.",
         },
         {
           type: 'paragraph',
