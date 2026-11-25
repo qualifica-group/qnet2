@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Campi Avvalimenti dalla 320 alla 43 (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Seeder one-shot `QualificaAvvalimentiTenderFieldsSeeder`: la categoria 43 "Gare - Avvalimenti" riceve in copia i campi Offerta (5) e Commessa (31) della 320 "[OLD] Avvalimenti_AVV", con flag obbligatorio/sync e in coda ai propri; le sezioni dei form 320 vanno in coda al form 43 dello stesso contesto (Offerta: dopo "Documenti da allegare"; Commessa: form nuovo). La 320 tiene i suoi campi (le 125 commesse legacy ne mostrano i valori). Id con controllo del nome: se non combaciano si ferma. Idempotente.
+- Da eseguire in produzione: `php artisan db:seed --class=QualificaAvvalimentiTenderFieldsSeeder`. Provato sul DB locale in transazione annullata: 43 -> 12 campi Offerta, 31 Commessa, 4 sezioni Commessa.
+- Verdi: Pest `tests/Feature/Seeding/QualificaAvvalimentiTenderFieldsSeederTest.php` (4), Pint. Manuale: nessun impatto (configurazione dati).
+
 ## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, NON COMMITTATO
 
 - Azione di riga `duplicate` su `/roles`, stesso schema di attributi/workflow preventivi: `RolesTableDefinition` (`actions()` + `actionsFor`, gate `create` su `Role::class`, mai sul `super-admin`), `roles-table.tsx` (`openDuplicate`, `SYSTEM_ROLE_HIDDEN_ACTIONS`), `roles-screens.tsx` (`RoleDuplicateLoader` rilegge il ruolo), `RoleFormMode` `duplicate` in `use-role-form.ts` (`source` passa da `RoleForm` -> `RoleFormBody` -> `useRoleForm`). Nessun endpoint nuovo: salva via `POST /roles`.
