@@ -17,6 +17,9 @@ enum McpLinkReason: string
     // Refusal (changed after opening) and revocation (changed now)
     case PasswordChanged = 'password_changed';
 
+    // Assistant link: the session token it is bound to is gone or expired (refusal and revocation)
+    case SessionEnded = 'session_ended';
+
     // Revocations only
     case RevokedByClient = 'revoked';
     case UserDeactivated = 'user_deactivated';

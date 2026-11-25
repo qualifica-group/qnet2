@@ -90,6 +90,7 @@ class McpLinkService
                 $link->revoked_at !== null => throw new McpLinkRejectedException(McpLinkReason::LinkRevoked),
                 $link->expires_at->isPast() => throw new McpLinkRejectedException(McpLinkReason::LinkExpired),
                 ! $user->is_active => throw new McpLinkRejectedException(McpLinkReason::UserInactive),
+                ! $link->assistantSessionAlive() => throw new McpLinkRejectedException(McpLinkReason::SessionEnded),
                 ! $link->isAliveFor($user) => throw new McpLinkRejectedException(McpLinkReason::PasswordChanged),
                 default => null,
             };
@@ -145,7 +146,7 @@ class McpLinkService
      * a plain SELECT would use the snapshot of an earlier read of the caller's
      * transaction and miss a token the exchange committed meanwhile.
      */
-    private function drop(McpLink $link, McpLinkReason $reason, bool $failOnTokenDeletion = false): void
+    public function drop(McpLink $link, McpLinkReason $reason, bool $failOnTokenDeletion = false): void
     {
         DB::transaction(function () use ($link, $reason): void {
             User::query()->lockForUpdate()->find($link->user_id);
@@ -204,6 +205,14 @@ class McpLinkService
             throw new FirstAccessPendingException;
         }
 
+        return $this->issueLink($client, $user, $mcpClient);
+    }
+
+    /**
+     * Creates the link of an already checked user, whose row the caller holds locked.
+     */
+    public function issueLink(ApiClient $client, User $user, string $mcpClient): OpenedMcpLink
+    {
         $credential = bin2hex(random_bytes((int) config('mcp-link.credential_bytes')));
         $link = McpLink::query()->create([
             'user_id' => $user->id,
