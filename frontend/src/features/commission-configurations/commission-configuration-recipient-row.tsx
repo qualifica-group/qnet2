@@ -6,6 +6,7 @@ import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-con
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import { OptionSelect, SecondaryFieldError } from './commission-configuration-controls'
 import { CommissionConfigurationRecipientField } from './commission-configuration-recipient-field'
+import { SupplierDirectionExplanation } from './supplier-direction-explanation'
 import type { CommissionConfigurationFormValues } from './commission-configuration-schema'
 import { useRelationLabels } from './use-relation-labels'
 import {
@@ -89,7 +90,7 @@ export function CommissionConfigurationRecipientRow({
               <OptionSelect
                 name="supplier_commission_direction"
                 options={SUPPLIER_COMMISSION_DIRECTIONS}
-                hint={t('commissionConfigurations.form.hints.supplierCommissionDirection')}
+                description={<SupplierDirectionExplanation />}
               />
             ) : null}
             <CommissionConfigurationRecipientField

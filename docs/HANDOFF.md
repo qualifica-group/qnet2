@@ -10,6 +10,13 @@
 - Manuale: guide `roles.ts` IT/EN sezione `duplicate-role`; Claude Docs "Duplicare un ruolo" prima di "Eliminare un ruolo".
 - Verdi: Pest `RolesTableDuplicateActionTest` (4) + `tests/Feature/Table` e `tests/Feature/Roles`, Vitest roles+help (248), ESLint, Pint, `tsc -b --force`. Rossi preesistenti (falliscono anche sull'albero pulito): `DemoRolesSeederTest` (permessi viewer), `TableBulkDeleteTest` last super-admin (`forbidden` vs `guarded`), `TableDefinitionContractTest` (`FormalabCallLog::factory`).
 
+## Verso commissione Fornitore spiegato sul form (richiesta utente 2026-11-25) — VERDE, COMMITTATO
+
+- Configuratore Commissioni, regola Fornitore: sotto il campo **Verso** c'e' ora un testo sempre visibile (non piu' il tooltip `hints.supplierCommissionDirection`, rimosso). In lettura spiega il verso scelto, in modifica tutti e due, con formula del margine ed esempio 1.000 euro al 40%.
+- File: `supplier-direction-explanation.tsx` (+ test), `commission-configuration-controls.tsx` (`OptionSelect`/`OptionInlineRow`: `hint` sostituito da `description`), `commission-configuration-rows.tsx`, `commission-configuration-recipient-row.tsx`, chiavi i18n `commissionConfigurations.form.directionExplanations.{RECEIVED,PAID}` IT/EN.
+- Verdi: Vitest 495 (commission-configurations, registries, i18n), ESLint, `tsc -b --force`. Guida in-app gia' spiegava Ricevuta/Pagata: nessuna modifica.
+- Dati (DB locale): tutte le 17 regole Fornitore sono Pagata, nessuna Ricevuta (12 su un fornitore preciso, 5 su sola categoria). Da verificare con l'utente se per gli enti ISO/SOA il verso giusto e' Ricevuta.
+
 ## Stato commessa con le parole e i colori del vecchio QNet (richiesta utente 2026-11-25) — VERDE, COMMITTATO
 
 - Come il legacy (lista `OrdersTable` + `manageorder`): badge/colonna Stato IT = In programmazione, In lavorazione, Chiusa, Annullata, Disdetta (`it-enums.ts` `work_order_work_phase`); tab = Da pianificare, In lavorazione, Concluse, Annullate, Disdette (`it-work-orders.ts` invariato). EN invariato.

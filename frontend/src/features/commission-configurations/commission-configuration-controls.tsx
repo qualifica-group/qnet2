@@ -17,16 +17,19 @@ interface OptionSelectProps {
   /** Authorization key when it differs from `name` (the recipient type follows `recipient_id`). */
   metaKey?: string
   onValueChange?: (next: string) => void
-  hint?: string
+  /** Always-visible explanation under the picker. */
+  description?: ReactNode
 }
 
 /** Metadata-aware option picker, the editor of every enum field of the configuration. */
-export function OptionSelect({ name, options, metaKey = name, onValueChange, hint }: OptionSelectProps) {
+export function OptionSelect({ name, options, metaKey = name, onValueChange, description }: OptionSelectProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<CommissionConfigurationFormValues>()
 
   return (
-    <MetaField control={control} name={name} metaKey={metaKey} label={t(`commissionConfigurations.form.${name}`)} hint={hint}>
+    <MetaField control={control} name={name} metaKey={metaKey} label={t(`commissionConfigurations.form.${name}`)}
+      description={description}
+    >
       {({ field, disabled }) => (
         <Select
           value={field.value ?? ''}
@@ -61,11 +64,12 @@ interface OptionInlineRowProps {
   canEdit: boolean
   /** Closed value, given the option's label; defaults to the plain label. */
   renderValue?: (label: string, value: string) => ReactNode
-  hint?: string
+  /** Always-visible explanation under the picker while editing. */
+  description?: ReactNode
 }
 
 /** A one-field row whose editor is an option picker (commission type, status). */
-export function OptionInlineRow({ name, options, inline, canEdit, renderValue, hint }: OptionInlineRowProps) {
+export function OptionInlineRow({ name, options, inline, canEdit, renderValue, description }: OptionInlineRowProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<CommissionConfigurationFormValues>()
   const value = useWatch({ control, name })
@@ -77,7 +81,7 @@ export function OptionInlineRow({ name, options, inline, canEdit, renderValue, h
       label={t(`commissionConfigurations.form.${name}`)}
       inline={inline}
       canEdit={canEdit}
-      editor={<OptionSelect name={name} options={options} hint={hint} />}
+      editor={<OptionSelect name={name} options={options} description={description} />}
     >
       {value ? renderValue ? renderValue(label, value) : label : <DetailEmpty />}
     </RecordInlineField>

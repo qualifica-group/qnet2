@@ -17,6 +17,7 @@ import {
   SUPPLIER_COMMISSION_DIRECTIONS,
   type CommissionConfigurationRefs,
 } from './types'
+import { SupplierDirectionExplanation } from './supplier-direction-explanation'
 
 interface CommissionConfigurationSectionsProps {
   inline: InlineEdit
@@ -37,7 +38,6 @@ const VALIDITY_SECTION_FIELDS = ['valid_from', 'valid_until', 'internal_note'] a
 
 /** The Supplier commission's direction (spec 0306): a SUPPLIER rule only, so the row exists only for that role. */
 function SupplierDirectionRow({ inline, canEdit }: Pick<CommissionConfigurationSectionsProps, 'inline' | 'canEdit'>) {
-  const { t } = useTranslation()
   const { control } = useFormContext<CommissionConfigurationFormValues>()
   const role = useWatch({ control, name: 'recipient_role' })
 
@@ -47,7 +47,13 @@ function SupplierDirectionRow({ inline, canEdit }: Pick<CommissionConfigurationS
       options={SUPPLIER_COMMISSION_DIRECTIONS}
       inline={inline}
       canEdit={canEdit}
-      hint={t('commissionConfigurations.form.hints.supplierCommissionDirection')}
+      description={<SupplierDirectionExplanation />}
+      renderValue={(label, value) => (
+        <span className="flex flex-col">
+          <span>{label}</span>
+          <SupplierDirectionExplanation value={value} />
+        </span>
+      )}
     />
   ) : null
 }
