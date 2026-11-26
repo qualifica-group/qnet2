@@ -147,20 +147,13 @@ export type AiPreviewState = 'open' | 'confirmed' | 'cancelled' | 'expired' | 'r
 
 export type AiPreviewOutcome = 'succeeded' | 'rejected' | 'uncertain' | 'expired' | 'cancelled' | 'stale'
 
-export interface AiPreviewChange {
-  field: string
-  label: string
-  before: unknown
-  after: unknown
-}
-
 export interface AiPreview {
   /** The only thing sent back by confirm and cancel. */
   id: string
-  operation: string
-  record: { type: string; id: number | string | null; label: string | null }
-  changes: AiPreviewChange[]
-  effects: string[]
+  /** False when the connector lacks required data: the preview can be read but not confirmed. */
+  confirmable: boolean
+  /** Markdown from the connector (record, fields before and after, effects), never model text. */
+  content: string
   expires_at: string
   state: AiPreviewState
   outcome: AiPreviewOutcome | null

@@ -106,6 +106,7 @@ const guide: HelpGuide = {
           items: [
             'The card shows only what the system prepared, not what the assistant writes in its text: always check the values on the card.',
             'The card is valid for **10 minutes**: the time left is always visible and, once over, it can no longer be confirmed. In that case nothing was written and you can repeat the request.',
+            'If the card lacks required data, **Confirm** stays disabled and a line explains why: you can only cancel and repeat the request with the missing data.',
             'If you ask for several changes, the cards arrive one at a time: confirm or cancel one to continue with the next.',
           ],
         },

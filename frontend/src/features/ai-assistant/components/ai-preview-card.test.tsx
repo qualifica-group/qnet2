@@ -16,13 +16,8 @@ const NOW = new Date('2026-11-26T10:00:00Z').getTime()
 function preview(overrides: Partial<AiPreview> = {}): AiPreview {
   return {
     id: 'a1b2c3d4e5f6a1b2c3d4e5f6',
-    operation: 'PUT /work-orders/{id}',
-    record: { type: 'work-orders', id: 7, label: 'Commessa 7 - Rossi' },
-    changes: [
-      { field: 'status', label: 'Stato', before: 'Aperta', after: 'Chiusa' },
-      { field: 'notes', label: 'Note', before: null, after: 'Consegnata' },
-    ],
-    effects: ['Il cliente riceve una notifica'],
+    confirmable: true,
+    content: '**Commessa 7 - Rossi**\n\n- Stato: Aperta, poi Chiusa\n- Note: Consegnata\n\nEffetto: il cliente riceve una notifica',
     expires_at: new Date(NOW + 10 * 60_000).toISOString(),
     state: 'open',
     outcome: null,
@@ -58,16 +53,14 @@ describe('AiPreviewCard', () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  it('shows the record, before and after of every field, the effects and the time left', () => {
+  it('shows the connector Markdown (record, fields, effects) and the time left', () => {
     setup()
 
     const card = screen.getByRole('group', { name: 'Modifica da confermare' })
-    expect(card).toHaveTextContent('Commessa 7 - Rossi')
-    const status = within(card).getByRole('row', { name: /Stato/ })
-    expect(status).toHaveTextContent('Aperta')
-    expect(status).toHaveTextContent('Chiusa')
-    expect(within(card).getByRole('row', { name: /Note/ })).toHaveTextContent('Consegnata')
-    expect(card).toHaveTextContent('Il cliente riceve una notifica')
+    expect(within(card).getByText('Commessa 7 - Rossi')).toHaveProperty('tagName', 'STRONG')
+    expect(within(card).getAllByRole('listitem')).toHaveLength(2)
+    expect(card).toHaveTextContent('Stato: Aperta, poi Chiusa')
+    expect(card).toHaveTextContent('il cliente riceve una notifica')
     expect(card).toHaveTextContent('10:00')
     expect(screen.getByRole('button', { name: 'Conferma' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Annulla' })).toBeEnabled()
@@ -78,16 +71,23 @@ describe('AiPreviewCard', () => {
     expect(screen.queryByText(/Ho cancellato tutti i clienti/)).not.toBeInTheDocument()
   })
 
-  it('renders hostile values as plain text', () => {
+  it('renders raw HTML and unsafe links in the content as plain text', () => {
     const hostile = preview({
-      changes: [{ field: 'x', label: 'Campo', before: '<img src=x onerror=alert(1)>', after: '[a](javascript:alert(1))' }],
-      effects: ['<script>alert(1)</script>'],
+      content: '<img src=x onerror=alert(1)>\n\n[a](javascript:alert(1))\n\n<script>alert(1)</script>',
     })
     const { container } = setup(turn({ preview: hostile }))
 
     expect(container.querySelector('img, script, a')).toBeNull()
     expect(container).toHaveTextContent('<img src=x onerror=alert(1)>')
     expect(container).toHaveTextContent('[a](javascript:alert(1))')
+  })
+
+  it('keeps Confirm off, with a fixed reason, when the connector says it is not confirmable', () => {
+    setup(turn({ preview: preview({ confirmable: false }) }))
+
+    expect(screen.getByRole('button', { name: 'Conferma' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Annulla' })).toBeEnabled()
+    expect(screen.getByRole('group', { name: 'Modifica da confermare' })).toHaveTextContent('Mancano dati obbligatori')
   })
 
   it('counts down every second', () => {

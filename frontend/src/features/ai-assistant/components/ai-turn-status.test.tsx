@@ -51,8 +51,7 @@ describe('AiTurnStatus', () => {
 
   it('shows the preview card with Confirm and Cancel while waiting for the confirmation', () => {
     const preview: AiPreview = {
-      id: 'p1', operation: 'PUT /x', record: { type: 'x', id: 1, label: 'Record 1' },
-      changes: [{ field: 'a', label: 'Campo', before: 'uno', after: 'due' }], effects: [],
+      id: 'p1', confirmable: true, content: 'Record 1: uno, poi due',
       expires_at: new Date(Date.now() + 600_000).toISOString(), state: 'open', outcome: null,
     }
     const queryClient = new QueryClient()

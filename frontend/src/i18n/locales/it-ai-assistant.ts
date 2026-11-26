@@ -69,7 +69,7 @@ export const aiAssistant = {
   },
   preview: {
     label: 'Modifica da confermare',
-    effects: 'Effetti della modifica',
+    notConfirmable: 'Mancano dati obbligatori: questa modifica non si può confermare. Annulla e riprova con i dati mancanti.',
     expiresIn: 'Scade tra {{time}}',
     expired: 'Scaduta: non è stato scritto nulla.',
     confirm: 'Conferma',

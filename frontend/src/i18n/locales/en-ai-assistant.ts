@@ -69,7 +69,7 @@ export const aiAssistant = {
   },
   preview: {
     label: 'Change to confirm',
-    effects: 'Effects of the change',
+    notConfirmable: 'Required data is missing: this change cannot be confirmed. Cancel and try again with the missing data.',
     expiresIn: 'Expires in {{time}}',
     expired: 'Expired: nothing was written.',
     confirm: 'Confirm',

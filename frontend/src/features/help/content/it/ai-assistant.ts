@@ -106,6 +106,7 @@ const guide: HelpGuide = {
           items: [
             'La scheda mostra solo ciò che il sistema ha preparato, non quello che l\'assistente scrive nel testo: controlla sempre i valori nella scheda.',
             'La scheda è valida per **10 minuti**: il tempo rimasto è sempre visibile e, scaduto, non si può più confermare. In quel caso non è stato scritto nulla e puoi ripetere la richiesta.',
+            'Se alla scheda mancano dati obbligatori, **Conferma** resta disattivato e una riga lo spiega: puoi solo annullare e ripetere la richiesta con i dati mancanti.',
             'Se chiedi più modifiche, le schede arrivano una alla volta: confermane o annullane una per continuare con la successiva.',
           ],
         },
