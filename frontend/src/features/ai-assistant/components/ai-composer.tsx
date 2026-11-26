@@ -17,7 +17,7 @@ interface Props {
 /** Message composer: draft, attachments, "@" mentions and send/stop (AC-021..AC-023). */
 export function AiComposer({ composer, allowedModules }: Props) {
   const { t } = useTranslation()
-  const { form, textareaRef, limits, files, mentions, content, isBusy, failure } = composer
+  const { form, textareaRef, limits, files, mentions, content, isBusy, awaitingPreview, failure } = composer
   const ids = { content: useId(), files: useId(), mentions: useId(), hint: useId(), modules: useId() }
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { errors } = form.formState
@@ -130,6 +130,12 @@ export function AiComposer({ composer, allowedModules }: Props) {
         <span id={ids.mentions} role="alert" className="text-xs text-destructive">
           {errors.mentions.message ?? errors.mentions.root?.message}
         </span>
+      ) : null}
+
+      {awaitingPreview ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          {t('aiAssistant.composer.awaitingPreview')}
+        </p>
       ) : null}
 
       <div className="flex items-center gap-1">

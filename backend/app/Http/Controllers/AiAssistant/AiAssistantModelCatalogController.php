@@ -11,6 +11,7 @@ use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use App\Services\AiAssistant\Settings\OpenRouterCatalog;
 use App\Services\AiAssistant\Settings\OpenRouterCatalogUnavailableException;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
@@ -19,8 +20,6 @@ use Throwable;
  */
 class AiAssistantModelCatalogController extends BaseApiController
 {
-    private const int SERVICE_UNAVAILABLE = 503;
-
     private const int DEFAULT_LIMIT = 50;
 
     public function __construct(
@@ -34,23 +33,11 @@ class AiAssistantModelCatalogController extends BaseApiController
     public function index(IndexAiAssistantModelsRequest $request): JsonResponse
     {
         try {
-            $search = mb_strtolower(trim((string) $request->validated('search')));
             $offset = (int) $request->validated('offset', 0);
             $limit = (int) $request->validated('limit', self::DEFAULT_LIMIT);
-            $selected = $this->settings->current()->model_id;
+            $models = $this->catalog->search((string) $request->validated('search'), $this->settings->current()->model_id);
 
-            $models = array_values(array_filter(
-                $this->catalog->models(),
-                fn (array $model): bool => $search === ''
-                    || str_contains(mb_strtolower($model['id'].' '.$model['name']), $search),
-            ));
-
-            $items = array_map(
-                fn (array $model): array => $model + ['selected' => $model['id'] === $selected],
-                array_slice($models, $offset, $limit),
-            );
-
-            return $this->paginatedResponse($items, count($models), $offset, $limit);
+            return $this->paginatedResponse(array_slice($models, $offset, $limit), count($models), $offset, $limit);
         } catch (OpenRouterCatalogUnavailableException) {
             return $this->unavailable();
         } catch (Throwable $exception) {
@@ -74,6 +61,6 @@ class AiAssistantModelCatalogController extends BaseApiController
 
     private function unavailable(): JsonResponse
     {
-        return $this->fail(__('The model list is not available. Try again later.'), self::SERVICE_UNAVAILABLE);
+        return $this->fail(__('The model list is not available. Try again later.'), Response::HTTP_SERVICE_UNAVAILABLE);
     }
 }

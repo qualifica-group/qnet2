@@ -158,9 +158,28 @@ describe('AiPreviewCard', () => {
     expect(screen.getByRole('button', { name: 'Annulla' })).toBeDisabled()
   })
 
-  it('does not offer the buttons when the preview is no longer open', () => {
-    setup(turn({ preview: preview({ state: 'expired' }) }))
-    expect(screen.getByRole('button', { name: 'Conferma' })).toBeDisabled()
+  // REQUIREMENT CHANGED (lead, 26/11/2026): a closed preview stays visible with its outcome and no buttons at all.
+  it.each([
+    ['confirmed', null, 'Confermata: in attesa dell\'esito.'],
+    ['confirmed', 'succeeded', 'Confermata: la modifica è stata scritta.'],
+    ['cancelled', 'cancelled', 'Annullata: non è stato scritto nulla.'],
+    ['expired', 'expired', 'Scaduta: non è stato scritto nulla.'],
+    ['rejected', 'rejected', 'Rifiutata: non è stato scritto nulla.'],
+    ['uncertain', 'uncertain', 'Esito incerto: verifica il record prima di riprovare.'],
+    ['stale', 'stale', 'Non più valida: il record è cambiato e non è stato scritto nulla.'],
+  ] as const)('shows a closed card without buttons for state %s and outcome %s', (state, outcome, text) => {
+    setup(turn({ status: 'completed', preview: preview({ state, outcome }) }))
+
+    const card = screen.getByRole('group', { name: 'Modifica da confermare' })
+    expect(card).toHaveTextContent('Commessa 7 - Rossi')
+    expect(within(card).getByRole('status')).toHaveTextContent(text)
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+  })
+
+  it('stands one surface step above the bubble, never on the page background', () => {
+    setup()
+    expect(screen.getByRole('group', { name: 'Modifica da confermare' }).className).not.toContain('bg-background')
   })
 
   it('shows a fixed translated text on a refused confirmation, never the server text, and lets the person retry', async () => {

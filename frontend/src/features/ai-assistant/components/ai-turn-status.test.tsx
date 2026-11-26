@@ -49,6 +49,22 @@ describe('AiTurnStatus', () => {
     expect(screen.getByRole('status')).toHaveTextContent('L\'assistente sta scrivendo...')
   })
 
+  it('keeps the closed card with its outcome once the turn is over', () => {
+    const preview: AiPreview = {
+      id: 'p1', confirmable: true, content: 'Record 1: uno, poi due',
+      expires_at: new Date(Date.now() - 1000).toISOString(), state: 'expired', outcome: 'expired',
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AiTurnStatus turn={turn('completed', { preview, assistant_text: 'Non ho scritto nulla' })} />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('group', { name: 'Modifica da confermare' })).toHaveTextContent('Scaduta: non è stato scritto nulla.')
+    expect(screen.queryByRole('button', { name: 'Conferma' })).not.toBeInTheDocument()
+    expect(screen.getByText('Non ho scritto nulla')).toBeInTheDocument()
+  })
+
   it('shows the preview card with Confirm and Cancel while waiting for the confirmation', () => {
     const preview: AiPreview = {
       id: 'p1', confirmable: true, content: 'Record 1: uno, poi due',

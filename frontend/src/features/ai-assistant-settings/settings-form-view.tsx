@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -29,6 +30,7 @@ import {
   type SettingsFormValues,
 } from '@/features/ai-assistant-settings/settings-form'
 import type { AiAssistantSettings } from '@/features/ai-assistant-settings/types'
+import { cn } from '@/lib/utils'
 
 const SERVER_FIELDS = [
   'enabled',
@@ -41,6 +43,26 @@ const SERVER_FIELDS = [
   'routing.require_parameters',
   'routing.sort',
 ] as const
+
+interface SettingsSectionProps {
+  title: string
+  description?: string
+  contentClassName?: string
+  children: ReactNode
+}
+
+/** One titled card of the settings form. */
+function SettingsSection({ title, description, contentClassName, children }: SettingsSectionProps) {
+  return (
+    <Card className="gap-2 p-3">
+      <CardHeader className="p-0">
+        <CardTitle className="text-base">{title}</CardTitle>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+      </CardHeader>
+      <CardContent className={cn('p-0', contentClassName)}>{children}</CardContent>
+    </Card>
+  )
+}
 
 /** The settings of the assistant as one form: the super-admin edits and saves them together (spec 0433). */
 export function SettingsFormView({ settings }: { settings: AiAssistantSettings }) {
@@ -70,11 +92,7 @@ export function SettingsFormView({ settings }: { settings: AiAssistantSettings }
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-3" noValidate>
-        <Card className="gap-2 p-3">
-          <CardHeader className="p-0">
-            <CardTitle className="text-base">{t('general.title')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 p-0">
+        <SettingsSection title={t('general.title')} contentClassName="flex flex-col gap-3">
             <FormField
               control={form.control}
               name="enabled"
@@ -97,15 +115,9 @@ export function SettingsFormView({ settings }: { settings: AiAssistantSettings }
               </Badge>
               <span className="text-xs text-muted-foreground">{t('general.keyHint')}</span>
             </div>
-          </CardContent>
-        </Card>
+        </SettingsSection>
 
-        <Card className="gap-2 p-3">
-          <CardHeader className="p-0">
-            <CardTitle className="text-base">{t('model.title')}</CardTitle>
-            <CardDescription>{t('model.description')}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 p-0">
+        <SettingsSection title={t('model.title')} description={t('model.description')} contentClassName="flex flex-col gap-3">
             <FormField
               control={form.control}
               name="model_id"
@@ -121,25 +133,13 @@ export function SettingsFormView({ settings }: { settings: AiAssistantSettings }
               <p className="text-xs text-muted-foreground">{t('providers.description')}</p>
               <ProviderTable modelId={modelId} />
             </div>
-          </CardContent>
-        </Card>
+        </SettingsSection>
 
-        <Card className="gap-2 p-3">
-          <CardHeader className="p-0">
-            <CardTitle className="text-base">{t('routing.title')}</CardTitle>
-            <CardDescription>{t('routing.description')}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
+        <SettingsSection title={t('routing.title')} description={t('routing.description')}>
             <RoutingFields control={form.control} />
-          </CardContent>
-        </Card>
+        </SettingsSection>
 
-        <Card className="gap-2 p-3">
-          <CardHeader className="p-0">
-            <CardTitle className="text-base">{t('instructions.title')}</CardTitle>
-            <CardDescription>{t('instructions.description')}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
+        <SettingsSection title={t('instructions.title')} description={t('instructions.description')}>
             <FormField
               control={form.control}
               name="instructions"
@@ -156,15 +156,9 @@ export function SettingsFormView({ settings }: { settings: AiAssistantSettings }
                 </FormItem>
               )}
             />
-          </CardContent>
-        </Card>
+        </SettingsSection>
 
-        <Card className="gap-2 p-3">
-          <CardHeader className="p-0">
-            <CardTitle className="text-base">{t('caps.title')}</CardTitle>
-            <CardDescription>{t('caps.description')}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 p-0 sm:grid-cols-2">
+        <SettingsSection title={t('caps.title')} description={t('caps.description')} contentClassName="grid gap-3 sm:grid-cols-2">
             {(['spend_cap_person_usd', 'spend_cap_total_usd'] as const).map((name) => (
               <FormField
                 key={name}
@@ -181,8 +175,7 @@ export function SettingsFormView({ settings }: { settings: AiAssistantSettings }
                 )}
               />
             ))}
-          </CardContent>
-        </Card>
+        </SettingsSection>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">

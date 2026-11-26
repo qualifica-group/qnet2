@@ -135,17 +135,21 @@ export interface AiTurnStep {
   state: 'running' | 'done' | 'failed'
 }
 
-export type AiTurnErrorCode =
-  | 'model_unavailable'
-  | 'connector_unavailable'
-  | 'link_lost'
-  | 'too_many_steps'
-  | 'turn_timeout'
-  | 'stream_error'
-  | 'switched_off'
-  | 'limit_person'
-  | 'limit_total'
-  | 'internal'
+/** The fixed error codes of a turn; the list is also what the UI checks a server code against. */
+export const AI_TURN_ERROR_CODES = [
+  'model_unavailable',
+  'connector_unavailable',
+  'link_lost',
+  'too_many_steps',
+  'turn_timeout',
+  'stream_error',
+  'switched_off',
+  'limit_person',
+  'limit_total',
+  'internal',
+] as const
+
+export type AiTurnErrorCode = (typeof AI_TURN_ERROR_CODES)[number]
 
 export type AiPreviewState = 'open' | 'confirmed' | 'cancelled' | 'expired' | 'rejected' | 'uncertain' | 'stale'
 

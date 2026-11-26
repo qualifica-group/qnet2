@@ -39,6 +39,7 @@ it('AC-029: the env can narrow the accepted types but never add unsupported ones
 });
 
 it('AC-029: a type removed from the accepted list is rejected with 422 before the provider is called', function () {
+    aiapi_model_accepts_attachments();
     config()->set('ai-assistant.accepted_mimes', ['image/png']);
     Http::fake();
     $user = aiapi_user();
@@ -53,6 +54,7 @@ it('AC-029: a type removed from the accepted list is rejected with 422 before th
 });
 
 it('AC-029: with no accepted type any file is refused and the config endpoint says so', function () {
+    aiapi_model_accepts_attachments();
     config()->set('ai-assistant.accepted_mimes', []);
     Http::fake();
     $user = aiapi_user();

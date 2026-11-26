@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -43,6 +45,14 @@ class AssistantLink extends Model
     {
         return $this->personal_access_token_id !== null
             && self::tokenIsUsable(PersonalAccessToken::query()->find($this->personal_access_token_id));
+    }
+
+    /**
+     * A link opened for the assistant lives as long as the Sanctum token it is bound to; any other link has no such bond.
+     */
+    public static function sessionAliveFor(McpLink $link): bool
+    {
+        return self::query()->where('mcp_link_id', $link->id)->first()?->sessionIsAlive() ?? true;
     }
 
     public function link(): BelongsTo

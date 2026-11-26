@@ -131,12 +131,8 @@ class AiSpendLedger
     private function assertRoom(string $period, int $userId, string $amount, AiEffectiveSettings $caps, Collection $locked): void
     {
         $open = AiCostReservation::query()->where('period', $period)->get(['user_id', 'amount_usd']);
-        $limits = [
-            AiSpendLimitReached::SCOPE_PERSON => [$userId, $caps->spendCapPersonUsd],
-            AiSpendLimitReached::SCOPE_TOTAL => [AiSpendCounter::TOTAL_USER_ID, $caps->spendCapTotalUsd],
-        ];
 
-        foreach ($limits as $scope => [$counterUser, $cap]) {
+        foreach ($this->limits($userId, $caps) as $scope => [$counterUser, $cap]) {
             if ($cap === null) {
                 continue;
             }
@@ -177,14 +173,24 @@ class AiSpendLedger
     }
 
     /**
+     * The two caps with the counter each one is measured on.
+     *
+     * @return array<string, array{0: int, 1: string|null}>
+     */
+    private function limits(int $userId, AiEffectiveSettings $caps): array
+    {
+        return [
+            AiSpendLimitReached::SCOPE_PERSON => [$userId, $caps->spendCapPersonUsd],
+            AiSpendLimitReached::SCOPE_TOTAL => [AiSpendCounter::TOTAL_USER_ID, $caps->spendCapTotalUsd],
+        ];
+    }
+
+    /**
      * @param  array<int, string>  $spent  spent amount per counter user id, after this settlement
      */
     private function exceededScope(int $userId, array $spent, AiEffectiveSettings $caps): ?string
     {
-        foreach ([
-            AiSpendLimitReached::SCOPE_PERSON => [$userId, $caps->spendCapPersonUsd],
-            AiSpendLimitReached::SCOPE_TOTAL => [AiSpendCounter::TOTAL_USER_ID, $caps->spendCapTotalUsd],
-        ] as $scope => [$counterUser, $cap]) {
+        foreach ($this->limits($userId, $caps) as $scope => [$counterUser, $cap]) {
             if ($cap !== null && AiMoney::compare($spent[$counterUser], AiMoney::from($cap)) > 0) {
                 return $scope;
             }

@@ -5,7 +5,7 @@ import { AiAssistantPageView } from '@/features/ai-assistant/components/ai-assis
 import { AiChatPanel } from '@/features/ai-assistant/components/ai-chat-panel'
 import { buildAiConfig, renderWithProviders } from '@/features/ai-assistant/components/ai-test-support'
 import AiDockWindow from '@/features/ai-assistant/components/ai-dock-window'
-import type { AiAssistantConfig, AiConversationDetail, AiMessage, AiTurn } from '@/features/ai-assistant/types'
+import type { AiAssistantConfig, AiConversationDetail, AiMessage, AiPreview, AiTurn } from '@/features/ai-assistant/types'
 
 vi.mock('@/features/ai-assistant/api', () => ({
   AI_CONVERSATIONS_PAGE_SIZE: 30,
@@ -151,6 +151,46 @@ describe('turn resumed from the conversation detail (spec 0433 D-15)', () => {
     expect(await screen.findByText('Ecco tutte le commesse', {}, { timeout: 4000 })).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText('Leggo le commesse')).not.toBeInTheDocument())
     expect(screen.getAllByText('Ecco tutte le commesse')).toHaveLength(1)
+  })
+})
+
+describe('preview of a turn (spec 0433, D-3)', () => {
+  const PREVIEW: AiPreview = {
+    id: 'p1', confirmable: true, content: 'Commessa 7: da Aperta a Chiusa',
+    expires_at: new Date(Date.now() + 600_000).toISOString(), state: 'open', outcome: null,
+  }
+  const TURN: AiTurn = {
+    id: 8, conversation_id: 3, status: 'awaiting_confirmation', user_message_id: 1, assistant_text: '', assistant_message: null,
+    steps: [], preview: PREVIEW, queue_position: null, error_code: null, error_message: null,
+    created_at: 'now', updated_at: 'now', finished_at: null,
+  }
+
+  it('says why the send button is off while a preview is open', async () => {
+    vi.mocked(fetchAiConversation).mockResolvedValue({ ...DETAIL, active_turn: TURN })
+    vi.mocked(fetchAiTurn).mockResolvedValue(TURN)
+    renderWithProviders(<Harness config={buildAiConfig()} />)
+
+    expect(await screen.findByText('Conferma o annulla l\'anteprima per continuare.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Invia' })).toBeDisabled()
+  })
+
+  it('keeps the card, closed with its outcome and no active button, after the reply is saved', async () => {
+    const reply = message({ id: 9, role: 'assistant', content: 'Ho chiuso la commessa 7' })
+    const done: AiTurn = {
+      ...TURN, status: 'completed', assistant_text: reply.content, assistant_message: reply,
+      preview: { ...PREVIEW, state: 'confirmed', outcome: 'succeeded' },
+    }
+    vi.mocked(fetchAiConversation).mockResolvedValue({ ...DETAIL, messages: [...DETAIL.messages, reply], active_turn: done })
+    vi.mocked(fetchAiTurn).mockResolvedValue(done)
+    renderWithProviders(<Harness config={buildAiConfig()} />)
+
+    const card = await screen.findByRole('group', { name: 'Modifica da confermare' })
+    expect(card).toHaveTextContent('Commessa 7: da Aperta a Chiusa')
+    expect(card).toHaveTextContent('Confermata: la modifica è stata scritta.')
+    expect(screen.queryByRole('button', { name: 'Conferma' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Annulla' })).not.toBeInTheDocument()
+    expect(screen.getAllByText('Ho chiuso la commessa 7')).toHaveLength(1)
+    expect(screen.queryByText('Conferma o annulla l\'anteprima per continuare.')).not.toBeInTheDocument()
   })
 })
 

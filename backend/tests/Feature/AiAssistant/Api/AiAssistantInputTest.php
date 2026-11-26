@@ -4,6 +4,7 @@ use App\Models\AiMessage;
 use App\Models\Attachment;
 use App\Models\Company;
 use App\Models\Task;
+use App\Services\AiAssistant\AiModelCapabilities;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -77,7 +78,21 @@ it('AC-010: a missing record answers 422 on mentions.N.id, an unknown module on 
     expect(AiMessage::query()->count())->toBe(0);
 });
 
+it('AC-010: the missing-record text exists in Italian and English', function () {
+    Http::fake();
+    $user = aiapi_super_admin();
+    $conversation = aiapi_conversation($user);
+
+    foreach (['en' => 'The mentioned record does not exist.', 'it' => 'Il record menzionato non esiste.'] as $locale => $text) {
+        $this->withHeader('Accept-Language', $locale);
+        $response = aiapi_send($user, $conversation, ['mentions' => [['module' => 'companies', 'id' => 999999]]])
+            ->assertStatus(422);
+        expect($response->json('errors')['mentions.0.id'][0])->toBe($text);
+    }
+});
+
 it('AC-012: stores a PDF and an image as attachments, never sends their bytes to the model, and serves the download', function () {
+    aiapi_model_accepts_attachments();
     aiapi_fake_agent([aiapi_text_body(['a'])]);
     $user = aiapi_user();
     $conversation = aiapi_conversation($user);
@@ -105,15 +120,11 @@ it('AC-012: stores a PDF and an image as attachments, never sends their bytes to
 });
 
 it('spec 0433: a text-only model rejects new attachments with a fixed text and keeps the saved ones downloadable', function () {
-    aiapi_fake_agent([aiapi_text_body(['a'])]);
     $user = aiapi_user();
     $conversation = aiapi_conversation($user);
+    $message = AiMessage::factory()->for($conversation, 'conversation')->create();
+    $attachment = $message->attach(aiapi_pdf('doc.pdf'));
 
-    aiapi_send($user, $conversation, ['files' => [aiapi_pdf('doc.pdf')]])->assertStatus(202);
-    $message = AiMessage::query()->where('role', 'user')->sole();
-    $attachment = Attachment::query()->sole();
-
-    config()->set('ai-assistant.model_accepts_attachments', false);
     Http::fake();
 
     foreach (['en' => 'The assistant model accepts text only: attachments are not allowed.', 'it' => 'Il modello dell\'assistente accetta solo testo: gli allegati non sono ammessi.'] as $locale => $text) {
@@ -131,14 +142,19 @@ it('spec 0433: a text-only model rejects new attachments with a fixed text and k
     $this->get("/api/ai-assistant/messages/{$message->id}/attachments/{$attachment->id}")->assertOk();
 });
 
-it('spec 0433: the config tells the UI whether the model accepts attachments', function () {
+it('spec 0433 (Q15, Q17): the model is text-only and the config tells the UI so', function () {
     $user = aiapi_user();
     Sanctum::actingAs($user);
 
-    $this->getJson('/api/ai-assistant/config')->assertOk()->assertJsonPath('data.limits.accepts_attachments', true);
-
-    config()->set('ai-assistant.model_accepts_attachments', false);
+    expect(app(AiModelCapabilities::class)->acceptsAttachments())->toBeFalse();
     $this->getJson('/api/ai-assistant/config')->assertOk()->assertJsonPath('data.limits.accepts_attachments', false);
+});
+
+it('spec 0433: the config reports a model that takes files once the list admits one', function () {
+    aiapi_model_accepts_attachments();
+    Sanctum::actingAs(aiapi_user());
+
+    $this->getJson('/api/ai-assistant/config')->assertOk()->assertJsonPath('data.limits.accepts_attachments', true);
 });
 
 dataset('invalid turns', [
@@ -153,6 +169,7 @@ dataset('invalid turns', [
 ]);
 
 it('AC-013: rejects invalid input with 422 and writes no row or file', function (Closure $data, string $errorKey, array $config) {
+    aiapi_model_accepts_attachments();
     foreach ($config as $key => $value) {
         config()->set($key, $value);
     }

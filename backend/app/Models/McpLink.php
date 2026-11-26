@@ -76,24 +76,15 @@ class McpLink extends Model
     }
 
     /**
-     * Alive for this user: not revoked, not expired, user active, password unchanged since the opening,
-     * and, for an assistant link, the session token it is bound to still valid.
+     * Alive for this user: not revoked, not expired, user active, password unchanged since the opening.
+     * The session bond of an assistant link is checked apart (AssistantLink::sessionAliveFor).
      */
     public function isAliveFor(User $user): bool
     {
         return $this->revoked_at === null
             && $this->expires_at->isFuture()
             && $user->is_active
-            && hash_equals($this->password_fingerprint, self::fingerprint($user->password))
-            && $this->assistantSessionAlive();
-    }
-
-    /**
-     * A link opened for the assistant lives as long as the Sanctum token it is bound to; any other link has no such bond.
-     */
-    public function assistantSessionAlive(): bool
-    {
-        return AssistantLink::query()->where('mcp_link_id', $this->id)->first()?->sessionIsAlive() ?? true;
+            && hash_equals($this->password_fingerprint, self::fingerprint($user->password));
     }
 
     public function user(): BelongsTo

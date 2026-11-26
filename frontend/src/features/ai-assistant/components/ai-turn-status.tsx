@@ -5,21 +5,10 @@ import { AiMarkdown } from '@/features/ai-assistant/components/ai-markdown'
 import { AiPreviewCard } from '@/features/ai-assistant/components/ai-preview-card'
 import { BubbleAvatar } from '@/features/ai-assistant/components/ai-message-bubble'
 import { AI_WIDGET_REPLY_CLASS } from '@/features/ai-assistant/components/ai-widget-styles'
-import type { AiTurn, AiTurnErrorCode, AiTurnStep } from '@/features/ai-assistant/types'
+import { AI_TURN_ERROR_CODES, type AiTurn, type AiTurnErrorCode, type AiTurnStep } from '@/features/ai-assistant/types'
 import { cn } from '@/lib/utils'
 
-const KNOWN_ERROR_CODES: readonly AiTurnErrorCode[] = [
-  'model_unavailable',
-  'connector_unavailable',
-  'link_lost',
-  'too_many_steps',
-  'turn_timeout',
-  'stream_error',
-  'switched_off',
-  'limit_person',
-  'limit_total',
-  'internal',
-]
+const KNOWN_ERROR_CODES: readonly string[] = AI_TURN_ERROR_CODES
 
 const STEP_STATE_KEY = {
   running: 'aiAssistant.turn.stepRunning',
@@ -62,10 +51,12 @@ export function AiTurnStatus({ turn }: { turn: AiTurn }) {
   }
 
   const stoppedWithoutReply = status === 'failed' || status === 'cancelled' || status === 'limit_reached'
-  const code = turn.error_code !== null && KNOWN_ERROR_CODES.includes(turn.error_code) ? turn.error_code : null
+  const code: AiTurnErrorCode | null = turn.error_code !== null && KNOWN_ERROR_CODES.includes(turn.error_code) ? turn.error_code : null
   const hasBody = turn.assistant_text !== '' || turn.steps.length > 0
+  const { preview } = turn
   // The card shows what the connector returned; the model text next to it could describe another write.
-  const showsPreview = status === 'awaiting_confirmation' && turn.preview !== null
+  // It stays, closed, once the write was decided or expired.
+  const hidesModelText = status === 'awaiting_confirmation' && preview !== null
 
   return (
     <TurnBubble>
@@ -80,7 +71,7 @@ export function AiTurnStatus({ turn }: { turn: AiTurn }) {
           ))}
         </ul>
       ) : null}
-      {turn.assistant_text !== '' && !showsPreview ? <AiMarkdown content={turn.assistant_text} /> : null}
+      {turn.assistant_text !== '' && !hidesModelText ? <AiMarkdown content={turn.assistant_text} /> : null}
       {status === 'running' && !hasBody ? (
         <p role="status" className="text-xs text-muted-foreground">
           {t('aiAssistant.messages.typing')}
@@ -91,7 +82,7 @@ export function AiTurnStatus({ turn }: { turn: AiTurn }) {
           {t('aiAssistant.turn.awaitingConfirmation')}
         </p>
       ) : null}
-      {showsPreview && turn.preview ? <AiPreviewCard turn={turn} preview={turn.preview} /> : null}
+      {preview ? <AiPreviewCard turn={turn} preview={preview} /> : null}
       {stoppedWithoutReply ? (
         <p role="alert" className="text-xs text-destructive">
           {code ? t(`aiAssistant.turn.errors.${code}`) : t(`aiAssistant.turn.stopped.${status}`)}

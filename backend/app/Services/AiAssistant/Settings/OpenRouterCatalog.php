@@ -54,6 +54,26 @@ class OpenRouterCatalog
     }
 
     /**
+     * The models whose id or name contains `$search` (case-insensitive; empty keeps all), each marked
+     * with whether it is the `$selectedId` one.
+     *
+     * @return list<array{id: string, name: string, context_length: int, pricing: array<string, string|null>, selected: bool}>
+     */
+    public function search(string $search, ?string $selectedId): array
+    {
+        $search = mb_strtolower(trim($search));
+        $found = [];
+
+        foreach ($this->models() as $model) {
+            if ($search === '' || str_contains(mb_strtolower($model['id'].' '.$model['name']), $search)) {
+                $found[] = $model + ['selected' => $model['id'] === $selectedId];
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * Whether the model declares `reasoning` among its supported parameters. Unknown (OpenRouter
      * down) counts as no: the request then simply carries no reasoning limit.
      */
@@ -108,13 +128,11 @@ class OpenRouterCatalog
     {
         return $this->cached('providers:'.$modelId, function () use ($modelId): array {
             $zdrTags = $this->zdrTags($modelId);
-            $body = $this->get('/models/'.$modelId.'/endpoints');
 
             $providers = [];
-            foreach ($body['data']['endpoints'] ?? [] as $endpoint) {
-                $tag = is_array($endpoint) ? ($endpoint['tag'] ?? null) : null;
-                if (! is_string($tag) || ! in_array($tag, $zdrTags, true)
-                    || ! in_array(self::TOOLS_PARAMETER, $endpoint['supported_parameters'] ?? [], true)) {
+            foreach ($this->toolEndpoints($modelId) as $endpoint) {
+                $tag = $endpoint['tag'] ?? null;
+                if (! is_string($tag) || ! in_array($tag, $zdrTags, true)) {
                     continue;
                 }
                 $providers[] = [
@@ -145,11 +163,10 @@ class OpenRouterCatalog
             $zdrTags = $zdrOnly ? $this->zdrTags($modelId) : null;
             $ceiling = ['prompt' => null, 'completion' => null, 'request' => '0'];
 
-            foreach ($this->get('/models/'.$modelId.'/endpoints')['data']['endpoints'] ?? [] as $endpoint) {
-                $pricing = is_array($endpoint) ? ($endpoint['pricing'] ?? null) : null;
+            foreach ($this->toolEndpoints($modelId) as $endpoint) {
+                $pricing = $endpoint['pricing'] ?? null;
                 // A negative price ("-1" on routers with a variable price) cannot bound a cost: the endpoint is left out.
                 if (! is_array($pricing) || AiMoney::fromNonNegative($pricing['prompt'] ?? null) === null || AiMoney::fromNonNegative($pricing['completion'] ?? null) === null
-                    || ! in_array(self::TOOLS_PARAMETER, $endpoint['supported_parameters'] ?? [], true)
                     || ($zdrTags !== null && ! in_array($endpoint['tag'] ?? null, $zdrTags, true))) {
                     continue;
                 }
@@ -167,6 +184,24 @@ class OpenRouterCatalog
         });
 
         return new AiPriceCeiling($prices['prompt'], $prices['completion'], $prices['request']);
+    }
+
+    /**
+     * The endpoints OpenRouter lists for a model that support tool calling.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function toolEndpoints(string $modelId): array
+    {
+        $endpoints = [];
+
+        foreach ($this->get('/models/'.$modelId.'/endpoints')['data']['endpoints'] ?? [] as $endpoint) {
+            if (is_array($endpoint) && in_array(self::TOOLS_PARAMETER, $endpoint['supported_parameters'] ?? [], true)) {
+                $endpoints[] = $endpoint;
+            }
+        }
+
+        return $endpoints;
     }
 
     /**

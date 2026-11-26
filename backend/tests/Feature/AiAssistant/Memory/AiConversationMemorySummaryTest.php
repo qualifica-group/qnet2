@@ -62,17 +62,6 @@ it('proposes a new conversation after the configured number of summaries', funct
         ->and($memory->plan(aim_input([new AiMemoryEntry('user', 'hi')], summaryCount: 3))->proposeNewConversation)->toBeTrue();
 });
 
-it('has the proposal text in Italian and English', function () {
-    $memory = app(AiConversationMemory::class);
-
-    app()->setLocale('it');
-    $it = $memory->newConversationProposal();
-    app()->setLocale('en');
-    $en = $memory->newConversationProposal();
-
-    expect($it)->toContain('nuova conversazione')->and($en)->toContain('new conversation')->and($it)->not->toBe($en);
-});
-
 it('builds a summary request with the rules and without the old tool rows', function () {
     $entries = [
         new AiMemoryEntry('user', 'show order 7', id: 1),

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\McpLinks;
 
 use App\Enums\McpLinkReason;
@@ -39,7 +41,7 @@ class AssistantLinkService
         return DB::transaction(function () use ($client, $user, $session): string {
             // Step 2: re-check on the locked rows
             $locked = User::query()->lockForUpdate()->find($user->id);
-            $this->assertUserCanLink($locked);
+            $this->links->assertLinkable($locked, fn (): McpLinkRejectedException => new McpLinkRejectedException(McpLinkReason::UserInactive));
             $this->assertLiveSession($locked, $session);
 
             // Step 3: links of this person that fell leave no credential behind
@@ -72,18 +74,6 @@ class AssistantLinkService
         $client = filled($id) ? ApiClient::query()->find($id) : null;
 
         return $client?->is_active ? $client : throw new AssistantClientNotConfiguredException;
-    }
-
-    private function assertUserCanLink(?User $user): void
-    {
-        if ($user === null || ! $user->is_active || $user->isServiceAccount()) {
-            throw new McpLinkRejectedException(McpLinkReason::UserInactive);
-        }
-
-        // Same rule as the opening from the login page.
-        if ($user->must_set_password) {
-            throw new FirstAccessPendingException;
-        }
     }
 
     /**

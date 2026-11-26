@@ -138,12 +138,6 @@ TEXT;
         return $summary;
     }
 
-    /** The text shown to the person when the conversation has been summarised too many times. */
-    public function newConversationProposal(): string
-    {
-        return __('ai_assistant.memory.new_conversation_proposal');
-    }
-
     /** @return list<AiMemoryEntry> */
     private function prefix(AiMemoryInput $input): array
     {

@@ -75,6 +75,15 @@ export const aiAssistant = {
     notConfirmable: 'Mancano dati obbligatori: questa modifica non si può confermare. Annulla e riprova con i dati mancanti.',
     expiresIn: 'Scade tra {{time}}',
     expired: 'Scaduta: non è stato scritto nulla.',
+    outcome: {
+      confirmed: 'Confermata: in attesa dell\'esito.',
+      succeeded: 'Confermata: la modifica è stata scritta.',
+      cancelled: 'Annullata: non è stato scritto nulla.',
+      expired: 'Scaduta: non è stato scritto nulla.',
+      rejected: 'Rifiutata: non è stato scritto nulla.',
+      uncertain: 'Esito incerto: verifica il record prima di riprovare.',
+      stale: 'Non più valida: il record è cambiato e non è stato scritto nulla.',
+    },
     confirm: 'Conferma',
     cancel: 'Annulla',
     errors: {
@@ -86,6 +95,7 @@ export const aiAssistant = {
     label: 'Scrivi un messaggio',
     placeholder: 'Scrivi un messaggio... (@ per menzionare un record)',
     hint: 'Invio per inviare, Maiusc+Invio per andare a capo.',
+    awaitingPreview: 'Conferma o annulla l\'anteprima per continuare.',
     send: 'Invia',
     sendBusy: 'L\'assistente sta lavorando',
     attach: 'Allega file',

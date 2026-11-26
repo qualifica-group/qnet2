@@ -75,6 +75,15 @@ export const aiAssistant = {
     notConfirmable: 'Required data is missing: this change cannot be confirmed. Cancel and try again with the missing data.',
     expiresIn: 'Expires in {{time}}',
     expired: 'Expired: nothing was written.',
+    outcome: {
+      confirmed: 'Confirmed: waiting for the result.',
+      succeeded: 'Confirmed: the change was written.',
+      cancelled: 'Cancelled: nothing was written.',
+      expired: 'Expired: nothing was written.',
+      rejected: 'Rejected: nothing was written.',
+      uncertain: 'Result uncertain: check the record before trying again.',
+      stale: 'No longer valid: the record changed and nothing was written.',
+    },
     confirm: 'Confirm',
     cancel: 'Cancel',
     errors: {
@@ -86,6 +95,7 @@ export const aiAssistant = {
     label: 'Write a message',
     placeholder: 'Write a message... (@ to mention a record)',
     hint: 'Enter to send, Shift+Enter for a new line.',
+    awaitingPreview: 'Confirm or cancel the preview to continue.',
     send: 'Send',
     sendBusy: 'The assistant is working',
     attach: 'Attach files',

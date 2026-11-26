@@ -10,6 +10,7 @@ use App\Http\Resources\AiAssistant\AiAssistantSettingsResource;
 use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use App\Services\AiAssistant\Settings\OpenRouterCatalogUnavailableException;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
@@ -18,8 +19,6 @@ use Throwable;
  */
 class AiAssistantSettingsController extends BaseApiController
 {
-    private const int SERVICE_UNAVAILABLE = 503;
-
     public function __construct(private readonly AiAssistantSettingsService $settings) {}
 
     /**
@@ -44,7 +43,7 @@ class AiAssistantSettingsController extends BaseApiController
                 $this->settings->update($request->validated(), $request->user()),
             ));
         } catch (OpenRouterCatalogUnavailableException) {
-            return $this->fail(__('The model list is not available. Try again later.'), self::SERVICE_UNAVAILABLE);
+            return $this->fail(__('The model list is not available. Try again later.'), Response::HTTP_SERVICE_UNAVAILABLE);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

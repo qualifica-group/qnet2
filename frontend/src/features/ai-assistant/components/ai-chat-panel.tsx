@@ -8,19 +8,22 @@ import { useAiAssistantConfig } from '@/features/ai-assistant/hooks/use-ai-assis
 import { useAiComposer } from '@/features/ai-assistant/hooks/use-ai-composer'
 import { useAiActiveTurn } from '@/features/ai-assistant/hooks/use-ai-active-turn'
 import { useAiConversation } from '@/features/ai-assistant/hooks/use-ai-conversation'
-import { isAiTurnFinal } from '@/features/ai-assistant/turn-status'
+import { isAiTurnAwaitingConfirmation, isAiTurnFinal } from '@/features/ai-assistant/turn-status'
 import type { AiAssistantConfig, AiConversation, AiMessage, AiTurn } from '@/features/ai-assistant/types'
 import { cn } from '@/lib/utils'
 
 const NO_MESSAGES: AiMessage[] = []
 
-/** Hides a closed turn once its reply is among the saved messages (no duplicate bubble). */
+/**
+ * Hides a closed turn once its reply is among the saved messages (no duplicate bubble); a turn
+ * with a preview stays, reduced to the closed card with its outcome.
+ */
 function turnToShow(turn: AiTurn | null, messages: AiMessage[]): AiTurn | null {
   const replyId = turn?.assistant_message?.id
-  if (turn === null || (replyId !== undefined && messages.some((message) => message.id === replyId))) {
-    return null
+  if (turn === null || replyId === undefined || !messages.some((message) => message.id === replyId)) {
+    return turn
   }
-  return turn
+  return turn.preview === null ? null : { ...turn, assistant_text: '', steps: [] }
 }
 
 export type AiChatVariant = 'widget' | 'page'
@@ -96,6 +99,7 @@ function AiChatBody({
     onConversationCreated: (conversation: AiConversation) => onConversationChange(conversation.id),
     onTurnStarted: activeTurn.track,
     turnActive: activeTurn.turn !== null && !isAiTurnFinal(activeTurn.turn.status),
+    awaitingPreview: activeTurn.turn !== null && isAiTurnAwaitingConfirmation(activeTurn.turn.status),
     forceGeneralGuide,
   })
   const messages = conversationQuery.data?.messages ?? NO_MESSAGES

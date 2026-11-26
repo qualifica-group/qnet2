@@ -29,7 +29,8 @@ it('creates the non-privileged application roles with coherent permission sets',
         ->and($viewer->permissions->pluck('name'))->toContain('users.viewAny', 'users.view', 'roles.viewAny', 'roles.view')
         // REQUIREMENT CHANGED (spec 0420 D-4): every role that sees a module
         // also receives the assignment notifications, which grant no access.
-        ->and($viewer->permissions->pluck('name')->diff(AssignmentNotificationChannels::permissions())->every(
+        // REQUIREMENT CHANGED (spec 0433, Q13): every role holds ai-assistant.use, which grants no record access.
+        ->and($viewer->permissions->pluck('name')->diff([...AssignmentNotificationChannels::permissions(), 'ai-assistant.use'])->every(
             fn (string $permission): bool => str_ends_with($permission, '.viewAny') || str_ends_with($permission, '.view')
         ))->toBeTrue();
 });

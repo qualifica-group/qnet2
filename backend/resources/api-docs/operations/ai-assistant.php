@@ -45,6 +45,18 @@ return [
         'summary' => 'Get the state of an assistant turn',
         'description' => 'Returns the turn the browser polls until its status is final: status (queued, running, awaiting_confirmation, completed, failed, cancelled, limit_reached), the partial answer text while running, the steps taken with a short translated label and their state, the saved answer message once completed, the queue position while queued and, for a turn that ended without an answer, a fixed error code and text. The turn must belong to the conversation (404 otherwise); only the owner can read it (403). Requires ai-assistant.use.',
     ],
+    'POST /ai-assistant/conversations/{conversation}/turns/{turn}/confirm' => [
+        'summary' => 'Confirm the open preview of an assistant turn',
+        'description' => 'Takes preview_id and confirms the preview the turn is waiting on: the confirmation goes through the confirmation route of the connector, never through a tool, and the turn is queued again to tell the result. Answers 202 with the turn. 404 when the preview is not the one of this turn; 409 with data.reason when it cannot be confirmed or is no longer open (decided, cancelled or expired); 503 when the connector cannot be reached, in which case the preview stays open and nothing is repeated. Only the owner of the conversation; requires ai-assistant.use.',
+    ],
+    'POST /ai-assistant/conversations/{conversation}/turns/{turn}/cancel' => [
+        'summary' => 'Cancel the open preview of an assistant turn',
+        'description' => 'Takes preview_id and cancels the preview the turn is waiting on, so nothing is written, and the turn is queued again to tell it. Answers 202 with the turn. 404 when the preview is not the one of this turn; 409 with data.reason when it is no longer open. Only the owner of the conversation; requires ai-assistant.use.',
+    ],
+    'GET /ai-assistant/costs' => [
+        'summary' => 'Get the AI assistant costs',
+        'description' => 'Takes from and to (dates, to not in the future, from not after to, within the maximum range) and returns the period, the totals, the cost by day, by function, by user and by model (dollars, requests and tokens), and the month spend against the caps. Reserved to the super-admin role (403 otherwise).',
+    ],
     'GET /ai-assistant/messages/{message}/attachments/{attachment}' => [
         'summary' => 'Download an AI message attachment',
         'description' => 'Downloads the file attached to a message, as a binary response with its original name. Only the owner of the message\'s conversation can download it (403 otherwise); 404 when the file no longer exists. Requires ai-assistant.use.',

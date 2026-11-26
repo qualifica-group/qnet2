@@ -25,6 +25,8 @@ export interface UseAiComposerOptions {
   onTurnStarted: (turn: AiTurn) => void
   /** A turn of this conversation is not closed yet: one turn at a time (D-16). */
   turnActive: boolean
+  /** The turn waits for Confirm or Cancel of a preview: the composer says why it cannot send. */
+  awaitingPreview?: boolean
   /** Pins the `general` guide (the /ai-assistant page, AC-024). */
   forceGeneralGuide?: boolean
 }
@@ -40,6 +42,7 @@ export function useAiComposer({
   onConversationCreated,
   onTurnStarted,
   turnActive,
+  awaitingPreview = false,
   forceGeneralGuide = false,
 }: UseAiComposerOptions) {
   const { t } = useTranslation()
@@ -159,6 +162,7 @@ export function useAiComposer({
     setDraft,
     /** The POST is in flight or a turn is still being worked on: the composer cannot send. */
     isBusy,
+    awaitingPreview,
   }
 }
 

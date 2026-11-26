@@ -54,9 +54,6 @@ return [
     'guide_max_chars' => (int) env('AI_ASSISTANT_GUIDE_MAX_CHARS', 40000),
     'max_mentions' => (int) env('AI_ASSISTANT_MAX_MENTIONS', 5),
 
-    // Initial value of the "model accepts attachments" criterion (spec 0433): text-only until the model settings exist.
-    'model_accepts_attachments' => (bool) env('AI_ASSISTANT_MODEL_ACCEPTS_ATTACHMENTS', false),
-
     'max_files' => (int) env('AI_ASSISTANT_MAX_FILES', 4),
     'max_file_size_kb' => (int) env('AI_ASSISTANT_MAX_FILE_SIZE_KB', 10240),
     'accepted_mimes' => array_values(array_intersect(
