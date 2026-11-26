@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AiAssistant\AiAssistantConfigController;
+use App\Http\Controllers\AiAssistant\AiAssistantCostsController;
 use App\Http\Controllers\AiAssistant\AiAssistantModelCatalogController;
 use App\Http\Controllers\AiAssistant\AiAssistantSettingsController;
 use App\Http\Controllers\AiAssistant\AiAttachmentController;
@@ -23,13 +24,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Spec 0433: settings and model lists for the `super-admin` only (no assignable permission);
+// Spec 0433: settings, model lists and costs for the `super-admin` only (no assignable permission);
 // they do not depend on the surface switches, so the admin can fix them while the assistant is off.
 Route::prefix('ai-assistant')->middleware('super-admin')->group(function () {
     Route::get('settings', [AiAssistantSettingsController::class, 'show']);
     Route::put('settings', [AiAssistantSettingsController::class, 'update']);
     Route::get('models', [AiAssistantModelCatalogController::class, 'index']);
     Route::get('models/providers', [AiAssistantModelCatalogController::class, 'providers']);
+    Route::get('costs', [AiAssistantCostsController::class, 'index']);
 });
 
 Route::prefix('ai-assistant')->middleware('can:'.AiConversationPolicy::PERMISSION)->group(function () {

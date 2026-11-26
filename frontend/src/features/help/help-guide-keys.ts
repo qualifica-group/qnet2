@@ -121,4 +121,5 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'formalab',
   'ai-assistant',
   'ai-assistant-settings',
+  'ai-assistant-costs',
 ]

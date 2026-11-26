@@ -121,13 +121,14 @@ return [
     | input_margin_tokens: fixed allowance for the tokens of the chat format, added to the UTF-8
     | bytes of the request when the cost of a call is reserved (a token is never shorter than one
     | byte). reservation_ttl_minutes: an open reservation older than this is dropped, so a crashed
-    | worker cannot hold the cap forever.
+    | worker cannot hold the cap forever. report_max_days: longest period the costs page may ask for.
     |
     */
 
     'costs' => [
         'input_margin_tokens' => (int) env('AI_ASSISTANT_COST_INPUT_MARGIN_TOKENS', 1000),
         'reservation_ttl_minutes' => (int) env('AI_ASSISTANT_COST_RESERVATION_TTL_MINUTES', 30),
+        'report_max_days' => (int) env('AI_ASSISTANT_COST_REPORT_MAX_DAYS', 366),
     ],
 
 ];

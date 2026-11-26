@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assistente AI, ticket 10: pagina dei costi (spec 0433, GET /costs) - VERDE, COMMITTATO NEL RAMO `assistente/10-pagina-costi`
+
+- API `GET /api/ai-assistant/costs` (gruppo `super-admin` di `routes/api/ai-assistant.php`): `IndexAiAssistantCostsRequest` (`from`/`to` `Y-m-d`, default dal primo del mese di `to` a oggi; `to` non oltre oggi; durata massima `config('ai-assistant.costs.report_max_days')`, env `AI_ASSISTANT_COST_REPORT_MAX_DAYS`, default 366) -> `AiCostReport::build()` (una query raggruppata per ogni parte: giorno+totali, funzione, persona, modello, piu' il contatore del mese). Forma come da spec; importi stringhe a 12 decimali (`AiMoney`), ordinate dal costo maggiore; `by_function.name` e `by_user.name` null = «Senza funzione» / persona eliminata. Non tocca `ai_messages` ne' `ai_conversations`. Intervallo semiaperto sul giorno dopo `to` (SQLite salva le date con l'ora).
+- Frontend `features/ai-assistant-costs/`, pagina `/dev/ai-assistant-costs` dietro `MigrationRouteGuard`, voce `develop` `ai-assistant-costs` (icona `wallet`), namespace i18n `aiAssistantCosts` IT/EN, guida `ai-assistant-costs` (`HELP_GUIDE_KEYS` 113 -> 114, REQUIREMENT CHANGED dichiarato in `help-guide-keys.test.ts`; `DevelopSectionTest` 7 -> 8 voci, dichiarato).
+- Da fare: verifica Playwright a 375/768/1024 con dati veri (richiede backend e database locali).
+
 ## Assistente AI, ticket 09: registro dei costi e tetti (spec 0433, D-7, D-10) - VERDE, COMMITTATO NEL RAMO `assistente/09-costi-e-tetti`
 
 - Tabelle (migrazione `2026_12_30_100000`): `ai_cost_entries` (una riga per chiamata; `user_id` e `conversation_id` senza FK; `cost_usd`/`reserved_usd` decimal(20,12); `signal` = `cost_above_reservation|cost_missing`), `ai_cost_shares` (quota per funzione, `business_function_id` null = «Senza funzione», FK solo verso la riga di costo), `ai_spend_counters` (`period` `YYYY-MM`, `user_id` 0 = totale aziendale), `ai_cost_reservations`. `ai_messages.business_function_ids` (json): fotografia delle funzioni presa dal `creating` di `AiMessage` per i messaggi `user`.
