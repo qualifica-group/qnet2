@@ -350,5 +350,7 @@
     "Reading and processing the data": "Leggo ed elaboro i dati",
     "The assistant model accepts text only: attachments are not allowed.": "Il modello dell'assistente accetta solo testo: gli allegati non sono ammessi.",
     "The selected model is not available.": "Il modello selezionato non è disponibile.",
-    "The model list is not available. Try again later.": "L'elenco dei modelli non è disponibile. Riprova più tardi."
+    "The model list is not available. Try again later.": "L'elenco dei modelli non è disponibile. Riprova più tardi.",
+    "You have reached your monthly assistant spending limit.": "Hai raggiunto il limite di spesa mensile dell'assistente.",
+    "The company monthly assistant spending limit has been reached.": "È stato raggiunto il limite di spesa mensile aziendale dell'assistente."
 }
