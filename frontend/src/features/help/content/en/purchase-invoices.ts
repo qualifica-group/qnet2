@@ -28,6 +28,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'The list has **one row per document**: type, supplier number, date, supplier, company, linked ODAs, **total**, **paid**, **residual** and **payment status**. Expand the document row to see its **Lines**, **Installments** and **linked ODAs** (with the ODA permission, each one links to the order) without opening the record. In **Installments**, with the pay permission, each installment offers **Record payment** or **Clear payment**. As in every list you can sort, search, filter, save views and export.',
         },
+        { type: 'paragraph', text: 'Above the list the **All**, **Proforma**, **Invoices** and **Payslips** tabs filter by document type; the list opens on **Invoices**.' },
         {
           type: 'table',
           headers: ['Action', 'What it does'],
@@ -168,6 +169,38 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'payslips',
+      title: 'Payslips and net pay import',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'A **payslip** is a document of type **Payslip**: it stands for a person’s **net pay** for one month and is paid like any other document (a single installment, single or bulk payment, bank reconciliation). It has no number and only comes from the net pay import: it cannot be created by hand.',
+        },
+        {
+          type: 'warning',
+          text: 'A payslip is **not a cost** in management control: personnel cost comes from **Payroll costs** (the consultant’s cost file). The payslip does appear in the payment schedule, exposure, cash flow and account balances.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'In the list press **Import net pay** (you need the import and the create permissions).',
+            'Choose the labour consultant’s **net pay file** (csv, txt or xlsx) and set the **Payment date**: it becomes the due date of every payslip in the file. A file holds a single month.',
+            'Read the **preview**: month, rows, people, companies, **total net pay**, payslips created and updated, suppliers created and linked.',
+            '**Errors** (row and column) block the import: fix the file and upload it again. **Warnings** do not block, but should be read (e.g. net pay with no cost row for that person and month).',
+            'Press **Confirm import**: the import is **all or nothing** and the list refreshes.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Each person is matched by **tax code** and has a **supplier** registry record (already linked, found by tax code or created by the import).',
+            'Uploading the same file again **updates** the payslips not yet paid (net pay, due date); if one is already **paid**, even partly, its row is an error and the file is not imported.',
+            'On a payslip sheet **only the notes** can be edited; it can be deleted if it has no payments.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'permissions',
       title: 'Permissions',
       blocks: [
@@ -180,6 +213,7 @@ const guide: HelpGuide = {
             ['Editing the sheet and its lines', 'Edit passive invoices'],
             ['**Delete**', 'Delete passive invoices'],
             ['Change or clear the number and date of an invoice', 'Correct/undo registration'],
+            ['**Import net pay** (also needs create)', 'Import passive invoices'],
             ['**Export**, **Activity**', 'Export and view activity'],
           ],
         },

@@ -45,7 +45,7 @@ export function TrendFunctionTable({ data, measure, onMeasureChange }: TrendFunc
     <ExposureSection title={t('managementControl.trend.functions.title')} hint={t('managementControl.trend.functions.hint')}>
       <SegmentedControl
         aria-label={t('managementControl.trend.functions.measure')}
-        className="self-start"
+        className="self-start [&>[role=radio]]:flex-none"
         value={measure}
         options={options}
         onValueChange={onMeasureChange}

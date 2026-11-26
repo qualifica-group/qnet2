@@ -37,6 +37,7 @@ export const navigation = {
   billing: 'Fatturazione',
   accounts: 'Conti',
   agents: 'Agenti',
+  payrollCosts: 'Costi del personale',
   accountingReceivable: 'Attiva',
   proformaRequests: 'Richieste Proforma',
   invoices: 'Fatture Attive',

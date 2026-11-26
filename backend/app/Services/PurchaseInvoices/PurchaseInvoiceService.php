@@ -107,6 +107,7 @@ class PurchaseInvoiceService
             // Step 1: lock the row, refuse a registered invoice and a change of the parties
             $locked = PurchaseInvoice::query()->whereKey($document->getKey())->lockForUpdate()->firstOrFail();
             $this->settlementGuard->assertNotLinked($locked);
+            $this->registeredGuard->assertNotPayslip($locked);
             $this->registeredGuard->assertEditable($locked);
             $this->headerGuard->assertPartiesUnchanged($locked, $data);
 
@@ -152,6 +153,8 @@ class PurchaseInvoiceService
             $converting = false;
 
             if (array_key_exists('document_number', $attributes)) {
+                $this->registeredGuard->assertNumberAllowed($locked);
+
                 if ($attributes['document_number'] !== $locked->document_number) {
                     $this->settlementGuard->assertNotLinked($locked);
                 }

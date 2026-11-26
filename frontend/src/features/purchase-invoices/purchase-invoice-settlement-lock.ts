@@ -19,3 +19,21 @@ export function lockedForSettlement(invoice: PurchaseInvoice): PurchaseInvoice {
     },
   }
 }
+
+/**
+ * A payslip (spec 0431 D-7) only edits its notes: the server answers 422 on header, number and
+ * lines. Lines and totals read `actions.update`, so it goes false; `resource.update` stays for the
+ * notes, and delete/pay keep their server answer.
+ */
+export function lockedForPayslip(invoice: PurchaseInvoice): PurchaseInvoice {
+  if (invoice.document_type !== 'payslip') {
+    return invoice
+  }
+  const { permissions } = invoice
+  return { ...invoice, permissions: { ...permissions, actions: { ...permissions.actions, update: false } } }
+}
+
+/** Header and number are fixed for a settlement-generated document and for a payslip. */
+export function hasFixedHeader(invoice: PurchaseInvoice): boolean {
+  return invoice.commission_settlement != null || invoice.document_type === 'payslip'
+}

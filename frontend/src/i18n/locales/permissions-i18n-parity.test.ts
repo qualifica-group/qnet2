@@ -55,6 +55,8 @@ const ASSIGNABLE_RESOURCES = [
   'operational-sites',
   'opportunities',
   'payment-methods',
+  // Spec 0430: read-only grid + import, assignable from the Role form.
+  'payroll-costs',
   'pipeline-statuses',
   'product-categories',
   'products',

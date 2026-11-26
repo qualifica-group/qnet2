@@ -11,6 +11,8 @@ import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 const refreshMock = vi.hoisted(() => vi.fn())
+const setFilterModelMock = vi.hoisted(() => vi.fn<(model: Record<string, unknown>) => void>())
+const forcedFilterModels = vi.hoisted(() => [] as Array<Record<string, unknown> | undefined>)
 const fetchMock = vi.hoisted(() => vi.fn<(id: number) => Promise<PurchaseInvoice>>())
 const deleteMock = vi.hoisted(() => vi.fn<(id: number) => Promise<void>>())
 const canMock = vi.hoisted(() => vi.fn<(permission: string) => boolean>())
@@ -50,9 +52,14 @@ const ROW: TableRow = { id: 31, document_number: 'FT-9', actions: [] }
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
     { refresh: () => void },
-    { domain: string; onAction?: (action: TableActionDefinition, row: TableRow) => void }
-  >(function TableViewStub({ domain, onAction }, ref) {
-    useImperativeHandle(ref, () => ({ refresh: refreshMock, setFilterModel: () => {}, clearSelection: () => {} }))
+    {
+      domain: string
+      forcedFilterModel?: Record<string, unknown>
+      onAction?: (action: TableActionDefinition, row: TableRow) => void
+    }
+  >(function TableViewStub({ domain, forcedFilterModel, onAction }, ref) {
+    forcedFilterModels.push(forcedFilterModel)
+    useImperativeHandle(ref, () => ({ refresh: refreshMock, setFilterModel: setFilterModelMock, clearSelection: () => {} }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
         {['view', 'delete', 'activity'].map((key) => (
@@ -142,5 +149,36 @@ describe('PurchaseInvoicesTable (spec 0250 AC-013)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New passive invoice' }))
 
     expect(screen.getByRole('dialog', { name: 'Invoice editor' })).toHaveTextContent('new')
+  })
+})
+
+describe('PurchaseInvoicesTable document type tabs (spec 0431, user decision 2026-11-25)', () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage('it')
+  })
+
+  beforeEach(() => {
+    canMock.mockReturnValue(true)
+    setFilterModelMock.mockReset()
+    forcedFilterModels.length = 0
+  })
+
+  it('opens on Fatture: the tab is selected and the grid is forced on the invoices', () => {
+    renderTable()
+
+    expect(screen.getByRole('tablist', { name: 'Tipo documento' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Fatture' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Cedolini' })).toHaveAttribute('aria-selected', 'false')
+    expect(forcedFilterModels.at(-1)).toEqual({ document_type: { filterType: 'set', values: ['invoice'] } })
+  })
+
+  it('Cedolini filters the grid on the payslips and Tutte clears the type filter', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Cedolini' }))
+    expect(setFilterModelMock).toHaveBeenLastCalledWith({ document_type: { filterType: 'set', values: ['payslip'] } })
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tutte' }))
+    expect(setFilterModelMock).toHaveBeenLastCalledWith({ document_type: null })
   })
 })

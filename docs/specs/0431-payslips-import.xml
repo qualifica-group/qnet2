@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0431 - Cedolini (parte B degli statini paga): import mensile del file netti del consulente del lavoro.
+  Ogni riga diventa un documento passivo di tipo Cedolino, con una rata pari al netto, da pagare e riconciliare.
+  Il costo del personale resta quello della parte A (spec 0430): i cedolini non sono costo nel Controllo di gestione.
+-->
+<spec id="0431-payslips-import" status="draft" owner="utente" date="2026-11-25">
+
+  <goal>
+    La Contabilita' carica ogni mese il file netti del consulente del lavoro. Per ogni dipendente e societa' nasce in
+    Fatture Acquisto un documento "Cedolino" con una sola rata pari al netto, alla data di pagamento scelta, che si
+    paga e si riconcilia come gli altri documenti passivi. I cedolini non sono costo nel Controllo di gestione.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-11-25. -->
+    <fact>Documenti passivi: `purchase_invoices` (`document_type` enum `PurchaseInvoiceType` proforma|invoice,
+      `document_number` nullable, `supplier_id` FK registries `is_supplier`, `payment_method_id` richiesto,
+      `financial_account_id` nullable, `withholding_amount`, `enasarco_amount`), righe `purchase_invoice_lines`
+      (`cost_type_id` NOT NULL, `work_order_id` nullable, `net_amount`), rate `purchase_invoice_installments`
+      (`due_date`, `amount`, `residual_amount`, `paid_amount`). Servizio `PurchaseInvoiceService`; rata = netto -
+      ritenuta - ENASARCO (`PurchaseInvoiceInstallmentPlanner`).</fact>
+    <fact>`PurchaseInvoiceService::updateDetails()` imposta `document_type` a proforma/invoice in base al numero.
+      Numero obbligatorio e unicita' per fornitore/anno solo per `invoice` (`RegisteredPurchaseInvoiceGuard`).
+      Compensazioni (`InstallmentCompensationService`, `CompensationReader`) e ricevimenti ODA (spec 0254) solo per
+      `invoice`. Griglia `PurchaseInvoicesTableDefinition` con azioni per tipo e filtro set su `document_type`.</fact>
+    <fact>Consumatori delle righe passive come COSTO: `ManagementControl\StructureCostsBuilder` (righe senza
+      commessa, gia' escluse le fatture degli estratti agenti), `ManagementControl\Trend\CostTrendAggregator`,
+      `ManagementControl\WorkOrderFigureSources`, `WorkOrders\WorkOrderPassiveCostAggregator`. Consumatori delle
+      RATE (cassa): `CashFlow\PayableFlowAggregator`, `Exposure\PayableScheduleAggregator`,
+      `Accounts\PaymentAggregator`: restano invariati.</fact>
+    <fact>Anagrafica fornitore di un agente: `referents.supplier_registry_id` + `AgentSupplierService`/
+      `AgentSupplierCard` (`RegistryService::create()` da scheda: nome, cognome, codice fiscale, contatti e indirizzi
+      completi). Gli utenti non hanno un collegamento a un'anagrafica fornitore. `personal_data.tax_code` e' pieno su
+      circa 14.700 anagrafiche (clienti, corsisti).</fact>
+    <fact>Codice fiscale utente: `personal_data.tax_code` (morph `user`), riconoscimento come spec 0430 D-3. IBAN del
+      dipendente: `employment_profiles.iban` (cast `encrypted`, `$hidden`), profilo assente per parte degli utenti.</fact>
+    <fact>Nessun tipo di costo per le retribuzioni (`cost_types` ha `code`, `name`, `nature`, `chart_account_id`
+      nullable, `is_active`). Metodo di pagamento esistente `bonifico_bancario` ("BONIFICO BANCARIO").</fact>
+    <fact>Riconciliazione bancaria (spec 0363) a spunta manuale delle rate pagate: nessun abbinamento automatico.</fact>
+    <fact>Import di riferimento: spec 0430 (`App\Imports\PayrollCosts\*`, `PayrollCostFileReader` con riconoscimento
+      separatore e conversione Windows-1252, `config/payroll.php` `company_codes`, anteprima `dry_run`, tutto o
+      niente).</fact>
+    <fact>File netti reale (ottobre 2026): tab, virgola decimale, Windows-1252, campi tra virgolette con `""` interne.
+      Intestazioni: `AZIENDA`, `DENOMINAZIONE`, `MESE`, `ANNO`, `TIPO CEDOLINO`, `CODICE DIPENDENTE`, `COGNOME E NOME`,
+      `DATA ASSUNZIONE`, `DATA CESSAZIONE`, `IMPORTO`, `CODICE IBAN`, `CODICE BANCA`, `DESCRIZIONE BANCA`,
+      `CODICE IBAN ESTERO`, `CODICE BIC`, `LOCALITA' BANCA ESTERA`, `BENEFICIARIO`, `RIPARTIZIONE PREDEFINITA N.`,
+      `RIP.1: TIPO`/`RIP.1: CODICE`/`RIP.1: DESCRIZIONE` ... `RIP.10`. Il codice fiscale e' il `CODICE` della
+      ripartizione con `TIPO` = "Codice fiscale". 121 righe, 175.185,76 EUR. Il netto puo' superare il costo.</fact>
+
+    <decision id="D-1">Nuovo valore `payslip` di `PurchaseInvoiceType` (etichetta IT "Cedolino", EN "Payslip").
+      Un cedolino: data documento = ultimo giorno del mese di competenza, numero vuoto, una riga "Retribuzione netta
+      &lt;mese anno&gt;" quantita' 1, prezzo = netto, nessuna IVA, tipo di costo D-6, nessuna commessa; metodo di
+      pagamento `config('payroll.payslip.payment_method_code')` = `bonifico_bancario`; una sola rata = netto con
+      `due_date` = data di pagamento indicata all'import.</decision>
+    <decision id="D-2">Tabella `payslips` (dettaglio del cedolino): `purchase_invoice_id` unico, `company_id`,
+      `user_id`, `period` "YYYY-MM", `payslip_type` (testo del file, es. MENSILITA_NORMALE), `employee_code` del
+      consulente. Chiave unica (company_id, user_id, period, payslip_type) (decisione utente 2026-11-25).</decision>
+    <decision id="D-3">Cedolino gia' esistente con la stessa chiave (utente 2026-11-25, 3A): senza pagamenti viene
+      aggiornato (netto, riga, rata, scadenza); con pagamenti anche parziali la riga del file e' un errore.</decision>
+    <decision id="D-4">Anagrafica fornitore del dipendente (utente 2026-11-25, 1A), nell'ordine: quella gia'
+      collegata all'utente (`users.supplier_registry_id`); altrimenti l'unica anagrafica con lo stesso codice fiscale
+      (se non e' fornitore diventa `is_supplier = true`); altrimenti, con zero o piu' anagrafiche con quel codice
+      fiscale, una nuova anagrafica fornitore persona creata con `RegistryService::create()` dalla scheda dell'utente
+      (nome, cognome, codice fiscale; contatti e indirizzi completi copiati come `AgentSupplierCard`). Il collegamento
+      si salva su `users.supplier_registry_id`. Piu' anagrafiche con lo stesso codice fiscale = avviso in anteprima.</decision>
+    <decision id="D-5">Esclusione dal costo: le righe dei documenti `payslip` non entrano in `StructureCostsBuilder`,
+      `CostTrendAggregator`, `WorkOrderFigureSources`, `WorkOrderPassiveCostAggregator`. Restano in scadenzario,
+      pagamenti, esposizione, cash flow e saldi dei conti.</decision>
+    <decision id="D-6">Tipo di costo (utente 2026-11-25, 2A): nuovo "Retribuzioni al personale", `code`
+      `63.01.001` (formato dei sottoconti, spec 0348), natura `general`, sotto il conto `63.01` "Retribuzioni" del piano
+      dei conti se esiste (altrimenti da collocare); creato da migrazione dati reversibile se il codice non esiste
+      (riusato se esiste gia'); letto da `config('payroll.payslip.cost_type_code')`.</decision>
+    <decision id="D-7">Regole del cedolino nel ciclo passivo: niente numero (cambiarlo = 422, il tipo non cambia
+      mai in proforma/invoice), niente modifica di testata/righe dal form (solo note), niente collegamento ODA,
+      ricevimenti o compensazioni; pagamento, pagamento massivo, scadenza della rata ed eliminazione (senza
+      pagamenti) come gli altri documenti.</decision>
+    <decision id="D-8">Import (utente 2026-11-25, 4A): pulsante "Importa netti" nella pagina Fatture Acquisto.
+      Due passi `dry_run` come spec 0430, tutto o niente, un mese per file, `payment_date` obbligatoria. Societa' da
+      `AZIENDA` con `config('payroll.company_codes')`; persona dal codice fiscale (ripartizione con TIPO "Codice
+      fiscale", D-9) come 0430 D-3. Colonne obbligatorie: `AZIENDA`, `MESE`, `ANNO`, `TIPO CEDOLINO`, `IMPORTO`,
+      almeno una coppia `RIP.n: TIPO`/`RIP.n: CODICE`. Facoltative: `CODICE DIPENDENTE`, `CODICE IBAN`,
+      `CODICE IBAN ESTERO`. Importo &gt; 0 (zero o negativo = errore). Stessa chiave D-2 due volte nel file = errore.</decision>
+    <decision id="D-9">Codice fiscale: tra le colonne `RIP.1..RIP.10`, il `CODICE` della prima ripartizione con
+      `TIPO` uguale a "Codice fiscale" (senza maiuscole/spazi); nessuna = errore di riga.</decision>
+    <decision id="D-10">IBAN: `CODICE IBAN`, o `CODICE IBAN ESTERO` se il primo e' vuoto, salvato su
+      `employment_profiles.iban` dell'utente all'applicazione; diverso da quello salvato = avviso; utente senza
+      profilo di impiego = avviso e IBAN non salvato. IBAN vuoto = nessuna modifica.</decision>
+    <decision id="D-11">Permesso: nuova abilita' `import` su `PurchaseInvoicePolicy` -> `purchase-invoices.import`;
+      l'import richiede anche `purchase-invoices.create`. Il riconoscimento non rispetta altri perimetri.</decision>
+    <decision id="D-12">Avviso, non errore: netto senza riga di costo (`payroll_costs`, spec 0430) per stessa
+      societa', persona e mese.</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni: `payslips` (D-2), `users.supplier_registry_id` (FK registries, null on delete), tipo di costo
+        `63.01.001` (D-6). Model `Payslip` + factory; `config/payroll.php` sezione `payslip`.</item>
+      <item>`PurchaseInvoiceType::Payslip` e regole D-7 in service, guard, griglia (azioni) e risorsa.</item>
+      <item>Esclusione dal costo D-5 nei quattro consumatori.</item>
+      <item>Import `App\Imports\Payslips\*` (lettura riusando la logica di codifica/separatore di 0430, estratta in
+        `App\Imports\Support` se condivisa), risoluzione fornitore D-4, IBAN D-10, FormRequest, controller, route,
+        lang, documentazione API.</item>
+      <item>FE: pulsante e dialog "Importa netti" in Fatture Acquisto, etichetta tipo "Cedolino", azioni nascoste per
+        i cedolini nel dettaglio; guide in-app IT/EN di Fatture Acquisto.</item>
+    </in>
+    <out>
+      <item>Costo del personale e Controllo di gestione (spec 0430).</item>
+      <item>F24, contributi e ritenute come documenti; proiezione delle uscite per il personale (fase 3).</item>
+      <item>Export bonifici (SEPA/CBI) e abbinamento automatico dei pagamenti in riconciliazione.</item>
+      <item>Interfaccia per collegare a mano l'anagrafica fornitore di un dipendente.</item>
+      <item>Pagamento verso IBAN diversi da quello del dipendente (BENEFICIARIO, banca estera oltre all'IBAN).</item>
+      <item>Righe di ripartizione diverse dal codice fiscale (centri di costo del consulente).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <table name="payslips">
+      id; purchase_invoice_id FK purchase_invoices (cascade) unique; company_id FK companies (restrict);
+      user_id FK users (restrict); period char(7); payslip_type varchar(50); employee_code varchar(20) null;
+      timestamps. Unique (company_id, user_id, period, payslip_type).
+    </table>
+    <table name="users">+ supplier_registry_id FK registries nullable (null on delete), non fillable.</table>
+
+    <endpoint method="POST" path="/api/purchase-invoices/payslips/import">
+      <request>multipart/form-data: file (required, csv|txt|xlsx, mimes + extensions, max imports.max_file_kb),
+        dry_run: boolean (required), payment_date: date Y-m-d (required)</request>
+      <response status="200">
+        data: {
+          applied: boolean,
+          period: string|null,          ("YYYY-MM")
+          summary: {
+            rows: number, people: number, companies: number,
+            total_net: number,          (2 decimali, righe senza errori)
+            created: number,            (cedolini nuovi)
+            updated: number,            (cedolini esistenti senza pagamenti, D-3)
+            suppliers_created: number, suppliers_linked: number
+          },
+          errors:   [{ row: number, column: string|null, message: string }],
+          warnings: [{ row: number, column: string|null, message: string }]
+        }
+      </response>
+      <errors>401; 403 senza `purchase-invoices.import` o `purchase-invoices.create`; 422 su `file` (formato,
+        dimensione, colonne obbligatorie mancanti, file vuoto, oltre 2000 righe) e su `payment_date`.</errors>
+    </endpoint>
+
+    <endpoint method="GET|PATCH" path="/api/purchase-invoices/* (esistenti)">
+      <response status="200">Shape invariata; `document_type` puo' valere `payslip`. PATCH del numero di un cedolino =
+        422 su `document_number`; modifica di testata/righe di un cedolino = 422.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Permessi: 401 anonimo; 403 senza `purchase-invoices.import`; 403 con import senza create;
+      `permissions:sync` crea `purchase-invoices.import` (Pest).</criterion>
+    <criterion id="AC-002">Dato un file Windows-1252 a tab con virgolette doppie interne, due societa', una persona su
+      due societa' e codice fiscale in `RIP.1`, `dry_run=true` risponde conteggi e `total_net` esatti senza scrivere;
+      `dry_run=false` crea un documento `payslip` per riga con data fine mese, numero vuoto, una riga senza IVA sul
+      tipo di costo `63.01.001`, metodo `bonifico_bancario`, una rata = netto con `due_date` = `payment_date`, e
+      la riga `payslips` con chiave e codice dipendente (Pest).</criterion>
+    <criterion id="AC-003">Fornitore D-4: utente gia' collegato -> stessa anagrafica; un'anagrafica cliente con lo
+      stesso codice fiscale -> collegata e marcata fornitore; due anagrafiche con lo stesso codice fiscale -> nuova
+      anagrafica fornitore + avviso; nessuna -> nuova anagrafica con nome, cognome e codice fiscale; in tutti i casi
+      `users.supplier_registry_id` valorizzato (Pest).</criterion>
+    <criterion id="AC-004">Ricarico D-3: cedolino non pagato -> aggiornato (`updated` 1, netto e scadenza nuovi, nessun
+      nuovo documento); cedolino pagato in parte -> errore di riga e nessuna scrittura (Pest).</criterion>
+    <criterion id="AC-005">Errori di riga senza scrittura: codice fiscale assente dalle ripartizioni; codice fiscale non
+      trovato o su piu' utenti; codice azienda non associato; importo zero, negativo o non numerico; mese diverso; chiave
+      ripetuta. 422 su `file` per colonne obbligatorie mancanti, file vuoto, estensione non ammessa; 422 su
+      `payment_date` mancante o non valida (Pest).</criterion>
+    <criterion id="AC-006">IBAN D-10: nuovo IBAN salvato cifrato sul profilo; IBAN diverso -> avviso e sovrascritto;
+      utente senza profilo -> avviso, nessun profilo creato; IBAN vuoto -> invariato. Avviso D-12 per netto senza costo
+      del mese (Pest).</criterion>
+    <criterion id="AC-007">Esclusione dal costo D-5: con un cedolino e una fattura dello stesso mese senza commessa,
+      costi di struttura e andamento mensile contano solo la fattura; il cedolino compare in scadenzario, esposizione e
+      cash flow con il netto (Pest).</criterion>
+    <criterion id="AC-008">Regole D-7: PATCH del numero di un cedolino -> 422 e tipo invariato; PUT/PATCH di righe o
+      testata -> 422; le note si aggiornano; pagamento e pagamento massivo funzionano; eliminazione senza pagamenti
+      ammessa; la griglia non espone per i cedolini le azioni di modifica/conversione e il filtro tipo include
+      `payslip` (Pest).</criterion>
+    <criterion id="AC-009">Migrazioni reversibili; la migrazione dati crea il tipo di costo `63.01.001` una sola volta e il
+      rollback la rimuove solo se non usata (Pest).</criterion>
+    <criterion id="AC-010">Frontend: pulsante "Importa netti" visibile solo con `purchase-invoices.import`; dialog con
+      file e data di pagamento, anteprima (mese, conteggi, totale netti, creati/aggiornati, fornitori), errori e avvisi
+      riga per riga, Conferma disabilitata con errori; dopo l'applicazione la griglia si aggiorna; il tipo si legge
+      "Cedolino"; nel dettaglio di un cedolino non ci sono azioni di modifica (Vitest).</criterion>
+    <criterion id="AC-011">Guide in-app IT/EN di Fatture Acquisto con la sezione sui cedolini e l'import dei netti;
+      test di parita' verde (Vitest).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; lettura file come spec 0430 (openspout + mb_convert_encoding), con il parsing delle
+      virgolette doppie.</item>
+    <item>Authz server-side (Policy) su ogni endpoint; FormRequest con `mimes` + `extensions`.</item>
+    <item>Applicazione in una transazione; query a numero costante per risolvere persone, societa', anagrafiche e
+      cedolini esistenti.</item>
+    <item>Creazione di documenti e anagrafiche tramite i servizi esistenti dove possibile, senza duplicarne la logica.</item>
+    <item>IBAN mai nei log ne' nelle risposte; fixture sintetiche (nessun dato reale del personale).</item>
+    <item>File sotto 300 righe (500 limite), `handle()` con `// Step N`, identificatori in inglese.</item>
+    <item>Manuale: guide in-app IT/EN aggiornate (CLAUDE.md 4-bis); manuale Claude Docs da segnalare se non raggiungibile.</item>
+  </constraints>
+
+</spec>

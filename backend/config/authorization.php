@@ -40,6 +40,7 @@ use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
 use App\Authorization\OrgChartAuthorization;
 use App\Authorization\PaymentMethodsAuthorization;
+use App\Authorization\PayrollCostsAuthorization;
 use App\Authorization\PipelineStatusesAuthorization;
 use App\Authorization\ProductCategoriesAuthorization;
 use App\Authorization\ProductsAuthorization;
@@ -165,6 +166,7 @@ return [
         'enrollee-management' => EnrolleeManagementAuthorization::class,
         // Spec 0365: "Report Vendite Agenti" — a view-only module.
         'agent-sales-report' => AgentSalesReportAuthorization::class,
+        'payroll-costs' => PayrollCostsAuthorization::class,
         // Spec 0185: "Statistiche Gestione Richieste" — a view-only module.
         'request-statistics' => RequestStatisticsAuthorization::class,
         // Spec 0273: the HR "Organigramma" page (view-only permission).

@@ -32,6 +32,7 @@ use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\PaymentMethod;
+use App\Models\PayrollCost;
 use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -337,6 +338,10 @@ return [
         // spec 0213: parametri ENASARCO e estratti di liquidazione agenti.
         'enasarco-parameters' => [
             'model' => EnasarcoParameter::class,
+        ],
+        // spec 0430: costi del personale importati dal file del consulente.
+        'payroll-costs' => [
+            'model' => PayrollCost::class,
         ],
         'commission-settlements' => [
             'model' => CommissionSettlement::class,

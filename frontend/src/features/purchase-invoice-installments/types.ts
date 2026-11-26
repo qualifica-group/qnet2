@@ -5,8 +5,11 @@ export const PURCHASE_INSTALLMENT_STATUSES = ['unpaid', 'paid'] as const
 export type PurchaseInstallmentStatus = (typeof PURCHASE_INSTALLMENT_STATUSES)[number]
 
 /** Passive document kinds (spec 0211 D-1). */
-export const PURCHASE_INVOICE_TYPES = ['proforma', 'invoice'] as const
+export const PURCHASE_INVOICE_TYPES = ['proforma', 'invoice', 'payslip'] as const
 export type PurchaseInvoiceType = (typeof PURCHASE_INVOICE_TYPES)[number]
+
+/** Kinds the form can create: a payslip only comes from the net-pay import (spec 0431 D-7). */
+export const WRITABLE_PURCHASE_INVOICE_TYPES = PURCHASE_INVOICE_TYPES.filter((type) => type !== 'payslip')
 
 /** Quick filter of the toolbar: to pay (default), due, overdue, paid, or every installment. */
 export const PURCHASE_QUICK_FILTERS = ['unpaid', 'due', 'overdue', 'paid', 'all'] as const

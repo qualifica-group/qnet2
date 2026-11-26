@@ -8,7 +8,7 @@ import type { BankAccountRef, NamedRef, VatRateRef, WriteOff } from '@/features/
 import type { PurchaseInstallmentStatus, PurchaseInvoiceType } from '@/features/purchase-invoice-installments/types'
 
 export type { PurchaseInvoiceType }
-export { PURCHASE_INVOICE_TYPES } from '@/features/purchase-invoice-installments/types'
+export { PURCHASE_INVOICE_TYPES, WRITABLE_PURCHASE_INVOICE_TYPES } from '@/features/purchase-invoice-installments/types'
 
 export interface CostTypeRef extends NamedRef {
   color: string | null

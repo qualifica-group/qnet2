@@ -10,6 +10,7 @@ const TrendPage = lazyRoute(() => import('@/pages/management-control-trend-page'
 const BillingPage = lazyRoute(() => import('@/pages/management-control-billing-page'))
 const AccountsPage = lazyRoute(() => import('@/pages/management-control-accounts-page'))
 const AgentsPage = lazyRoute(() => import('@/pages/management-control-agents-page'))
+const PayrollCostsPage = lazyRoute(() => import('@/features/payroll-costs/payroll-costs-page'))
 
 export const MANAGEMENT_CONTROL_ROUTES: RouteObject[] = [
   // Breadcrumb target of `/management-control/*`: the section has no page of its own (as `/dev`).
@@ -21,4 +22,5 @@ export const MANAGEMENT_CONTROL_ROUTES: RouteObject[] = [
   { path: 'management-control/billing', element: <BillingPage /> },
   { path: 'management-control/accounts', element: <AccountsPage /> },
   { path: 'management-control/agents', element: <AgentsPage /> },
+  { path: 'management-control/payroll-costs', element: <PayrollCostsPage /> },
 ]

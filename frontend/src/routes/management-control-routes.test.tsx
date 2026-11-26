@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MANAGEMENT_CONTROL_ROUTES } from '@/routes/management-control-routes'
 
 describe('MANAGEMENT_CONTROL_ROUTES', () => {
-  it('AC-001 exposes the seven pages of the module under management-control/', () => {
+  it('AC-001 exposes the eight pages of the module under management-control/', () => {
     expect(MANAGEMENT_CONTROL_ROUTES.map((route) => route.path)).toEqual([
       'management-control',
       'management-control/income-statement',
@@ -12,6 +12,8 @@ describe('MANAGEMENT_CONTROL_ROUTES', () => {
       'management-control/billing',
       'management-control/accounts',
       'management-control/agents',
+      // REQUIREMENT CHANGED (spec 0430): personnel costs page.
+      'management-control/payroll-costs',
     ])
     expect(MANAGEMENT_CONTROL_ROUTES.every((route) => route.element !== undefined)).toBe(true)
   })

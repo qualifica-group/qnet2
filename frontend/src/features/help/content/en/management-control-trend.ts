@@ -29,7 +29,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: '**Revenue** counts invoices only (proforma are not revenue); **costs** count purchase documents, proforma included, **plus the labor cost**: timesheet hours multiplied by the hourly cost of the person who worked them (from the salary of the contract condition in force on the date of the hour), by month of the timesheet date. The hours of people with no condition with a salary on that date are counted as hours but not valued.',
+          text: '**Revenue** counts invoices only (proforma are not revenue); **costs** count purchase documents, proforma included, **plus the labor cost**: timesheet hours multiplied by the hourly cost of the person who worked them (from the salary of the contract condition in force on the date of the hour), by month of the timesheet date. In months with the **payroll cost file** imported (Payroll costs) the **real** cost is used: the person’s monthly cost divided by the hours recorded in the timesheet in that month; the cost of people with no hours goes to their business functions or to the structure. In months without an imported cost the estimate from the contract condition remains. The hours of people with no condition with a salary on that date are counted as hours but not valued.',
         },
       ],
     },

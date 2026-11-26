@@ -163,6 +163,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // consumer-agnostic payment-modality lookup — name/code mandatory,
         // `code` writable only on create, D-3).
         'payment-methods',
+        // REQUIREMENT CHANGED spec 0430 `payroll-costs` (PayrollCostsAuthorization:
+        // read-only grid + import, registered only to make the permissions assignable).
+        'payroll-costs',
         // spec 0069 `document-layouts` (DocumentLayoutsAuthorization: the
         // block-based document layout catalogue — name/code/module/config
         // mandatory, `code`/`module` writable only on create, D-2).

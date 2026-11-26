@@ -200,6 +200,7 @@ export const permissions = {
     'commission-accruals': 'Commission accruals',
     'commission-settlements': 'Commission statements',
     'enasarco-parameters': 'ENASARCO parameters',
+    'payroll-costs': 'Payroll costs',
     'product-typologies': 'Product Typologies',
     // Task module and its five configurators (spec 0101).
     tasks: 'Tasks',

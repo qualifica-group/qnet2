@@ -20,6 +20,17 @@ describe('purchase invoices grid renderers (spec 0250 AC-013)', () => {
     expect(screen.getByText('Proforma')).toBeInTheDocument()
   })
 
+  it('reads the payslip type as Payslip in English and Cedolino in Italian (spec 0431 D-1)', async () => {
+    const { unmount } = renderCell('document_type', 'payslip')
+    expect(screen.getByText('Payslip')).toBeInTheDocument()
+    unmount()
+
+    await i18n.changeLanguage('it')
+    renderCell('document_type', 'payslip')
+    expect(screen.getByText('Cedolino')).toBeInTheDocument()
+    await i18n.changeLanguage('en')
+  })
+
   it('renders the derived payment status with the active-invoice labels', () => {
     renderCell('payment_status', 'overdue')
 

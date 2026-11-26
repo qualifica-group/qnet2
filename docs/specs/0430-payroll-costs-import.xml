@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0430 - Costi del personale (parte A degli statini paga): import mensile del file costi del consulente del
+  lavoro e costo reale del lavoro nel Controllo di gestione. La parte B (netti, cedolini, pagamenti) e' fuori scope.
+-->
+<spec id="0430-payroll-costs-import" status="draft" owner="utente" date="2026-11-25">
+
+  <goal>
+    La Contabilita' carica ogni mese il file costi del personale del consulente del lavoro. Il costo reale di ogni
+    persona nel mese viene distribuito sulle commesse e sulle funzioni in base alle ore registrate nel segnatempo,
+    al posto della stima da contratto. Una pagina "Costi del personale" mostra per persona, societa' e mese il costo,
+    le ore e la parte di costo non ribaltata sulle commesse.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-11-25. -->
+    <fact>Costo del lavoro del Controllo di gestione: `App\Services\ManagementControl\LaborCostSource`, unica fonte
+      per `byWorkOrder()` (conto economico per commessa, 0272 D-2/D-3) e `byMonth()` (andamento mensile, 0270/0282:
+      ore senza commessa per utente -> funzioni di appartenenza, nessuna appartenenza -> `structure`). Tariffa oggi =
+      condizione contrattuale in vigore alla data dell'ora (`EmploymentContract::hourlyCost()`, 0277 D-1/D-3); ore
+      senza condizione o senza retribuzione = `unpriced_minutes`, costo zero. DB locale: 129 condizioni, nessuna con
+      retribuzione (costo del lavoro oggi a zero).</fact>
+    <fact>Segnatempo: `time_entries` (`user_id`, `date` Y-m-d, `minutes`, `work_order_id` nullable). Mese in SQL con
+      `SUBSTR(date, 1, 7)` (0270 D-13).</fact>
+    <fact>Codice fiscale dell'utente: esiste gia' `personal_data.tax_code` (morph `personable_type = 'user'`), campo
+      `personal_data.tax_code` della scheda utente con permesso di campo (`UsersAuthorization`). Vuoto per tutti i 428
+      utenti locali; nessun vincolo di unicita'. Non serve un campo nuovo: va compilato dagli utenti (decisione utente).</fact>
+    <fact>Societa': `companies` (`id`, `denomination`, `vat_number`; un `vat_number` ha uno spazio iniziale).
+      Italian Quality Institute SRL non esiste.</fact>
+    <fact>Precedente di import dedicato e sincrono con anteprima: piano dei conti (spec 0349 D-2, D-7, D-8,
+      `POST /api/chart-of-accounts/import` con `dry_run`, `ChartOfAccountsImporter`/`FileReader`/`Planner`/`Applier`,
+      FE `chart-import-dialog.tsx` + `use-chart-import.ts`). Il wizard generico `imports/{domain}` (mapping colonne,
+      staging, job in coda) crea anagrafiche riga per riga: non adatto.</fact>
+    <fact>Lettura file: `App\Imports\Support\SpreadsheetReader` (openspout, gia' in composer) con CSV a virgola e
+      UTF-8 fissi; openspout `Reader\CSV\Options` espone `FIELD_DELIMITER` e `ENCODING`.</fact>
+    <fact>Griglie: `App\Tables\*TableDefinition` registrate in `config/tables.php`, endpoint generici
+      `GET /api/tables/{domain}/columns` e `POST /api/tables/{domain}/rows` (SSRM). Permessi: Policy su `BasePolicy`
+      (ogni abilita' dichiarata in `abilities()` diventa il permesso `<risorsa>.<abilita'>`) + `config/authorization.php`. Menu: `config/navigation/accounting.php`,
+      gruppo `management-control-group`.</fact>
+    <fact>File costi reale (ottobre 2026): tab, virgola decimale, codifica Windows-1252, intestazioni `Denominazione`,
+      `Codice fiscale dipendente`, `Cognome`, `Nome`, `Data assunzione`, `Data cessazione`, `Mese da`, `Anno da`,
+      `Costo retribuzione`, `Costo contributivo`, `Costo inail`, `Ore ordinarie`, `costo orario medio` (con
+      `#DIV/0!` a ore zero), `TOTALE COSTO MENSILE` = retribuzione + contributivo + INAIL. Costo contributivo anche
+      negativo (conguagli). La stessa persona puo' comparire su due societa' nello stesso mese. 128 righe, 123
+      persone, 12 societa'.</fact>
+
+    <decision id="D-1">Import dedicato e sincrono, due passi sullo stesso endpoint (`dry_run=true` anteprima,
+      `dry_run=false` applicazione), come 0349 D-2/D-8. Tutto o niente (utente 2026-11-25): con un solo errore
+      nulla viene scritto.</decision>
+    <decision id="D-2">Un file = un mese: tutte le righe hanno lo stesso `Mese da`/`Anno da`, altrimenti errore.
+      Applicare un mese gia' caricato lo sostituisce per intero (cancella tutte le righe di quel mese e scrive le
+      nuove, in transazione); l'anteprima indica quante righe verranno sostituite.</decision>
+    <decision id="D-3">Persona = utente con `personal_data.tax_code` uguale (maiuscolo, senza spazi) al `Codice fiscale
+      dipendente`. Nessun utente = errore "codice fiscale non trovato"; piu' utenti = errore "codice fiscale su piu'
+      utenti". Utente disattivato ammesso (le cessazioni del mese sono normali).</decision>
+    <decision id="D-4">Societa' = colonna `AZIENDA` (codice azienda del consulente, uguale a quello del file netti),
+      che il consulente aggiunge al file costi (utente 2026-11-25). `config/payroll.php` `company_codes` mappa
+      codice -> P.IVA; la societa' e' quella con `TRIM(vat_number)` uguale. Codice assente dalla mappa o P.IVA senza
+      societa' = errore "societa' non associata". Valori iniziali: 1 Training 10447341214, 3 Formazione e Lavoro I.S.
+      09075631219, 4 Group 09537471212, 7 Edujob 10447371211, 8 Form 10447361212, 9 Skills Job 10447351213,
+      10 Consulting 10072571218, 11 Academy 10447381210, 15 Berit 04837460262. 2 Marketing 10072561219 (codice comunicato
+      dal file costi con colonna Azienda, 2026-11-25). 14 Italian Quality Institute 07770971211 (societa' creata
+      dall'utente il 2026-11-25): fino ad allora le loro righe sono
+      errori.</decision>
+    <decision id="D-5">Colonne obbligatorie: `AZIENDA`, `Codice fiscale dipendente`, `Mese da`, `Anno da`,
+      `Costo retribuzione`, `Costo contributivo`, `Costo inail`, `Ore ordinarie`, `TOTALE COSTO MENSILE`. Facoltative
+      e salvate: `Data assunzione`, `Data cessazione`. Ignorate: `Denominazione`, `Cognome`, `Nome`,
+      `costo orario medio`. Intestazioni confrontate senza maiuscole/accenti/spazi doppi; colonna obbligatoria
+      mancante = 422 su `file`.</decision>
+    <decision id="D-6">Formato: csv/txt (separatore riconosciuto tra tab, `;`, `,` dalla riga di intestazione;
+      codifica UTF-8 o, se il contenuto non e' UTF-8 valido, Windows-1252 convertito) e xlsx. Importi "1.234,56",
+      "1234,56" o "1234.56"; date gg/mm/aaaa. Totale diverso da retribuzione + contributivo + INAIL oltre 0,01 =
+      errore. Stessa coppia societa' + codice fiscale due volte nel file = errore. Limiti come 0349 D-11:
+      `config('imports.max_file_kb')`, massimo 2000 righe. (Build) Importi, ore, mese e anno vuoti = errore "valore
+      obbligatorio"; righe vuote saltate ma contate nella numerazione; il mese di riferimento e' quello della prima riga
+      valida; `summary.rows` = righe del file, `people`/`companies`/`total_cost` solo sulle righe senza errori.</decision>
+    <decision id="D-7">Tariffa reale (utente 2026-11-25): per ogni utente e mese con almeno una riga di costo, costo
+      del mese = somma di `total_cost` di tutte le sue societa'; divisore = minuti del segnatempo dell'utente in quel
+      mese (tutte le ore, con e senza commessa). Ogni gruppo di ore riceve costo x minuti del gruppo / minuti del
+      mese. Le ore di quel mese non sono mai `unpriced`. Mesi senza costo importato: tariffa da contratto invariata
+      (0277).</decision>
+    <decision id="D-8">Costo senza ore (utente con costo nel mese e zero minuti): non va su nessuna commessa; in
+      `byMonth()` diventa una riga senza commessa dell'utente (`work_order_id` null, `user_id` valorizzato,
+      `minutes` 0) e segue la regola 0282 (funzioni di appartenenza, altrimenti `structure`). In `byWorkOrder()` non
+      compare.</decision>
+    <decision id="D-9">13a e 14a: il costo sta nel mese del file in cui il consulente lo riporta (utente 2026-11-25);
+      nessuna distribuzione sui mesi.</decision>
+    <decision id="D-10">Filtro per societa' del Controllo di gestione invariato (societa' del profilo, 0282): la
+      societa' della riga di costo serve a chiave, sostituzione e griglia, non alla ripartizione.</decision>
+    <decision id="D-11">Pagina "Costi del personale" (utente 2026-11-25): voce di menu nel gruppo
+      `management-control-group`, route `/management-control/payroll-costs`, griglia SSRM di sola lettura + pulsante
+      Importa. Colonne calcolate per riga dal rapporto persona-mese (D-7): ore segnatempo del mese, ore su commessa,
+      quota su commesse = `total_cost` x minuti su commessa / minuti del mese (0 senza minuti), quota non ribaltata =
+      `total_cost` - quota su commesse. Le colonne calcolate non sono ordinabili ne' filtrabili (richiederlo = 422 del motore generico). (Build) `period`
+      e' testo "YYYY-MM" con filtro set (il FE lo mostra come mese in parole); `user` mostra "Cognome Nome" della
+      scheda, ordina e filtra su `users.name`.</decision>
+    <decision id="D-12">Permessi: risorsa `payroll-costs`, Policy con abilita' `view` e `import` (`viewAny`
+      sovrascritto per controllare `payroll-costs.view`); `permissions:sync` crea `payroll-costs.view` e `payroll-costs.import`, da assegnare a mano al ruolo
+      della Contabilita'. L'import richiede anche `view`.</decision>
+    <decision id="D-13">Audit: `LogsModelActivity` sul model; la sostituzione di un mese registra le cancellazioni.</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `payroll_costs` + model `PayrollCost` (+ factory), `config/payroll.php` (D-4).</item>
+      <item>Lettura file (D-5, D-6), validazione righe (D-3..D-6), piano e applicazione tutto o niente (D-1, D-2):
+        `App\Imports\PayrollCosts\*`, FormRequest, controller, route `routes/api/payroll-costs.php`.</item>
+      <item>`PayrollCostPolicy` (D-12), registrazione in `config/authorization.php` e `permissions:sync`.</item>
+      <item>`LaborCostSource`: tariffa reale (D-7), costo senza ore (D-8); test esistenti del costo del lavoro verdi.</item>
+      <item>`PayrollCostsTableDefinition` (D-11) in `config/tables.php`.</item>
+      <item>Menu `management-control-payroll-costs` (D-11) + traduzioni.</item>
+      <item>FE `features/payroll-costs`: pagina con griglia, dialog di import (anteprima, errori, conferma), route lazy.</item>
+      <item>Guide in-app IT/EN: nuova guida `management-control-payroll-costs` (+ `HELP_GUIDE_KEYS`); aggiornamento
+        delle guide di conto economico e andamento mensile sul costo del lavoro reale.</item>
+    </in>
+    <out>
+      <item>Parte B: file netti, cedolini in Fatture Acquisto, IBAN, pagamenti, riconciliazione.</item>
+      <item>Proiezione delle uscite per il personale nel cash flow (fase 3).</item>
+      <item>Compilazione dei codici fiscali degli utenti (manuale, a cura dell'utente) e un import dei codici fiscali.</item>
+      <item>Creazione di Italian Quality Institute SRL (dato, dalla schermata Societa') e codice di Marketing.</item>
+      <item>Interfaccia per modificare la mappa codici azienda (config, D-4); modifica o cancellazione di singole righe di costo.</item>
+      <item>Ripartizione del costo per societa' nel filtro del Controllo di gestione (D-10); distribuzione di 13a/14a (D-9).</item>
+      <item>Contributi a carico azienda, F24, costo orario per CCNL.</item>
+      <item>Unicita' a DB di `personal_data.tax_code` (verificata solo dall'import, D-3).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <table name="payroll_costs">
+      id; company_id FK companies (restrict); user_id FK users (restrict); period char(7) "YYYY-MM";
+      tax_code varchar(16) (copia dal file); salary_cost, contribution_cost, insurance_cost, total_cost decimal(12,2);
+      ordinary_hours decimal(7,2); hired_on date null; terminated_on date null; imported_by FK users (null on delete);
+      timestamps. Unique (company_id, user_id, period); index (period, user_id).
+    </table>
+
+    <endpoint method="POST" path="/api/payroll-costs/import">
+      <request>multipart/form-data: file (required, csv|txt|xlsx, mimes + extensions, max imports.max_file_kb),
+        dry_run: boolean (required)</request>
+      <response status="200">
+        data: {
+          applied: boolean,             (false se dry_run o se ci sono errori)
+          period: string|null,          ("YYYY-MM"; null se le righe non hanno un mese unico)
+          summary: {
+            rows: number, people: number, companies: number,
+            total_cost: number,         (somma dei totali delle righe valide, 2 decimali)
+            replaced_rows: number       (righe gia' presenti per quel mese, sostituite all'applicazione)
+          },
+          errors: [{ row: number, column: string|null, message: string }]   (row = numero di riga nel file, intestazione = 1)
+        }
+      </response>
+      <errors>401; 403 senza `payroll-costs.import` o `payroll-costs.view`; 422 file mancante, formato o dimensione,
+        colonna obbligatoria mancante (chiave `file`, messaggio con le colonne), righe oltre il limite.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/payroll-costs/columns">
+      <response status="200">Shape generica delle TableDefinition. Colonne: period (testo "YYYY-MM", filtro set, ordinabile,
+        default desc), company (set), user (testo: cognome nome), tax_code, salary_cost, contribution_cost,
+        insurance_cost, total_cost, ordinary_hours, hired_on, terminated_on (dati, ordinabili/filtrabili);
+        timesheet_hours, work_order_hours, allocated_cost, unallocated_cost (calcolate D-11, non ordinabili/filtrabili).</response>
+      <errors>401; 403 senza `payroll-costs.view`.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/payroll-costs/rows">
+      <response status="200">Shape SSRM generica, una riga per `payroll_costs` con le colonne sopra (ore in decimali
+        con 2 cifre, importi con 2 decimali).</response>
+      <errors>401; 403 senza `payroll-costs.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/* (conto economico, andamento mensile)">
+      <response status="200">Shape invariata. Cambiano i valori: `cost_labor` e la serie `labor` usano la tariffa
+        reale nei mesi con costo importato (D-7, D-8); `unpriced_minutes` non conta le ore di quei mesi.</response>
+    </endpoint>
+
+    <navigation key="management-control-payroll-costs" label="navigation.payrollCosts" icon="users"
+      route="/management-control/payroll-costs" permission="payroll-costs.view" parent="management-control-group"/>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Permessi: senza autenticazione 401 su import e griglia; senza `payroll-costs.view` 403 su
+      griglia e import; con `view` senza `import` 403 sull'import; `permissions:sync` crea esattamente
+      `payroll-costs.view` e `payroll-costs.import`; la voce di menu compare solo con `payroll-costs.view` (Pest).</criterion>
+    <criterion id="AC-002">Dato un file tab in Windows-1252 (nome con lettera accentata, importi "1.234,56", un costo
+      contributivo negativo, `#DIV/0!` nel costo orario medio, una persona su due societa') con codici fiscali e
+      codici azienda tutti associati, `dry_run=true` risponde `applied:false`, `period`, conteggi `rows`/`people`/
+      `companies`/`total_cost` esatti, `errors` vuoto, e non scrive nulla; `dry_run=false` scrive una riga per
+      societa' + persona con gli importi e le date del file e `imported_by`, `applied:true` (Pest).</criterion>
+    <criterion id="AC-003">Lo stesso contenuto in csv a `;` UTF-8, csv a `,` e xlsx produce le stesse righe (Pest).</criterion>
+    <criterion id="AC-004">Errori di riga, ognuno con numero di riga e colonna, e nessuna scrittura anche con
+      `dry_run=false`: codice fiscale non trovato; codice fiscale su due utenti; codice azienda non in mappa; codice
+      in mappa con P.IVA senza societa'; importo non numerico; totale diverso dalla somma oltre 0,01; coppia
+      societa' + codice fiscale ripetuta; mese diverso dalle altre righe (Pest).</criterion>
+    <criterion id="AC-005">File senza `AZIENDA` o senza `TOTALE COSTO MENSILE`, file vuoto, estensione non ammessa,
+      oltre 2000 righe: 422 su `file`, nessuna scrittura (Pest).</criterion>
+    <criterion id="AC-006">Dato un mese gia' caricato con 3 righe, l'anteprima di un nuovo file dello stesso mese
+      riporta `replaced_rows: 3`; l'applicazione lascia solo le righe del nuovo file per quel mese e non tocca gli
+      altri mesi; le cancellazioni sono nell'activity log (Pest).</criterion>
+    <criterion id="AC-007">Tariffa reale: dato un utente con costo 2.600,00 in ottobre (1.600,00 societa' X +
+      1.000,00 societa' Y) e 160 ore di ottobre (100 su commessa A, 40 su B, 20 senza commessa), allora
+      `byWorkOrder` da' 1.625,00 ad A e 650,00 a B, `byMonth` di ottobre da' 325,00 alla riga senza commessa
+      dell'utente, nessun minuto di ottobre e' `unpriced`; le sue ore di settembre (senza costo importato) usano
+      ancora la tariffa del contratto (Pest).</criterion>
+    <criterion id="AC-008">Costo senza ore: un utente con costo 500,00 in ottobre e zero ore non aggiunge nulla a
+      nessuna commessa e compare nell'andamento mensile di ottobre sulle sue funzioni di appartenenza (o in
+      `structure` senza appartenenze), con `minutes` 0 (Pest).</criterion>
+    <criterion id="AC-009">Arrotondamento: per un utente-mese con costo non divisibile esattamente per i minuti, la
+      somma delle quote su tutte le commesse e sulla riga senza commessa differisce dal costo del mese al massimo di
+      1 centesimo per gruppo (Pest).</criterion>
+    <criterion id="AC-010">Griglia: con i dati di AC-007 la riga della societa' X mostra ore segnatempo 160,00, ore su
+      commessa 140,00, quota su commesse 1.400,00, quota non ribaltata 200,00; una riga senza ore mostra quota su
+      commesse 0 e quota non ribaltata = costo; filtro per mese e per societa' e ordinamento per costo funzionano;
+      le colonne calcolate sono dichiarate non ordinabili (Pest).</criterion>
+    <criterion id="AC-011">Frontend: la pagina mostra la griglia; Importa apre il dialog, il caricamento mostra
+      l'anteprima (mese, conteggi, totale, righe sostituite) e gli errori riga per riga; Conferma e' disabilitato con
+      errori e senza permesso `import` il pulsante non c'e'; dopo l'applicazione la griglia si aggiorna (Vitest).</criterion>
+    <criterion id="AC-012">Guide in-app IT/EN della nuova voce con gli stessi id di sezione e chiave in
+      `HELP_GUIDE_KEYS`; guide di conto economico e andamento mensile aggiornate sul costo reale; test di parita'
+      verde (Vitest).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: openspout per csv/xlsx, conversione di codifica con `mb_convert_encoding`.</item>
+    <item>Authz server-side su ogni endpoint (Policy); validazione del file in FormRequest (`mimes` + `extensions`).</item>
+    <item>Ordinamento e filtri della griglia solo da allow-list della TableDefinition; nessun `orderByRaw` da input.</item>
+    <item>Calcolo del costo in centesimi interi, query aggregate a numero costante (nessuna query per riga o per utente).</item>
+    <item>Fixture dei test sintetiche: codici fiscali, nomi e importi inventati; nessun dato reale del personale nel repo.</item>
+    <item>File sotto 300 righe (500 limite), orchestrazione `handle()` con `// Step N`, identificatori in inglese.</item>
+    <item>Manuale: guide in-app IT/EN aggiornate (CLAUDE.md 4-bis); manuale Claude Docs da segnalare se non raggiungibile.</item>
+  </constraints>
+
+</spec>

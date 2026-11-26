@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\ManagementControl\Trend;
 
 use App\DataObjects\ManagementControl\MonthlyTrendFilters;
+use App\Enums\PurchaseInvoiceType;
 use App\Services\ManagementControl\Exposure\ExposureSupport;
 use App\Services\ManagementControl\FlowSupport;
 use App\Services\ManagementControl\WorkOrderFunctionShares;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * The costs of the trend (spec 0270, D-6/D-7): the net of the lines of the
  * payable documents (proforma and invoices) by month of the document date. A
- * line tied to a commessa is split by the commessa's function weights, the
+ * payslips are not costs (spec 0431, D-5). A line tied to a commessa is split by the commessa's function weights, the
  * others are structure costs. The same rows also feed the split by nature.
  */
 final class CostTrendAggregator
@@ -39,7 +40,8 @@ final class CostTrendAggregator
             ->join('purchase_invoices', 'purchase_invoices.id', '=', 'purchase_invoice_lines.purchase_invoice_id')
             ->leftJoin('cost_types', 'cost_types.id', '=', 'purchase_invoice_lines.cost_type_id')
             ->where('purchase_invoices.document_date', '>=', $from)
-            ->where('purchase_invoices.document_date', '<', $until);
+            ->where('purchase_invoices.document_date', '<', $until)
+            ->where('purchase_invoices.document_type', '!=', PurchaseInvoiceType::Payslip->value);
 
         return FlowSupport::scope($query, $filters->companyIds, $filters->companySiteIds, $filters->operationalSiteIds, self::SCOPE_COLUMNS)
             ->selectRaw(

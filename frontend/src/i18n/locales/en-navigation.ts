@@ -36,6 +36,7 @@ export const navigation = {
   billing: 'Billing',
   accounts: 'Accounts',
   agents: 'Agents',
+  payrollCosts: 'Payroll costs',
   accountingReceivable: 'Receivables',
   proformaRequests: 'Proforma requests',
   invoices: 'Active invoices',
