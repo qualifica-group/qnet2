@@ -1,8 +1,9 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import '@/i18n'
 import { AiTurnStatus } from '@/features/ai-assistant/components/ai-turn-status'
-import type { AiTurn, AiTurnStatus as Status } from '@/features/ai-assistant/types'
+import type { AiPreview, AiTurn, AiTurnStatus as Status } from '@/features/ai-assistant/types'
 
 function turn(status: Status, overrides: Partial<AiTurn> = {}): AiTurn {
   return {
@@ -48,9 +49,28 @@ describe('AiTurnStatus', () => {
     expect(screen.getByRole('status')).toHaveTextContent('L\'assistente sta scrivendo...')
   })
 
-  it('shows only a placeholder while waiting for the confirmation (the card is ticket 05)', () => {
-    render(<AiTurnStatus turn={turn('awaiting_confirmation', { preview: { id: 'p1' } })} />)
+  it('shows the preview card with Confirm and Cancel while waiting for the confirmation', () => {
+    const preview: AiPreview = {
+      id: 'p1', operation: 'PUT /x', record: { type: 'x', id: 1, label: 'Record 1' },
+      changes: [{ field: 'a', label: 'Campo', before: 'uno', after: 'due' }], effects: [],
+      expires_at: new Date(Date.now() + 600_000).toISOString(), state: 'open', outcome: null,
+    }
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AiTurnStatus turn={turn('awaiting_confirmation', { preview, assistant_text: 'Testo del modello' })} />
+      </QueryClientProvider>,
+    )
+
     expect(screen.getByRole('status')).toHaveTextContent('aspetta la tua conferma')
+    expect(screen.getByRole('group', { name: 'Modifica da confermare' })).toHaveTextContent('Record 1')
+    expect(screen.getByRole('button', { name: 'Conferma' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Annulla' })).toBeInTheDocument()
+    expect(screen.queryByText('Testo del modello')).not.toBeInTheDocument()
+  })
+
+  it('shows no card, and no buttons, when the awaiting turn carries no preview', () => {
+    render(<AiTurnStatus turn={turn('awaiting_confirmation')} />)
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 

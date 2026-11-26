@@ -61,16 +61,22 @@ describe('useAiActiveTurn', () => {
     expect(vi.mocked(fetchAiTurn)).toHaveBeenCalledTimes(calls)
   })
 
-  it('stops polling while the turn waits for the confirmation (preview card is ticket 05)', async () => {
-    vi.mocked(fetchAiTurn).mockResolvedValue(turn('awaiting_confirmation'))
+  it('keeps reading, more slowly, while the turn waits for the confirmation (so the expiry arrives)', async () => {
+    let expired = false
+    vi.mocked(fetchAiTurn).mockImplementation(async () => (expired ? turn('queued') : turn('awaiting_confirmation')))
     const { result } = setup()
 
     act(() => result.current.track(turn('queued')))
     await waitFor(() => expect(result.current.turn?.status).toBe('awaiting_confirmation'))
 
     const calls = vi.mocked(fetchAiTurn).mock.calls.length
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS * 6))
-    expect(vi.mocked(fetchAiTurn)).toHaveBeenCalledTimes(calls)
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS * 12))
+    const grown = vi.mocked(fetchAiTurn).mock.calls.length - calls
+    expect(grown).toBeGreaterThanOrEqual(1)
+    expect(grown).toBeLessThan(8)
+
+    expired = true
+    await waitFor(() => expect(result.current.turn?.status).toBe('queued'))
   })
 
   it('resumes the polling of the active turn sent by the conversation detail', async () => {

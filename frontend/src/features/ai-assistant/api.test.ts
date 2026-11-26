@@ -5,6 +5,8 @@ vi.mock('@/api/client', () => ({ apiClient: { get: vi.fn(), post: vi.fn(), delet
 import { apiClient } from '@/api/client'
 import {
   buildAiMessageFormData,
+  cancelAiPreview,
+  confirmAiPreview,
   fetchAiTurn,
   sendAiMessage,
   createAiConversation,
@@ -80,6 +82,20 @@ describe('ai-assistant api', () => {
     mocked.get.mockResolvedValueOnce({ data: { data: { id: 2, status: 'running' } } })
     expect(await fetchAiTurn(7, 2)).toEqual({ id: 2, status: 'running' })
     expect(mocked.get).toHaveBeenLastCalledWith('/ai-assistant/conversations/7/turns/2')
+  })
+
+  it('confirms and cancels a preview sending only its id, and unwraps the resumed turn', async () => {
+    mocked.post.mockResolvedValueOnce({ data: { data: { id: 5, status: 'queued' } } })
+    expect(await confirmAiPreview(1, 5, 'a1b2c3')).toEqual({ id: 5, status: 'queued' })
+    expect(mocked.post).toHaveBeenLastCalledWith('/ai-assistant/conversations/1/turns/5/confirm', {
+      preview_id: 'a1b2c3',
+    })
+
+    mocked.post.mockResolvedValueOnce({ data: { data: { id: 5, status: 'queued' } } })
+    await cancelAiPreview(1, 5, 'a1b2c3')
+    expect(mocked.post).toHaveBeenLastCalledWith('/ai-assistant/conversations/1/turns/5/cancel', {
+      preview_id: 'a1b2c3',
+    })
   })
 
   it('deletes a conversation and downloads an attachment as blob', async () => {

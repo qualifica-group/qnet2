@@ -94,6 +94,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'confirm-changes',
+      title: 'Asking for a change and confirming it',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'If you ask for a change to a record, the assistant does not make it right away: it shows in the conversation a card with the record, the value of each field **before and after** and the effects of the change. The change happens only when you press **Confirm**; with **Cancel** nothing is written.',
+        },
+        {
+          type: 'list',
+          items: [
+            'The card shows only what the system prepared, not what the assistant writes in its text: always check the values on the card.',
+            'The card is valid for **10 minutes**: the time left is always visible and, once over, it can no longer be confirmed. In that case nothing was written and you can repeat the request.',
+            'If you ask for several changes, the cards arrive one at a time: confirm or cancel one to continue with the next.',
+          ],
+        },
+        {
+          type: 'warning',
+          text: 'Writing "yes" in the chat confirms nothing: you need the **Confirm** button on the card.',
+        },
+      ],
+    },
+    {
       id: 'privacy',
       title: 'What is sent outside',
       blocks: [

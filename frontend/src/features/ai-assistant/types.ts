@@ -143,6 +143,29 @@ export type AiTurnErrorCode =
   | 'limit_total'
   | 'internal'
 
+export type AiPreviewState = 'open' | 'confirmed' | 'cancelled' | 'expired' | 'rejected' | 'uncertain' | 'stale'
+
+export type AiPreviewOutcome = 'succeeded' | 'rejected' | 'uncertain' | 'expired' | 'cancelled' | 'stale'
+
+export interface AiPreviewChange {
+  field: string
+  label: string
+  before: unknown
+  after: unknown
+}
+
+export interface AiPreview {
+  /** The only thing sent back by confirm and cancel. */
+  id: string
+  operation: string
+  record: { type: string; id: number | string | null; label: string | null }
+  changes: AiPreviewChange[]
+  effects: string[]
+  expires_at: string
+  state: AiPreviewState
+  outcome: AiPreviewOutcome | null
+}
+
 export interface AiTurn {
   id: number
   conversation_id: number
@@ -152,8 +175,8 @@ export interface AiTurn {
   assistant_text: string
   assistant_message: AiMessage | null
   steps: AiTurnStep[]
-  /** The preview card belongs to ticket 05; here the field is carried, never read. */
-  preview: unknown
+  /** The open preview, or the last one of the turn (0433). Connector content, never model text. */
+  preview: AiPreview | null
   queue_position: number | null
   error_code: AiTurnErrorCode | null
   error_message: string | null

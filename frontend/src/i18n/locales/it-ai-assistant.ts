@@ -67,6 +67,18 @@ export const aiAssistant = {
       internal: 'Qualcosa è andato storto. Riprova più tardi.',
     },
   },
+  preview: {
+    label: 'Modifica da confermare',
+    effects: 'Effetti della modifica',
+    expiresIn: 'Scade tra {{time}}',
+    expired: 'Scaduta: non è stato scritto nulla.',
+    confirm: 'Conferma',
+    cancel: 'Annulla',
+    errors: {
+      closed: 'Questa modifica non è più in attesa di conferma: non è stato scritto nulla.',
+      generic: 'Non è stato possibile completare l\'operazione. Riprova.',
+    },
+  },
   composer: {
     label: 'Scrivi un messaggio',
     placeholder: 'Scrivi un messaggio... (@ per menzionare un record)',
