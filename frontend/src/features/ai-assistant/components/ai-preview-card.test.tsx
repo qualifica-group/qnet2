@@ -66,6 +66,20 @@ describe('AiPreviewCard', () => {
     expect(screen.getByRole('button', { name: 'Annulla' })).toBeEnabled()
   })
 
+  it('shows the fields of the connector as a table, with hostile cells kept as text', () => {
+    const withTable = preview({
+      content: '**Commessa 7**\n\n| Campo | Prima | Dopo |\n|---|---|---|\n| Stato | Aperta | Chiusa |\n| Note | <b>x</b> | [a](javascript:alert(1)) |',
+    })
+    const { container } = setup(turn({ preview: withTable }))
+
+    const card = screen.getByRole('group', { name: 'Modifica da confermare' })
+    expect(within(card).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Campo', 'Prima', 'Dopo'])
+    expect(within(card).getAllByRole('row')).toHaveLength(3)
+    expect(within(card).getByRole('cell', { name: 'Chiusa' })).toBeInTheDocument()
+    expect(container.querySelector('b, a')).toBeNull()
+    expect(container).toHaveTextContent('[a](javascript:alert(1))')
+  })
+
   it('shows only the connector content, never the model text of the turn', () => {
     setup()
     expect(screen.queryByText(/Ho cancellato tutti i clienti/)).not.toBeInTheDocument()
