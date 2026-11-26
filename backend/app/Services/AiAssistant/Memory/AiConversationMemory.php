@@ -21,7 +21,7 @@ use RuntimeException;
  */
 final class AiConversationMemory
 {
-    private const string OMITTED_RESULT = '[Earlier tool result omitted: tool=%s operation=%s. Read the data again with the tool if it is needed.]';
+    private const string OMITTED_RESULT = '[Earlier tool result omitted: %s. Read the data again with the tool if it is needed.]';
 
     private const string SUMMARY_HEADER = "Summary of the earlier part of this conversation:\n";
 
@@ -138,6 +138,12 @@ TEXT;
         return $summary;
     }
 
+    /** Tool and, when there is one, operation of an omitted result. */
+    private function describeResult(AiMemoryEntry $entry): string
+    {
+        return 'tool='.$entry->tool.($entry->operation === null ? '' : ' operation='.$entry->operation);
+    }
+
     /** @return list<AiMemoryEntry> */
     private function prefix(AiMemoryInput $input): array
     {
@@ -188,7 +194,7 @@ TEXT;
             if ($index >= $currentStart || ! in_array($entry->role, ['tool_call', 'tool'], true)) {
                 $compact[] = $entry;
             } elseif ($entry->role === 'tool') {
-                $compact[] = new AiMemoryEntry('tool', sprintf(self::OMITTED_RESULT, $entry->tool, $entry->operation), $entry->tool, $entry->operation, $entry->id);
+                $compact[] = new AiMemoryEntry('tool', sprintf(self::OMITTED_RESULT, $this->describeResult($entry)), $entry->tool, $entry->operation, $entry->id);
             }
         }
 

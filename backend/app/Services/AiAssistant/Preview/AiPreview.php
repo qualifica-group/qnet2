@@ -87,7 +87,7 @@ final readonly class AiPreview
     }
 
     /**
-     * The state the click or the clock gave it; the outcome stays empty until the turn resumes with it.
+     * The state the click or the clock gave it; the outcome is set apart, by withOutcome, when the decision is saved.
      */
     public function settled(AiPreviewOutcome $outcome): self
     {
