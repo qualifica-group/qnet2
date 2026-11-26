@@ -5,6 +5,8 @@ export const aiAssistantKeys = {
   /** Prefix of every cached conversation detail. */
   conversationDetails: ['ai-assistant', 'conversation'] as const,
   conversation: (id: number) => ['ai-assistant', 'conversation', id] as const,
+  turn: (conversationId: number, turnId: number) =>
+    ['ai-assistant', 'turn', conversationId, turnId] as const,
   mentionSearch: (module: string, term: string) =>
     ['ai-assistant', 'mention-search', module, term] as const,
 }

@@ -2,14 +2,29 @@ import { useTranslation } from 'react-i18next'
 import { AiComposer } from '@/features/ai-assistant/components/ai-composer'
 import { AiEmptyState } from '@/features/ai-assistant/components/ai-empty-state'
 import { AiMessageList } from '@/features/ai-assistant/components/ai-message-list'
+import { AiNewConversationProposal } from '@/features/ai-assistant/components/ai-new-conversation-proposal'
 import { AiNotConfigured } from '@/features/ai-assistant/components/ai-not-configured'
 import { useAiAssistantConfig } from '@/features/ai-assistant/hooks/use-ai-assistant-config'
 import { useAiComposer } from '@/features/ai-assistant/hooks/use-ai-composer'
+import { useAiActiveTurn } from '@/features/ai-assistant/hooks/use-ai-active-turn'
 import { useAiConversation } from '@/features/ai-assistant/hooks/use-ai-conversation'
-import type { AiAssistantConfig, AiConversation, AiMessage } from '@/features/ai-assistant/types'
+import { isAiTurnAwaitingConfirmation, isAiTurnFinal } from '@/features/ai-assistant/turn-status'
+import type { AiAssistantConfig, AiConversation, AiMessage, AiTurn } from '@/features/ai-assistant/types'
 import { cn } from '@/lib/utils'
 
 const NO_MESSAGES: AiMessage[] = []
+
+/**
+ * Hides a closed turn once its reply is among the saved messages (no duplicate bubble); a turn
+ * with a preview stays, reduced to the closed card with its outcome.
+ */
+function turnToShow(turn: AiTurn | null, messages: AiMessage[]): AiTurn | null {
+  const replyId = turn?.assistant_message?.id
+  if (turn === null || replyId === undefined || !messages.some((message) => message.id === replyId)) {
+    return turn
+  }
+  return turn.preview === null ? null : { ...turn, assistant_text: '', steps: [] }
+}
 
 export type AiChatVariant = 'widget' | 'page'
 
@@ -73,15 +88,24 @@ function AiChatBody({
 }: AiChatPanelProps & { config: AiAssistantConfig }) {
   const { t } = useTranslation()
   const conversationQuery = useAiConversation(conversationId)
+  const activeTurn = useAiActiveTurn({
+    conversationId,
+    serverTurn: conversationQuery.data?.active_turn ?? conversationQuery.data?.last_turn,
+    pollIntervalMs: config.limits.poll_interval_ms,
+  })
   const composer = useAiComposer({
     config,
     conversationId,
     onConversationCreated: (conversation: AiConversation) => onConversationChange(conversation.id),
+    onTurnStarted: activeTurn.track,
+    turnActive: activeTurn.turn !== null && !isAiTurnFinal(activeTurn.turn.status),
+    awaitingPreview: activeTurn.turn !== null && isAiTurnAwaitingConfirmation(activeTurn.turn.status),
     forceGeneralGuide,
   })
   const messages = conversationQuery.data?.messages ?? NO_MESSAGES
+  const shownTurn = turnToShow(activeTurn.turn, messages)
   const isLoadingMessages = conversationId !== null && conversationQuery.isLoading
-  const isEmpty = messages.length === 0 && !composer.isSending && !isLoadingMessages
+  const isEmpty = messages.length === 0 && shownTurn === null && !isLoadingMessages
 
   return (
     <div className={cn('mx-auto flex min-h-0 w-full flex-1 flex-col', variant === 'page' && 'max-w-3xl')}>
@@ -94,7 +118,10 @@ function AiChatBody({
           <AiEmptyState onPickSuggestion={composer.setDraft} />
         </div>
       ) : (
-        <AiMessageList messages={messages} isSending={composer.isSending} streamingText={composer.streamingText} />
+        <AiMessageList messages={messages} turn={shownTurn} />
+      )}
+      {conversationQuery.data?.propose_new_conversation === true && (
+        <AiNewConversationProposal onStart={() => onConversationChange(null)} />
       )}
       <AiComposer composer={composer} allowedModules={config.mention_modules} />
     </div>

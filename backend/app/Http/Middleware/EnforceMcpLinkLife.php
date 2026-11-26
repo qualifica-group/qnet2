@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\HttpStatusEnum;
+use App\Models\AssistantLink;
 use App\Models\McpLink;
 use Closure;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ class EnforceMcpLinkLife
 
         $link = McpLink::query()->find($linkId);
 
-        if ($link === null || ! $this->belongsTo($link, $token) || ! $link->isAliveFor($user)) {
+        if ($link === null || ! $this->belongsTo($link, $token) || ! $link->isAliveFor($user) || ! AssistantLink::sessionAliveFor($link)) {
             $this->deleteBestEffort($token);
 
             return response()->json([

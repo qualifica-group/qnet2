@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\AiTurnStatus;
 use App\Models\Abstracts\BaseModel;
 use Database\Factories\AiConversationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  * attachment binaries on disk would be orphaned: always remove a conversation
  * through deleteWithFiles().
  */
-#[Fillable(['user_id', 'title', 'last_message_at'])]
+#[Fillable(['user_id', 'title', 'last_message_at', 'summary', 'summary_count', 'summary_through_message_id'])]
 class AiConversation extends BaseModel
 {
     /** @use HasFactory<AiConversationFactory> */
@@ -31,6 +33,8 @@ class AiConversation extends BaseModel
         return [
             'user_id' => 'int',
             'last_message_at' => 'datetime',
+            'summary_count' => 'int',
+            'summary_through_message_id' => 'int',
         ];
     }
 
@@ -42,6 +46,27 @@ class AiConversation extends BaseModel
     public function messages(): HasMany
     {
         return $this->hasMany(AiMessage::class)->orderBy('id');
+    }
+
+    public function turns(): HasMany
+    {
+        return $this->hasMany(AiTurn::class);
+    }
+
+    /**
+     * The turn that is not final yet (queued, running or waiting for a confirmation), if any.
+     */
+    public function activeTurn(): HasOne
+    {
+        return $this->hasOne(AiTurn::class)->whereIn('status', AiTurnStatus::activeValues())->latest('id');
+    }
+
+    /**
+     * The newest turn, whatever its status: its closed preview is shown again when the conversation is reopened.
+     */
+    public function lastTurn(): HasOne
+    {
+        return $this->hasOne(AiTurn::class)->latestOfMany();
     }
 
     /**

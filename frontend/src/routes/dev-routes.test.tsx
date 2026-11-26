@@ -26,6 +26,8 @@ describe('devRoutes', () => {
   it.each([
     '/dev/migrations',
     '/dev/system-health',
+    '/dev/ai-assistant-settings',
+    '/dev/ai-assistant-costs',
     '/dev/api-clients',
     '/dev/api-docs',
     '/dev/formalab',

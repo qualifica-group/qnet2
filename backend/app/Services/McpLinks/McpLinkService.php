@@ -6,6 +6,7 @@ use App\DataObjects\McpLinks\ExchangedMcpLink;
 use App\DataObjects\McpLinks\OpenedMcpLink;
 use App\Enums\McpLinkReason;
 use App\Models\ApiClient;
+use App\Models\AssistantLink;
 use App\Models\McpLink;
 use App\Models\User;
 use App\Services\AuthService;
@@ -90,6 +91,7 @@ class McpLinkService
                 $link->revoked_at !== null => throw new McpLinkRejectedException(McpLinkReason::LinkRevoked),
                 $link->expires_at->isPast() => throw new McpLinkRejectedException(McpLinkReason::LinkExpired),
                 ! $user->is_active => throw new McpLinkRejectedException(McpLinkReason::UserInactive),
+                ! AssistantLink::sessionAliveFor($link) => throw new McpLinkRejectedException(McpLinkReason::SessionEnded),
                 ! $link->isAliveFor($user) => throw new McpLinkRejectedException(McpLinkReason::PasswordChanged),
                 default => null,
             };
@@ -145,7 +147,7 @@ class McpLinkService
      * a plain SELECT would use the snapshot of an earlier read of the caller's
      * transaction and miss a token the exchange committed meanwhile.
      */
-    private function drop(McpLink $link, McpLinkReason $reason, bool $failOnTokenDeletion = false): void
+    public function drop(McpLink $link, McpLinkReason $reason, bool $failOnTokenDeletion = false): void
     {
         DB::transaction(function () use ($link, $reason): void {
             User::query()->lockForUpdate()->find($link->user_id);
@@ -194,8 +196,25 @@ class McpLinkService
         // Lock order: user first. Everything is re-checked on the locked row.
         $user = User::query()->lockForUpdate()->find($authenticated->id);
 
-        if ($user === null || ! $user->is_active || $user->isServiceAccount() || $user->password !== $authenticated->password) {
-            throw ValidationException::withMessages(['email' => [__('auth.failed')]]);
+        // A password changed since the authentication is refused like an unknown user.
+        $user = $user?->password === $authenticated->password ? $user : null;
+        $this->assertLinkable($user, fn (): Throwable => ValidationException::withMessages(['email' => [__('auth.failed')]]));
+
+        return $this->issueLink($client, $user, $mcpClient);
+    }
+
+    /**
+     * The user a link may be opened for: present, active, not a service account, past the first password choice.
+     * What a refusal looks like is the caller's: the login page hides it, the assistant names it.
+     *
+     * @param  \Closure(): Throwable  $notLinkable
+     *
+     * @throws FirstAccessPendingException
+     */
+    public function assertLinkable(?User $user, \Closure $notLinkable): void
+    {
+        if ($user === null || ! $user->is_active || $user->isServiceAccount()) {
+            throw $notLinkable();
         }
 
         // No link before the user has chosen the first password. Stricter than
@@ -203,7 +222,13 @@ class McpLinkService
         if ($user->must_set_password) {
             throw new FirstAccessPendingException;
         }
+    }
 
+    /**
+     * Creates the link of an already checked user, whose row the caller holds locked.
+     */
+    public function issueLink(ApiClient $client, User $user, string $mcpClient): OpenedMcpLink
+    {
         $credential = bin2hex(random_bytes((int) config('mcp-link.credential_bytes')));
         $link = McpLink::query()->create([
             'user_id' => $user->id,

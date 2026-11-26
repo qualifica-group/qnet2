@@ -1,0 +1,301 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\AiAssistant\Agent;
+
+use GuzzleHttp\Exception\ConnectException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use JsonException;
+
+/**
+ * MCP client of the assistant entry of the connector (spec 0433, internal_contract): JSON-RPC
+ * over HTTP with the Laravel client, no dependency. The connector answers every call as
+ * `text/event-stream` with a single `data:` event and keeps no session.
+ *
+ * Tool results go back to the model as the connector wrote them: nothing is cut or rewritten.
+ */
+final class ConnectorClient
+{
+    private const string MCP_PATH = '/assistant/mcp';
+
+    private const array LOOPBACK_HOSTS = ['127.0.0.1', '::1', 'localhost'];
+
+    private const string CONFIRM_PATH = '/assistant/confirm';
+
+    /** cURL errors raised before the request is sent: could not resolve (6), could not connect (7), TLS not established (35, 60). */
+    private const array NOT_SENT_CURL_ERRORS = [6, 7, 35, 60];
+
+    private const string TOOLS_CACHE_KEY = 'ai-assistant.connector-tools';
+
+    private const int TOOLS_CACHE_SECONDS = 300;
+
+    public const string REJECTED_RESULT = '{"connettore":{"esito":"fallita","codice":"richiesta_non_valida"},"dati":null}';
+
+    public static function isConfigured(): bool
+    {
+        return filled(config('ai-assistant.connector.secret')) && filled(config('ai-assistant.connector.url'));
+    }
+
+    /**
+     * Allowed tools as OpenAI function definitions, in the fixed order of the allowed list.
+     * The list is the same for everybody, so it is cached: each `tools/list` leaves an audit row.
+     *
+     * @return list<array<string, mixed>>
+     *
+     * @throws ConnectorUnavailableException
+     * @throws ConnectorLinkRejectedException
+     */
+    public function tools(string $credential): array
+    {
+        $cached = Cache::get(self::TOOLS_CACHE_KEY);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $published = [];
+        foreach ($this->rpc($credential, 'tools/list', [])['tools'] ?? [] as $tool) {
+            if (is_array($tool) && isset($tool['name']) && AssistantTools::isAllowed((string) $tool['name'])) {
+                $published[(string) $tool['name']] = $tool;
+            }
+        }
+
+        $definitions = [];
+        foreach (AssistantTools::ALLOWED as $name) {
+            if (isset($published[$name])) {
+                $definitions[] = ['type' => 'function', 'function' => [
+                    'name' => $name,
+                    'description' => (string) ($published[$name]['description'] ?? ''),
+                    'parameters' => $published[$name]['inputSchema'] ?? ['type' => 'object'],
+                ]];
+            }
+        }
+
+        if ($definitions === []) {
+            $this->unavailable('empty_tool_list');
+        }
+
+        Cache::put(self::TOOLS_CACHE_KEY, $definitions, self::TOOLS_CACHE_SECONDS);
+
+        return $definitions;
+    }
+
+    /**
+     * Runs one tool and returns the text of the result for the model and whether the connector marked
+     * it as an error. A refusal or an error of the tool is a result like any other (the model decides);
+     * only transport problems throw.
+     *
+     * @param  object  $arguments  the arguments object as the model wrote it
+     * @return array{text: string, is_error: bool}
+     *
+     * @throws ConnectorUnavailableException
+     * @throws ConnectorLinkRejectedException
+     */
+    public function call(string $credential, string $name, object $arguments): array
+    {
+        $result = $this->rpc($credential, 'tools/call', ['name' => $name, 'arguments' => $arguments]);
+        $text = $result['content'][0]['text'] ?? null;
+
+        return is_string($text)
+            ? ['text' => $text, 'is_error' => (bool) ($result['isError'] ?? false)]
+            : ['text' => self::REJECTED_RESULT, 'is_error' => true];
+    }
+
+    /**
+     * Confirms a write preview through the confirmation route of the connector (never through a tool):
+     * the body is the identifier only. One attempt, no retry. The answer is the envelope of `confirm_write`.
+     *
+     * Where the failure happened decides what it means: before any byte left (connection refused) or on
+     * a redirect or a 4xx the connector did not act, so the click may be repeated (`ConnectorUnavailableException`);
+     * after the request was sent (timeout, 5xx, unreadable answer) the write may exist, so it is never
+     * repeated (`ConnectorOutcomeUnknownException`).
+     *
+     * @return array{text: string, envelope: array<string, mixed>}
+     *
+     * @throws ConnectorUnavailableException
+     * @throws ConnectorOutcomeUnknownException
+     * @throws ConnectorLinkRejectedException
+     */
+    public function confirm(string $credential, string $previewId): array
+    {
+        try {
+            $response = $this->post($credential, self::CONFIRM_PATH, json_encode(['preview_id' => $previewId], JSON_THROW_ON_ERROR));
+        } catch (ConnectionException $exception) {
+            if ($this->requestWasSent($exception)) {
+                $this->outcomeUnknown('connection');
+            }
+
+            $this->unavailable('connection');
+        }
+
+        $envelope = $response->successful() ? json_decode($response->body(), true) : null;
+
+        if (! is_array($envelope) || ! is_array($envelope['connettore'] ?? null)) {
+            $context = ['status' => $response->status()];
+
+            // A redirect (never followed) or a 4xx is a refusal before the connector acted; a 5xx or an unreadable 2xx is not.
+            if (! $response->successful() && ! $response->serverError()) {
+                $this->unavailable('confirm_answer', $context);
+            }
+
+            $this->outcomeUnknown('confirm_answer', $context);
+        }
+
+        return ['text' => trim($response->body()), 'envelope' => $envelope];
+    }
+
+    /**
+     * Whether the request may have reached the connector. Only a failure before the transfer began
+     * (cURL: could not resolve, could not connect, TLS not established, or `pretransfer_time` still zero)
+     * is certain not to have; with no information the answer is yes, because the write is not repeated.
+     */
+    private function requestWasSent(ConnectionException $exception): bool
+    {
+        $previous = $exception->getPrevious();
+        $context = $previous instanceof ConnectException ? $previous->getHandlerContext() : [];
+
+        if (in_array($context['errno'] ?? null, self::NOT_SENT_CURL_ERRORS, true)) {
+            return false;
+        }
+
+        return ! (isset($context['pretransfer_time']) && (float) $context['pretransfer_time'] === 0.0);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed> the JSON-RPC `result`; a JSON-RPC `error` of tools/call becomes a fixed rejected result
+     */
+    private function rpc(string $credential, string $method, array $params): array
+    {
+        $body = json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => (object) $params], JSON_THROW_ON_ERROR);
+
+        try {
+            $response = $this->post($credential, self::MCP_PATH, $body);
+        } catch (ConnectionException) {
+            $this->unavailable('connection');
+        }
+
+        if (! $response->successful()) {
+            $this->unavailable('http_status', ['status' => $response->status()]);
+        }
+
+        $message = $this->message($response);
+
+        if (isset($message['error'])) {
+            // Unknown tool or malformed request: the model gets a fixed text, never the raw error.
+            return $method === 'tools/call' ? ['content' => [['text' => self::REJECTED_RESULT]], 'isError' => true] : $this->unavailable('rpc_error');
+        }
+
+        return is_array($message['result'] ?? null) ? $message['result'] : $this->unavailable('no_result');
+    }
+
+    /**
+     * The last `data:` line of the event stream (a single event in practice), or a plain JSON body.
+     *
+     * @return array<string, mixed>
+     */
+    private function message(Response $response): array
+    {
+        $payload = trim($response->body());
+        $lines = preg_grep('/^data:/', explode("\n", str_replace("\r\n", "\n", $payload))) ?: [];
+
+        if ($lines !== []) {
+            $payload = trim(substr((string) end($lines), strlen('data:')));
+        }
+
+        try {
+            $decoded = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $this->unavailable('malformed_body');
+        }
+
+        return is_array($decoded) ? $decoded : $this->unavailable('malformed_body');
+    }
+
+    private function request(string $credential): PendingRequest
+    {
+        $this->assertSafeTransport();
+
+        $headers = [
+            'Accept' => 'application/json, text/event-stream',
+            'MCP-Protocol-Version' => (string) config('ai-assistant.connector.protocol_version'),
+            'x-assistant-secret' => (string) config('ai-assistant.connector.secret'),
+            'x-assistant-link-credential' => $credential,
+        ];
+
+        // The connector accepts only its public host in the Host header, while QNET2 reaches it on 127.0.0.1.
+        if (filled(config('ai-assistant.connector.host'))) {
+            $headers['Host'] = (string) config('ai-assistant.connector.host');
+        }
+
+        // A redirect would carry the secret and the credential to another address (security.md, outbound network).
+        return Http::withHeaders($headers)
+            ->withoutRedirecting()
+            ->timeout((int) config('ai-assistant.connector.timeout_seconds'))
+            ->connectTimeout((int) config('ai-assistant.connector.connect_timeout_seconds'));
+    }
+
+    /**
+     * The secret and the credential travel in headers: plain http is only for the loopback of the
+     * same machine, anything else needs https.
+     */
+    private function assertSafeTransport(): void
+    {
+        $parts = parse_url((string) config('ai-assistant.connector.url'));
+        $host = trim((string) ($parts['host'] ?? ''), '[]');
+
+        if (($parts['scheme'] ?? '') === 'http' && ! in_array($host, self::LOOPBACK_HOSTS, true)) {
+            $this->unavailable('insecure_url');
+        }
+    }
+
+    /**
+     * One POST of a JSON body to a route of the connector; a 401 is the fall of the link.
+     *
+     * @throws ConnectionException
+     * @throws ConnectorLinkRejectedException
+     */
+    private function post(string $credential, string $path, string $body): Response
+    {
+        $response = $this->request($credential)->withBody($body, 'application/json')->post(rtrim((string) config('ai-assistant.connector.url'), '/').$path);
+
+        if ($response->status() === 401) {
+            throw new ConnectorLinkRejectedException;
+        }
+
+        return $response;
+    }
+
+    /**
+     * Same sanitized log as `unavailable`, for an answer that was lost after the request was sent.
+     *
+     * @param  array<string, mixed>  $context
+     *
+     * @throws ConnectorOutcomeUnknownException
+     */
+    private function outcomeUnknown(string $reason, array $context = []): never
+    {
+        Log::warning('AI agent connector confirmation without a usable answer', ['reason' => $reason] + $context);
+
+        throw new ConnectorOutcomeUnknownException;
+    }
+
+    /**
+     * Logs a sanitized reason (never the secret, the credential, the URL or a body) and throws.
+     *
+     * @param  array<string, mixed>  $context
+     *
+     * @throws ConnectorUnavailableException
+     */
+    private function unavailable(string $reason, array $context = []): never
+    {
+        Log::warning('AI agent connector call failed', ['reason' => $reason] + $context);
+
+        throw new ConnectorUnavailableException;
+    }
+}

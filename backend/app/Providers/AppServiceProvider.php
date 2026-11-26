@@ -16,6 +16,8 @@ use App\Models\AbsenceRequest;
 use App\Models\AbsenceType;
 use App\Models\Address;
 use App\Models\AgentFiscalProfile;
+use App\Models\AiAssistantSetting;
+use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\ArchivioSmartSetting;
 use App\Models\Attachment;
@@ -132,7 +134,6 @@ use App\Models\WorkOrderStage;
 use App\Models\WorkOrderWorkflow;
 use App\Models\WorkOrderWorkflowStatus;
 use App\Models\Workspace;
-use App\Services\AiAssistant\Drivers\AiChatDriverManager;
 use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\Graph\GraphMailClient;
 use App\Services\Notifications\TaskNotifier;
@@ -237,10 +238,6 @@ class AppServiceProvider extends ServiceProvider
         // Scoped (spec 0327): the denied Gate evaluations of ONE request, read
         // when that request ends in a 403 to say which permission was missing.
         $this->app->scoped(AuthorizationDenialLog::class);
-
-        // Singleton (spec 0347): stateless chooser of the AI provider driver; it
-        // reads config on every call, so it can be shared safely.
-        $this->app->singleton(AiChatDriverManager::class);
     }
 
     /**
@@ -434,6 +431,8 @@ class AppServiceProvider extends ServiceProvider
             'document_checklist' => DocumentChecklist::class,
             'document_checklist_category' => DocumentChecklistCategory::class,
             'archivio_smart_setting' => ArchivioSmartSetting::class,
+            // Spec 0433: activity-log subject of the assistant settings.
+            'ai_assistant_setting' => AiAssistantSetting::class,
             // Spec 0428: activity-log subject of the document requests.
             'document_request' => DocumentRequest::class,
             'outbound_email' => OutboundEmail::class,
@@ -441,7 +440,12 @@ class AppServiceProvider extends ServiceProvider
             'workspace' => Workspace::class,
         ]);
 
-        Gate::before(function (User $user, string $ability): ?bool {
+        Gate::before(function (User $user, string $ability, array $arguments = []): ?bool {
+            // AI conversations are private to their owner (interview Q5): not even the super-admin passes.
+            if (($arguments[0] ?? null) instanceof AiConversation) {
+                return null;
+            }
+
             if ($user->hasRole('super-admin')) {
                 return true;
             }

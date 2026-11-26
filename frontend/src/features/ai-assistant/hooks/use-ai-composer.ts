@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useQueryClient } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,39 +9,43 @@ import {
 } from '@/features/ai-assistant/composer-schema'
 import { useAiPageGuide } from '@/features/ai-assistant/hooks/use-ai-page-guide'
 import { useSendAiMessage } from '@/features/ai-assistant/hooks/use-send-ai-message'
-import { aiAssistantKeys } from '@/features/ai-assistant/query-keys'
-import {
-  classifyAiSendError,
-  isAiSendCancelled,
-  type AiSendErrorKind,
-} from '@/features/ai-assistant/send-error'
+import { classifyAiSendError, type AiSendErrorKind } from '@/features/ai-assistant/send-error'
 import type {
   AiAssistantConfig,
   AiConversation,
   AiMentionInput,
+  AiTurn,
 } from '@/features/ai-assistant/types'
 
 export interface UseAiComposerOptions {
   config: AiAssistantConfig
   conversationId: number | null
   onConversationCreated: (conversation: AiConversation) => void
+  /** Receives the queued turn so the chat can follow it by polling. */
+  onTurnStarted: (turn: AiTurn) => void
+  /** A turn of this conversation is not closed yet: one turn at a time (D-16). */
+  turnActive: boolean
+  /** The turn waits for Confirm or Cancel of a preview: the composer says why it cannot send. */
+  awaitingPreview?: boolean
   /** Pins the `general` guide (the /ai-assistant page, AC-024). */
   forceGeneralGuide?: boolean
 }
 
 /**
  * Orchestrates the composer: validated draft (RHF + Zod from the /config
- * limits), page guide, streaming send and restoration of draft, files and
- * mentions when the send fails (D-13, AC-021).
+ * limits), page guide, send (message saved, turn queued) and restoration of
+ * draft, files and mentions when the POST is refused and nothing was saved.
  */
 export function useAiComposer({
   config,
   conversationId,
   onConversationCreated,
+  onTurnStarted,
+  turnActive,
+  awaitingPreview = false,
   forceGeneralGuide = false,
 }: UseAiComposerOptions) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const { limits } = config
   const schema = useMemo(() => createComposerSchema(limits, t), [limits, t])
   const form = useForm<AiComposerValues>({
@@ -58,23 +61,20 @@ export function useAiComposer({
   const mentions = useWatch({ control: form.control, name: 'mentions' })
   const content = useWatch({ control: form.control, name: 'content' })
 
-  const resyncAfterCancel = useCallback(
-    () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: aiAssistantKeys.conversationDetails }),
-        queryClient.invalidateQueries({ queryKey: aiAssistantKeys.conversations }),
-      ]),
-    [queryClient],
-  )
+  const isBusy = sender.isSending || turnActive
 
   const submit = form.handleSubmit(async (values) => {
+    // Step 0: one turn at a time; the draft stays for when the assistant is done
+    if (isBusy) {
+      return
+    }
     // Step 1: clear the draft so the sent message leaves the composer
     setFailure(null)
     form.reset(EMPTY_COMPOSER_VALUES)
 
-    // Step 2: send and stream the reply
+    // Step 2: save the message, queue the turn and follow it
     try {
-      await sender.send({
+      const { turn } = await sender.send({
         input: {
           content: values.content,
           mentions: values.mentions,
@@ -86,12 +86,9 @@ export function useAiComposer({
         conversationId,
         onConversationCreated,
       })
+      onTurnStarted(turn)
     } catch (error) {
-      // Step 3: on stop, trust the server; on failure give everything back
-      if (isAiSendCancelled(error)) {
-        await resyncAfterCancel()
-        return
-      }
+      // Step 3: the POST was refused, nothing was saved: give everything back
       const result = classifyAiSendError(error)
       form.reset(values)
       for (const [field, message] of Object.entries(result.fieldErrors)) {
@@ -163,9 +160,9 @@ export function useAiComposer({
     addMention,
     removeMention,
     setDraft,
-    cancel: sender.cancel,
-    isSending: sender.isSending,
-    streamingText: sender.streamingText,
+    /** The POST is in flight or a turn is still being worked on: the composer cannot send. */
+    isBusy,
+    awaitingPreview,
   }
 }
 

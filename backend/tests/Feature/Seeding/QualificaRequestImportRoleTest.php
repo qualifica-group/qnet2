@@ -20,7 +20,8 @@ it('0348: no mansione and not even admin holds the request import; the importer 
         expect(Role::findByName($name)->hasPermissionTo(Importer::PERMISSION))->toBeFalse($name);
     }
 
-    expect(Role::findByName(Importer::ROLE)->permissions()->pluck('name')->all())->toBe([Importer::PERMISSION])
+    // REQUIREMENT CHANGED (spec 0433): every role holds ai-assistant.use.
+    expect(Role::findByName(Importer::ROLE)->permissions()->pluck('name')->sort()->values()->all())->toBe(['ai-assistant.use', Importer::PERMISSION])
         ->and(Role::findByName(Importer::ROLE)->description)->toBe(Importer::DESCRIPTION);
 });
 

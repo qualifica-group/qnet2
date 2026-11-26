@@ -77,6 +77,7 @@ class McpLink extends Model
 
     /**
      * Alive for this user: not revoked, not expired, user active, password unchanged since the opening.
+     * The session bond of an assistant link is checked apart (AssistantLink::sessionAliveFor).
      */
     public function isAliveFor(User $user): bool
     {

@@ -1,9 +1,14 @@
 <?php
 
 use App\Http\Controllers\AiAssistant\AiAssistantConfigController;
+use App\Http\Controllers\AiAssistant\AiAssistantCostsController;
+use App\Http\Controllers\AiAssistant\AiAssistantModelCatalogController;
+use App\Http\Controllers\AiAssistant\AiAssistantSettingsController;
 use App\Http\Controllers\AiAssistant\AiAttachmentController;
 use App\Http\Controllers\AiAssistant\AiConversationController;
 use App\Http\Controllers\AiAssistant\AiMessageController;
+use App\Http\Controllers\AiAssistant\AiPreviewController;
+use App\Http\Controllers\AiAssistant\AiTurnController;
 use App\Http\Middleware\EnsureAiAssistantEnabled;
 use App\Policies\AiConversationPolicy;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +26,16 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Spec 0433: settings, model lists and costs for the `super-admin` only (no assignable permission);
+// they do not depend on the surface switches, so the admin can fix them while the assistant is off.
+Route::prefix('ai-assistant')->middleware('super-admin')->group(function () {
+    Route::get('settings', [AiAssistantSettingsController::class, 'show']);
+    Route::put('settings', [AiAssistantSettingsController::class, 'update']);
+    Route::get('models', [AiAssistantModelCatalogController::class, 'index']);
+    Route::get('models/providers', [AiAssistantModelCatalogController::class, 'providers']);
+    Route::get('costs', [AiAssistantCostsController::class, 'index']);
+});
+
 Route::prefix('ai-assistant')->middleware('can:'.AiConversationPolicy::PERMISSION)->group(function () {
     Route::get('config', AiAssistantConfigController::class);
 
@@ -30,6 +45,21 @@ Route::prefix('ai-assistant')->middleware('can:'.AiConversationPolicy::PERMISSIO
         Route::get('conversations/{conversation}', [AiConversationController::class, 'show']);
         Route::delete('conversations/{conversation}', [AiConversationController::class, 'destroy']);
         Route::post('conversations/{conversation}/messages', [AiMessageController::class, 'store']);
+
+        Route::scopeBindings()->get(
+            'conversations/{conversation}/turns/{turn}',
+            [AiTurnController::class, 'show'],
+        );
+
+        Route::scopeBindings()->post(
+            'conversations/{conversation}/turns/{turn}/confirm',
+            [AiPreviewController::class, 'confirm'],
+        );
+
+        Route::scopeBindings()->post(
+            'conversations/{conversation}/turns/{turn}/cancel',
+            [AiPreviewController::class, 'cancel'],
+        );
 
         Route::scopeBindings()->get(
             'messages/{message}/attachments/{attachment}',

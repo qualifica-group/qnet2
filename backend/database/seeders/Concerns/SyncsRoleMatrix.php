@@ -4,6 +4,7 @@ namespace Database\Seeders\Concerns;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Policies\AiConversationPolicy;
 use App\RequestManagement\RequestModule;
 use App\Support\Notifications\AssignmentNotificationChannels;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
@@ -72,7 +73,9 @@ trait SyncsRoleMatrix
         $role->save();
         $permissions = $this->withCompetenceSight($permissions);
         $permissions = $requestSightFromQuotes ? $this->withRequestModulesSight($permissions) : $permissions;
-        $role->syncPermissions(($assignmentNotifications ? $this->withAssignmentNotifications($permissions) : $permissions)->all());
+        $permissions = $assignmentNotifications ? $this->withAssignmentNotifications($permissions) : $permissions;
+        // Everyone has the assistant (spec 0433): the grant does not depend on the role's blocks.
+        $role->syncPermissions($permissions->push(AiConversationPolicy::PERMISSION)->unique()->all());
 
         return $role;
     }

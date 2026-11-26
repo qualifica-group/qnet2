@@ -133,4 +133,19 @@ describe('ReportBarChart', () => {
     expect(impl).toMatch(/layout="vertical"/)
     expect(impl).toMatch(/<Bar\b/)
   })
+
+  it('follows fractional data when decimals are allowed, instead of forcing whole-number ticks', async () => {
+    const cents = [
+      { label: 'A', value: 0.038 },
+      { label: 'B', value: 0.03 },
+    ]
+    // jsdom draws no tick text, but the axis hands every tick value to formatValue.
+    const money = vi.fn((value: number) => `$${value.toFixed(2)}`)
+    render(<ReportBarChart title="Cost" points={cents} formatValue={money} allowDecimals />)
+
+    await screen.findByRole('list')
+    const axisValues = money.mock.calls.map(([value]) => value)
+
+    expect(Math.max(...axisValues)).toBeLessThan(1)
+  })
 })

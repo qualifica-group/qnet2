@@ -4,6 +4,10 @@ import { en } from '@/i18n/locales/en'
 import { it } from '@/i18n/locales/it'
 import { migrations as migrationsEn } from '@/i18n/locales/en-migrations'
 import { migrations as migrationsIt } from '@/i18n/locales/it-migrations'
+import { aiAssistantSettings as aiAssistantSettingsEn } from '@/i18n/locales/en-ai-assistant-settings'
+import { aiAssistantSettings as aiAssistantSettingsIt } from '@/i18n/locales/it-ai-assistant-settings'
+import { aiAssistantCosts as aiAssistantCostsEn } from '@/i18n/locales/en-ai-assistant-costs'
+import { aiAssistantCosts as aiAssistantCostsIt } from '@/i18n/locales/it-ai-assistant-costs'
 import { systemHealth as systemHealthEn } from '@/i18n/locales/en-system-health'
 import { systemHealth as systemHealthIt } from '@/i18n/locales/it-system-health'
 import { workspaces as workspacesEn } from '@/i18n/locales/en-workspaces'
@@ -55,8 +59,8 @@ void i18n.use(initReactI18next).init({
     // breadcrumb can resolve `migrations:nav.label` app-wide — before the lazy
     // migrations feature module is ever loaded. See features/migrations/i18n.ts.
     // `systemHealth`, `workspaces` and `onboarding` are separate namespaces for the same reason (en.ts/it.ts at the size limit).
-    en: { translation: en, migrations: migrationsEn, systemHealth: systemHealthEn, workspaces: workspacesEn, onboarding: onboardingEn, maintenance: maintenanceEn, ...Object.fromEntries(integrationResources.map((r) => [r.namespace, r.en])) },
-    it: { translation: it, migrations: migrationsIt, systemHealth: systemHealthIt, workspaces: workspacesIt, onboarding: onboardingIt, maintenance: maintenanceIt, ...Object.fromEntries(integrationResources.map((r) => [r.namespace, r.it])) },
+    en: { translation: en, migrations: migrationsEn, systemHealth: systemHealthEn, aiAssistantSettings: aiAssistantSettingsEn, aiAssistantCosts: aiAssistantCostsEn, workspaces: workspacesEn, onboarding: onboardingEn, maintenance: maintenanceEn, ...Object.fromEntries(integrationResources.map((r) => [r.namespace, r.en])) },
+    it: { translation: it, migrations: migrationsIt, systemHealth: systemHealthIt, aiAssistantSettings: aiAssistantSettingsIt, aiAssistantCosts: aiAssistantCostsIt, workspaces: workspacesIt, onboarding: onboardingIt, maintenance: maintenanceIt, ...Object.fromEntries(integrationResources.map((r) => [r.namespace, r.it])) },
   },
   lng: defaultLocale,
   fallbackLng: fallbackLocale,

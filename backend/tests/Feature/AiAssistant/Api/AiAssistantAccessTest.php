@@ -4,6 +4,7 @@ use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\Attachment;
 use App\Models\User;
+use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -47,23 +48,30 @@ it('AC-002: exposes config, limits and only the viewable mention modules, never 
     $response = $this->getJson('/api/ai-assistant/config')->assertOk()
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.configured', true)
-        ->assertJsonPath('data.driver', 'openai')
-        ->assertJsonPath('data.model', 'gpt-x')
+        // REQUIREMENT CHANGED (spec 0433): the only provider is OpenRouter and the model comes from the settings.
+        ->assertJsonPath('data.driver', 'openrouter')
+        ->assertJsonPath('data.model', 'deepseek/deepseek-v4-flash-0731')
+        ->assertJsonPath('data.enabled', true)
         ->assertJsonPath('data.limits.max_files', 3)
+        ->assertJsonPath('data.limits.poll_interval_ms', 1500)
         ->assertJsonPath('data.limits.accepted_mimes', config('ai-assistant.accepted_mimes'))
         ->assertJsonPath('data.mention_modules', ['companies', 'tasks']);
 
-    expect($response->getContent())->not->toContain('sk-secret')->not->toContain('llm.test');
+    expect($response->getContent())->not->toContain(AIAPI_OPENROUTER_KEY)->not->toContain(AIAPI_CONNECTOR_SECRET)->not->toContain('openrouter.test')->not->toContain('connector.test');
 });
 
-it('reports not configured when the driver is null', function () {
-    config()->set('ai-assistant.driver', null);
+it('reports not configured without the model key or the connector secret, and switched off from the settings', function () {
+    config()->set('ai-assistant.connector.secret', null);
     Sanctum::actingAs(aiapi_user());
 
     $this->getJson('/api/ai-assistant/config')->assertOk()
         ->assertJsonPath('data.configured', false)
         ->assertJsonPath('data.driver', null)
         ->assertJsonPath('data.model', null);
+
+    app(AiAssistantSettingsService::class)->current()->update(['enabled' => false]);
+
+    $this->getJson('/api/ai-assistant/config')->assertOk()->assertJsonPath('data.enabled', false);
 });
 
 it('creates an empty conversation and shows it with its messages in order', function () {

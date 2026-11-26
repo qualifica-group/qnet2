@@ -35,6 +35,12 @@ export interface AiConversation {
 
 export interface AiConversationDetail extends AiConversation {
   messages: AiMessage[]
+  /** The turn that is not final yet, so a reloaded page resumes the polling (0433). */
+  active_turn?: AiTurn | null
+  /** The newest turn when it is closed and has a preview: the chat shows its closed card again (0433). */
+  last_turn?: AiTurn | null
+  /** True once the conversation was summarized the configured number of times: the chat offers a new one (D-5). */
+  propose_new_conversation?: boolean
 }
 
 export interface AiMessageMention {
@@ -68,7 +74,11 @@ export interface AiAssistantLimits {
   max_mentions: number
   max_files: number
   max_file_size_kb: number
+  /** False for a text-only model: the composer offers no attachment (spec 0433). */
+  accepts_attachments: boolean
   accepted_mimes: string[]
+  /** How often the browser reads the state of a running turn (0433, D-15). */
+  poll_interval_ms: number
 }
 
 export interface AiAssistantConfig {
@@ -108,12 +118,78 @@ export interface SendAiMessageInput {
   locale: 'it' | 'en'
 }
 
-/** SSE events of `POST /conversations/{id}/messages`, discriminated on `event`. */
-export type AiStreamEvent =
-  | { event: 'message.created'; data: { user_message: AiMessage } }
-  | { event: 'delta'; data: { text: string } }
-  | {
-      event: 'message.completed'
-      data: { assistant_message: AiMessage; conversation: AiConversation }
-    }
-  | { event: 'error'; data: { message: string } }
+export type AiTurnStatus =
+  | 'queued'
+  | 'running'
+  | 'awaiting_confirmation'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'limit_reached'
+
+export type AiTurnStepTool = 'search_operations' | 'list_records' | 'run_read_code' | 'prepare_write'
+
+export interface AiTurnStep {
+  index: number
+  tool: AiTurnStepTool
+  /** Short label already translated by the server in the language of the turn. */
+  label: string
+  state: 'running' | 'done' | 'failed'
+}
+
+/** The fixed error codes of a turn; the list is also what the UI checks a server code against. */
+export const AI_TURN_ERROR_CODES = [
+  'model_unavailable',
+  'connector_unavailable',
+  'link_lost',
+  'too_many_steps',
+  'turn_timeout',
+  'stream_error',
+  'switched_off',
+  'limit_person',
+  'limit_total',
+  'internal',
+] as const
+
+export type AiTurnErrorCode = (typeof AI_TURN_ERROR_CODES)[number]
+
+export type AiPreviewState = 'open' | 'confirmed' | 'cancelled' | 'expired' | 'rejected' | 'uncertain' | 'stale'
+
+export type AiPreviewOutcome = 'succeeded' | 'rejected' | 'uncertain' | 'expired' | 'cancelled' | 'stale'
+
+export interface AiPreview {
+  /** The only thing sent back by confirm and cancel. */
+  id: string
+  /** False when the connector lacks required data: the preview can be read but not confirmed. */
+  confirmable: boolean
+  /** Markdown from the connector (record, fields before and after, effects), never model text. */
+  content: string
+  expires_at: string
+  state: AiPreviewState
+  outcome: AiPreviewOutcome | null
+}
+
+export interface AiTurn {
+  id: number
+  conversation_id: number
+  status: AiTurnStatus
+  user_message_id: number
+  /** Partial text while `running`, final text once the turn is closed. */
+  assistant_text: string
+  assistant_message: AiMessage | null
+  steps: AiTurnStep[]
+  /** The open preview, or the last one of the turn (0433). Connector content, never model text. */
+  preview: AiPreview | null
+  queue_position: number | null
+  error_code: AiTurnErrorCode | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+  finished_at: string | null
+}
+
+/** Answer of `POST /conversations/{id}/messages` (202): the saved message and the queued turn. */
+export interface AiMessageStarted {
+  user_message: AiMessage
+  turn: AiTurn
+}

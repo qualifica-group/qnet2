@@ -28,8 +28,8 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Spec 0347, AC-009..AC-011: a mentioned record becomes a compact, allow-listed
- * projection, authorized per record, with no lazy loading and no secret.
+ * Spec 0433: a mentioned record is authorized per record and becomes module, id
+ * and a label for the person; the model gets no field. No lazy loading.
  */
 uses(RefreshDatabase::class);
 
@@ -82,46 +82,23 @@ it('lists the 18 spec modules', function () {
     ])->and($this->registry->has('quotes'))->toBeTrue()->and($this->registry->has('nope'))->toBeFalse();
 });
 
-it('resolves a factory record of every module into a non-empty projection without lazy loading', function (string $module, Closure $make) {
+it('resolves a factory record of every module into module, id and label only, without lazy loading', function (string $module, Closure $make) {
     $record = $make();
 
     $mention = $this->resolver->resolve(mentionSuperAdmin(), $module, $record->getKey());
 
+    // REQUIREMENT CHANGED (spec 0433): no record field for the model; the label is only for the person.
     expect($mention->module)->toBe($module)
         ->and($mention->id)->toBe($record->getKey())
         ->and($mention->label)->not->toBe('')
-        ->and(json_decode($mention->context, true))->toHaveKey('id', $record->getKey())->and(json_decode($mention->context, true))->not->toHaveCount(1);
+        ->and(array_keys(get_object_vars($mention)))->toBe(['module', 'id', 'label']);
 })->with('mention modules');
 
-it('projects the relations as names, not as nested models', function () {
+it('labels a lead with its registry name', function () {
     $registry = Registry::factory()->create(['name' => 'Acme Srl']);
     $lead = Lead::factory()->create(['registry_id' => $registry->id]);
 
-    $mention = $this->resolver->resolve(mentionSuperAdmin(), 'leads', $lead->id);
-
-    expect($mention->label)->toBe('Acme Srl')
-        ->and(json_decode($mention->context, true)['registry'])->toBe('Acme Srl');
-});
-
-it('never projects password, remember token or anything outside the allow-list for a user', function () {
-    $user = User::factory()->create(['name' => 'Mario Rossi']);
-
-    $mention = $this->resolver->resolve(mentionSuperAdmin(), 'users', $user->id);
-    $context = json_decode($mention->context, true);
-
-    expect($mention->label)->toBe('Mario Rossi')
-        ->and(array_keys($context))->not->toContain('password', 'remember_token', 'module_open_preferences')
-        ->and($mention->context)->not->toContain($user->password);
-});
-
-it('truncates the projection to mention_max_chars', function () {
-    config()->set('ai-assistant.mention_max_chars', 60);
-    $company = Company::factory()->create(['denomination' => str_repeat('A', 200)]);
-
-    $mention = $this->resolver->resolve(mentionSuperAdmin(), 'companies', $company->id);
-
-    expect(mb_strlen($mention->context))->toBe(60)
-        ->and($mention->context)->toEndWith(AiMentionResolver::TRUNCATION_MARKER);
+    expect($this->resolver->resolve(mentionSuperAdmin(), 'leads', $lead->id)->label)->toBe('Acme Srl');
 });
 
 it('throws not found for an unknown module and for a missing record', function () {

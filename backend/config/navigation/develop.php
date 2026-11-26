@@ -41,6 +41,24 @@ return [
             'role' => 'super-admin',
         ],
         [
+            // AI assistant settings (spec 0433): model, routing, instructions, general switch.
+            'key' => 'ai-assistant-settings',
+            'label' => 'navigation.aiAssistantSettings',
+            'icon' => 'sparkles',
+            'route' => '/dev/ai-assistant-settings',
+            'permission' => null,
+            'role' => 'super-admin',
+        ],
+        [
+            // AI assistant costs (spec 0433): spend per period, function, person and model.
+            'key' => 'ai-assistant-costs',
+            'label' => 'navigation.aiAssistantCosts',
+            'icon' => 'wallet',
+            'route' => '/dev/ai-assistant-costs',
+            'permission' => null,
+            'role' => 'super-admin',
+        ],
+        [
             // Request import from Excel/CSV (spec 0348).
             'key' => 'request-imports',
             'label' => 'navigation.requestImports',

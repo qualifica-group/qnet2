@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Policies\AiConversationPolicy;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Guard;
@@ -35,7 +36,8 @@ class DemoRolesSeeder extends Seeder
     private function syncRole(string $name, Collection $permissions): void
     {
         $role = Role::findOrCreate($name, Guard::getDefaultName(User::class));
-        $role->syncPermissions($permissions->all());
+        // Everyone has the assistant (spec 0433): the grant does not depend on the role's matrix.
+        $role->syncPermissions($permissions->push(AiConversationPolicy::PERMISSION)->unique()->all());
     }
 
     private function managerPermissions(Collection $allPermissions): Collection
