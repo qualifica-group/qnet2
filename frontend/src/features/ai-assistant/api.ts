@@ -75,6 +75,24 @@ export async function fetchAiTurn(conversationId: number, turnId: number): Promi
   return data.data
 }
 
+/** The server checks the preview belongs to this turn and person, confirms it and resumes the turn (202). */
+export async function confirmAiPreview(conversationId: number, turnId: number, previewId: string): Promise<AiTurn> {
+  const { data } = await apiClient.post<ApiResponse<AiTurn>>(
+    `/ai-assistant/conversations/${conversationId}/turns/${turnId}/confirm`,
+    { preview_id: previewId },
+  )
+  return data.data
+}
+
+/** Nothing is written: the turn resumes with a `cancelled` outcome. */
+export async function cancelAiPreview(conversationId: number, turnId: number, previewId: string): Promise<AiTurn> {
+  const { data } = await apiClient.post<ApiResponse<AiTurn>>(
+    `/ai-assistant/conversations/${conversationId}/turns/${turnId}/cancel`,
+    { preview_id: previewId },
+  )
+  return data.data
+}
+
 export async function deleteAiConversation(id: number): Promise<void> {
   await apiClient.delete(`/ai-assistant/conversations/${id}`)
 }

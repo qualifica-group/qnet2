@@ -70,6 +70,18 @@ export const aiAssistant = {
       internal: 'Something went wrong. Try again later.',
     },
   },
+  preview: {
+    label: 'Change to confirm',
+    notConfirmable: 'Required data is missing: this change cannot be confirmed. Cancel and try again with the missing data.',
+    expiresIn: 'Expires in {{time}}',
+    expired: 'Expired: nothing was written.',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+    errors: {
+      closed: 'This change is no longer waiting for confirmation: nothing was written.',
+      generic: 'The operation could not be completed. Try again.',
+    },
+  },
   composer: {
     label: 'Write a message',
     placeholder: 'Write a message... (@ to mention a record)',

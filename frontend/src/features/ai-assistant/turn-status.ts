@@ -7,5 +7,7 @@ const POLLING_STATUSES: readonly AiTurnStatus[] = ['queued', 'running']
 
 export const isAiTurnFinal = (status: AiTurnStatus): boolean => FINAL_STATUSES.includes(status)
 
-/** `awaiting_confirmation` is not polled here: the preview card and its expiry arrive with ticket 05. */
 export const isAiTurnPolling = (status: AiTurnStatus): boolean => POLLING_STATUSES.includes(status)
+
+/** Waiting for Confirm or Cancel the browser still reads, but slower: the expiry arrives without a click (0433). */
+export const isAiTurnAwaitingConfirmation = (status: AiTurnStatus): boolean => status === 'awaiting_confirmation'
