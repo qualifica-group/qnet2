@@ -23,53 +23,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Provider driver (spec 0347, D-2)
+    | OpenRouter (spec 0433, D-13)
     |--------------------------------------------------------------------------
     |
-    | "openai" (any OpenAI-compatible /v1/chat/completions server: OpenAI, or a
-    | local LLM such as LM Studio / Ollama via AI_ASSISTANT_OPENAI_BASE_URL, where
-    | the api key may stay empty), "anthropic" (Messages API) or "openrouter"
-    | (OpenRouter gateway, D-17). null = assistant not configured. Provider keys
-    | live only in .env, never in responses or logs.
+    | The only model provider of the assistant (the drivers for OpenAI and
+    | Anthropic of spec 0347 are gone). site_url / app_name are the optional
+    | attribution headers (HTTP-Referer / X-Title). The key lives only in .env,
+    | never in responses or logs. Model and routing: see `agent` below.
     |
     */
 
-    'driver' => env('AI_ASSISTANT_DRIVER'),
-
-    'openai' => [
-        'base_url' => env('AI_ASSISTANT_OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-        'api_key' => env('AI_ASSISTANT_OPENAI_API_KEY'),
-        'model' => env('AI_ASSISTANT_OPENAI_MODEL', 'gpt-4.1-mini'),
-    ],
-
-    'anthropic' => [
-        'base_url' => env('AI_ASSISTANT_ANTHROPIC_BASE_URL', 'https://api.anthropic.com/v1'),
-        'api_key' => env('AI_ASSISTANT_ANTHROPIC_API_KEY'),
-        'model' => env('AI_ASSISTANT_ANTHROPIC_MODEL', 'claude-sonnet-5-5'),
-        'version' => env('AI_ASSISTANT_ANTHROPIC_VERSION', '2023-06-01'),
-    ],
-
-    // OpenRouter (D-17): model id is "<vendor>/<model>". site_url / app_name are
-    // the optional attribution headers (HTTP-Referer / X-Title). data_collection
-    // "deny" (default) routes only to upstream providers that do not store or
-    // train on prompts; any value other than "allow" counts as "deny".
     'openrouter' => [
         'base_url' => env('AI_ASSISTANT_OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
         'api_key' => env('AI_ASSISTANT_OPENROUTER_API_KEY'),
-        'model' => env('AI_ASSISTANT_OPENROUTER_MODEL', 'openai/gpt-4.1-mini'),
         'site_url' => env('AI_ASSISTANT_OPENROUTER_SITE_URL') ?: env('FRONTEND_URL'),
         'app_name' => env('AI_ASSISTANT_OPENROUTER_APP_NAME') ?: env('APP_NAME'),
-        'data_collection' => env('AI_ASSISTANT_OPENROUTER_DATA_COLLECTION') === 'allow' ? 'allow' : 'deny',
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Generation and limits
+    | Limits
     |--------------------------------------------------------------------------
     */
 
-    'max_output_tokens' => (int) env('AI_ASSISTANT_MAX_OUTPUT_TOKENS', 2048),
-    'temperature' => env('AI_ASSISTANT_TEMPERATURE') !== null ? (float) env('AI_ASSISTANT_TEMPERATURE') : null,
+    // Read and connect timeouts of every call to the model.
     'timeout_seconds' => (int) env('AI_ASSISTANT_TIMEOUT_SECONDS', 120),
     'connect_timeout_seconds' => (int) env('AI_ASSISTANT_CONNECT_TIMEOUT_SECONDS', 10),
 
@@ -89,6 +66,54 @@ return [
     )),
 
     'retention_days' => (int) env('AI_ASSISTANT_RETENTION_DAYS', 30),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Agent turn (spec 0433)
+    |--------------------------------------------------------------------------
+    |
+    | The turn runs in a queued job on the `ai-assistant` queue, one attempt.
+    | Model, routing and additional instructions come from the settings row
+    | (`settings` below, AiAssistantSettingsService::effective()). The OpenRouter
+    | key and base URL are the ones of the `openrouter` section above. The job
+    | timeout is derived from these values and must stay under the queue `retry_after`.
+    |
+    */
+
+    'agent' => [
+        // Caps per turn: a cap reached closes the turn with a fixed text.
+        'max_model_calls' => (int) env('AI_ASSISTANT_AGENT_MAX_MODEL_CALLS', 8),
+        'max_tool_calls' => (int) env('AI_ASSISTANT_AGENT_MAX_TOOL_CALLS', 12),
+        'max_turn_seconds' => (int) env('AI_ASSISTANT_AGENT_MAX_TURN_SECONDS', 600),
+        'max_output_tokens' => (int) env('AI_ASSISTANT_AGENT_MAX_OUTPUT_TOKENS', 4096),
+
+        // A turn left queued or running longer than the longest job plus this margin is closed as failed.
+        'stale_margin_seconds' => (int) env('AI_ASSISTANT_AGENT_STALE_MARGIN_SECONDS', 120),
+
+        // How often the browser reads the turn state, reported by GET /config.
+        'poll_interval_ms' => (int) env('AI_ASSISTANT_AGENT_POLL_INTERVAL_MS', 1500),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Connector entry of the assistant (spec 0433, internal_contract)
+    |--------------------------------------------------------------------------
+    |
+    | Service-to-service MCP entry of the connector. `url` is where QNET2 reaches
+    | it (127.0.0.1 in production); `host` is the public host the connector
+    | accepts in the Host header. The secret is shared with the connector and
+    | never written to logs, responses or the activity log.
+    |
+    */
+
+    'connector' => [
+        'url' => env('AI_ASSISTANT_CONNECTOR_URL', 'http://127.0.0.1:3000'),
+        'host' => env('AI_ASSISTANT_CONNECTOR_HOST'),
+        'secret' => env('AI_ASSISTANT_CONNECTOR_SECRET'),
+        'protocol_version' => '2025-06-18',
+        'timeout_seconds' => (int) env('AI_ASSISTANT_CONNECTOR_TIMEOUT_SECONDS', 90),
+        'connect_timeout_seconds' => (int) env('AI_ASSISTANT_CONNECTOR_CONNECT_TIMEOUT_SECONDS', 5),
+    ],
 
     /*
     |--------------------------------------------------------------------------
