@@ -18,7 +18,7 @@ use Throwable;
  * One model call inside the cost ledger (spec 0433, D-7): the price ceiling of the allowed
  * endpoints prices the reservation and goes to OpenRouter as `provider.max_price`, the call
  * runs, then the real cost replaces the reservation. A failure before any of the response arrived
- * frees it; one after part of it arrived is settled (declared cost, else the reservation).
+ * frees it; one after part of it arrived, or an unknown one, is settled (declared cost, else the reservation).
  */
 final class MeteredModelCall
 {
@@ -45,6 +45,9 @@ final class MeteredModelCall
             throw new AgentModelException(AiTurnErrorCode::ModelUnavailable);
         }
 
+        // Evaluated before the reservation: an error here is not a call that may have been billed
+        $limitReasoning = $this->catalog->supportsReasoning($settings->modelId);
+
         // Step 2: reserve the highest cost this call can have; over a cap, no call is made
         $bytes = strlen((string) json_encode([$messages, $tools], JSON_UNESCAPED_UNICODE));
 
@@ -57,13 +60,14 @@ final class MeteredModelCall
         // Step 3: the call; a failure before any byte of the response charges nothing, one after it
         // may have been charged: it is settled with the declared cost, or the reservation, and flagged
         try {
-            $result = $this->model->complete($messages, $tools, $run->turn->ai_conversation_id, $settings, $prices, $onText, $this->catalog->supportsReasoning($settings->modelId));
+            $result = $this->model->complete($messages, $tools, $run->turn->ai_conversation_id, $settings, $prices, $onText, $limitReasoning);
         } catch (AgentModelException $exception) {
             $this->settleFailure($run, $settings, $reservation, $exception);
 
             throw $exception;
         } catch (Throwable $exception) {
-            $this->ledger->release($reservation);
+            // Unknown failure: the provider may already have billed, so the reservation (the upper bound) is charged
+            $this->settleFailure($run, $settings, $reservation, new AgentModelException(AiTurnErrorCode::ModelUnavailable, true));
 
             throw $exception;
         }
