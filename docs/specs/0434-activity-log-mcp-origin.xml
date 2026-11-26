@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0434-activity-log-mcp-origin" status="approved" owner="andrea" date="2026-11-26">
+
+  <goal>
+    Nella Cronologia attivita' (spec 0034) una creazione, modifica o cancellazione fatta da una persona tramite un
+    assistente AI collegato con il connettore MCP (ChatGPT, Claude o un altro client MCP) porta accanto al nome
+    dell'autore la dicitura "Fatta con MCP AI". L'autore resta la persona: il connettore agisce con il suo token e i
+    suoi permessi.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-26: "un sistema di AUDIT che quando una modifica, inserimento, cancellazione viene fatta
+    dall'utente viene aggiunta la dicitura fatta con MCP AI".
+
+    Stato di partenza: il registro salva gia' `api_client_id` nelle `properties` di ogni riga fatta con un token di un
+    client API (spec 0210, `ApiClientsServiceProvider`), ma la risorsa della cronologia non lo espone, e quel campo non
+    distingue un collegamento MCP da una chiave di integrazione o da un login da client.
+
+    Decisioni:
+    D-1 Il segno e' il collegamento MCP, non il client API: solo il token emesso dallo scambio di un collegamento porta
+        l'abilita' `mcp-link:<id>` (spec del modulo MCP, `EnforceMcpLinkLife`), e un chiamante non puo' ottenerla.
+    D-2 `EnforceMcpLinkLife`, dopo aver verificato vivo il collegamento, mette l'id nell'attributo di richiesta
+        `mcp_link_id`; un ascoltatore `Activity::creating` (in `McpLinksServiceProvider`) lo copia nelle `properties`
+        come `mcp_link_id`. Nessuna query in piu'.
+    D-3 La risorsa della cronologia aggiunge `via`: `'mcp'` se la riga ha `mcp_link_id`, altrimenti null. Un valore
+        stringa, cosi' un'altra origine futura si aggiunge senza rompere il contratto.
+    D-4 Le righe gia' scritte prima di questa modifica restano senza segno (nessuna migrazione: in produzione il
+        connettore non ha ancora scritto).
+    D-5 Limite: una scrittura fatta fuori dalla richiesta (lavoro in coda, comando) non porta il segno, come
+        `api_client_id`.
+  </context>
+
+  <data>
+    Nessuna migrazione. `activity_log.properties` puo' contenere `mcp_link_id` (intero, id di `mcp_links`).
+  </data>
+
+  <endpoint>
+    GET /api/activity-log/{resource}/{id} (spec 0034), invariato salvo la risposta.
+  </endpoint>
+
+  <request>
+    Invariata.
+  </request>
+
+  <response>
+    Ogni voce di `data.items` ha in piu' `via`: `"mcp"` | null, fra `causer` e `changes`.
+  </response>
+
+  <errors>
+    Invariati.
+  </errors>
+
+  <acceptance>
+    AC-001 Una scrittura fatta con un token di collegamento MCP registra `mcp_link_id` = id del collegamento, con la
+           persona come autore; la sua voce in cronologia ha `via` = "mcp".
+    AC-002 Una scrittura fatta dall'app ha `via` null e nessun `mcp_link_id`.
+    AC-003 Una scrittura fatta con la chiave del client (utente tecnico) ha `via` null: non e' una persona tramite MCP.
+    AC-004 La cronologia mostra accanto al nome dell'autore il distintivo "Fatta con MCP AI" / "Made with MCP AI" solo
+           sulle voci con `via` = "mcp".
+    AC-005 Guida in-app (generale, sezione Cronologia attivita') IT/EN aggiornata.
+  </acceptance>
+
+  <microtasks>
+    M-1 backend: attributo in `EnforceMcpLinkLife`, ascoltatore in `McpLinksServiceProvider`, `via` in
+        `ActivityLogEntryResource`, Pest `McpLinkActivityOriginTest` (AC-001..003).
+    M-2 frontend: tipo `ActivityLogVia`, distintivo in `ActivityLogSection`, i18n IT/EN, Vitest (AC-004).
+    M-3 guide in-app IT/EN, manuale, HANDOFF.
+  </microtasks>
+</spec>
