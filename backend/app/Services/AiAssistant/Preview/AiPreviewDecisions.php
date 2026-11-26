@@ -248,6 +248,11 @@ final class AiPreviewDecisions
     private function release(AiTurn $turn, AiPreview $preview, AiPreviewOutcome $outcome, string $result): void
     {
         $state = $turn->resume_state ?? [];
+
+        // A confirmation left in flight may have written: whatever ended the wait, the outcome is unknown.
+        if ($state[self::CONFIRMING] ?? false) {
+            [$outcome, $result] = $this->uncertain($turn);
+        }
         unset($state[self::CONFIRMING]);
         $state['pending'] = ['outcome' => $outcome->value, 'result' => $result];
 
@@ -268,6 +273,12 @@ final class AiPreviewDecisions
 
     private function closeLinkLost(AiTurn $turn): void
     {
+        // The write may exist: the turn goes on as uncertain and closes with the fixed message of that outcome.
+        if ($turn->resume_state[self::CONFIRMING] ?? false) {
+            $this->release($turn, AiPreview::fromArray($turn->preview), AiPreviewOutcome::Uncertain, '');
+
+            return;
+        }
         $preview = AiPreview::fromArray($turn->preview)->settled(AiPreviewOutcome::Expired)->withOutcome(AiPreviewOutcome::Expired);
 
         AiTurn::query()->whereKey($turn->id)->where('status', AiTurnStatus::AwaitingConfirmation)->update([

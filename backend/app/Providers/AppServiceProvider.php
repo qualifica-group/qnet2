@@ -17,6 +17,7 @@ use App\Models\AbsenceType;
 use App\Models\Address;
 use App\Models\AgentFiscalProfile;
 use App\Models\AiAssistantSetting;
+use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\ArchivioSmartSetting;
 use App\Models\Attachment;
@@ -435,7 +436,12 @@ class AppServiceProvider extends ServiceProvider
             'workspace' => Workspace::class,
         ]);
 
-        Gate::before(function (User $user, string $ability): ?bool {
+        Gate::before(function (User $user, string $ability, array $arguments = []): ?bool {
+            // AI conversations are private to their owner (interview Q5): not even the super-admin passes.
+            if (($arguments[0] ?? null) instanceof AiConversation) {
+                return null;
+            }
+
             if ($user->hasRole('super-admin')) {
                 return true;
             }
