@@ -6,6 +6,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Resources\AiAssistant\AiTurnResource;
 use App\Models\AiConversation;
 use App\Models\AiTurn;
+use App\Services\AiAssistant\Preview\AiPreviewDecisions;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -18,12 +19,17 @@ class AiTurnController extends BaseApiController
 {
     use AuthorizesRequests;
 
+    public function __construct(private readonly AiPreviewDecisions $decisions) {}
+
     public function show(AiConversation $conversation, AiTurn $turn): JsonResponse
     {
         try {
             $this->authorize('view', $conversation);
 
-            return $this->ok(new AiTurnResource($turn->load('assistantMessage')));
+            // A turn waiting while its session is gone is closed here: the preview arrives as expired (AC-009).
+            $this->decisions->closeIfLinkLost($turn);
+
+            return $this->ok(new AiTurnResource($turn->fresh()->load('assistantMessage')));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['conversation' => $conversation->id, 'turn' => $turn->id]);
         }

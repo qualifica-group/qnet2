@@ -7,6 +7,7 @@ use App\Http\Controllers\AiAssistant\AiAssistantSettingsController;
 use App\Http\Controllers\AiAssistant\AiAttachmentController;
 use App\Http\Controllers\AiAssistant\AiConversationController;
 use App\Http\Controllers\AiAssistant\AiMessageController;
+use App\Http\Controllers\AiAssistant\AiPreviewController;
 use App\Http\Controllers\AiAssistant\AiTurnController;
 use App\Http\Middleware\EnsureAiAssistantEnabled;
 use App\Policies\AiConversationPolicy;
@@ -48,6 +49,16 @@ Route::prefix('ai-assistant')->middleware('can:'.AiConversationPolicy::PERMISSIO
         Route::scopeBindings()->get(
             'conversations/{conversation}/turns/{turn}',
             [AiTurnController::class, 'show'],
+        );
+
+        Route::scopeBindings()->post(
+            'conversations/{conversation}/turns/{turn}/confirm',
+            [AiPreviewController::class, 'confirm'],
+        );
+
+        Route::scopeBindings()->post(
+            'conversations/{conversation}/turns/{turn}/cancel',
+            [AiPreviewController::class, 'cancel'],
         );
 
         Route::scopeBindings()->get(

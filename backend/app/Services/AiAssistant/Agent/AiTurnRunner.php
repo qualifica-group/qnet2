@@ -8,6 +8,8 @@ use App\Enums\AiMessageRole;
 use App\Enums\AiTurnErrorCode;
 use App\Enums\AiTurnStatus;
 use App\Models\AiTurn;
+use App\Services\AiAssistant\Preview\AiPreviewResults;
+use App\Services\AiAssistant\Preview\AiTurnSuspension;
 use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use App\Services\McpLinks\AssistantClientNotConfiguredException;
@@ -15,6 +17,7 @@ use App\Services\McpLinks\AssistantLinkService;
 use App\Services\McpLinks\AssistantSessionInvalidException;
 use App\Services\McpLinks\FirstAccessPendingException;
 use App\Services\McpLinks\McpLinkRejectedException;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -40,6 +43,7 @@ final class AiTurnRunner
         private readonly MeteredModelCall $model,
         private readonly AgentTurnMemory $memory,
         private readonly AiAssistantSettingsService $settings,
+        private readonly AiTurnSuspension $suspension,
     ) {}
 
     public function run(int $turnId): void
@@ -102,7 +106,7 @@ final class AiTurnRunner
 
         // Step 4: the tools and the first messages
         $tools = $this->connector->tools($credential);
-        $messages = $this->memory->messages($run, $settings, $tools);
+        $messages = $this->suspension->resume($run) ?? $this->memory->messages($run, $settings, $tools);
 
         // Step 5: model rounds until a text answer
         while (true) {
@@ -123,14 +127,22 @@ final class AiTurnRunner
             // Step 6: tool calls; the assistant message goes back with its reasoning blocks unchanged
             $messages[] = $this->assistantMessage($result);
 
-            foreach ($result->toolCalls as $call) {
+            foreach ($result->toolCalls as $position => $call) {
                 $this->assertCanCallTool($run);
 
-                $messages[] = [
-                    'role' => 'tool',
-                    'tool_call_id' => $call['id'],
-                    'content' => $this->runTool($run, $credential, $call),
-                ];
+                $issuedAt = CarbonImmutable::now();
+                $content = $this->runTool($run, $credential, $call);
+
+                // A valid preview: the turn is saved and waits for the button, nothing stays running (D-17).
+                $preview = $this->suspension->previewFrom($call['name'], $content, $issuedAt);
+                if ($preview !== null) {
+                    $later = array_column(array_slice($result->toolCalls, $position + 1), 'id');
+                    $this->suspension->suspend($run, $messages, $preview, $call['id'], $later);
+
+                    return;
+                }
+
+                $messages[] = ['role' => 'tool', 'tool_call_id' => $call['id'], 'content' => $content];
             }
 
             if ($run->aborted) {
@@ -183,6 +195,11 @@ final class AiTurnRunner
             Log::warning('AI agent discarded a tool call that is not allowed');
 
             return ConnectorClient::REJECTED_RESULT;
+        }
+
+        // One preview open for a link: a second write from another conversation is refused here (D-3).
+        if ($call['name'] === AssistantTools::PREPARE_WRITE && $this->suspension->anotherPreviewIsOpen($run->turn)) {
+            return AiPreviewResults::busy($run->turn->locale);
         }
 
         // Decoded as objects so an empty `{}` of the model stays an object when sent on.

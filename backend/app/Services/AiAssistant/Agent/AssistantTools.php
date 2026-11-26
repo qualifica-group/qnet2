@@ -9,7 +9,7 @@ use stdClass;
 /**
  * The tools the model may use: a closed list in QNET2's code (spec 0433, internal_contract).
  * Any other name, `confirm_write` included, is dropped before the model sees it and never
- * reaches the connector. `prepare_write` joins the list with the writes ticket.
+ * reaches the connector. A write is only prepared by the model: the person confirms with the button.
  */
 final class AssistantTools
 {
@@ -19,8 +19,10 @@ final class AssistantTools
 
     public const string RUN_READ_CODE = 'run_read_code';
 
+    public const string PREPARE_WRITE = 'prepare_write';
+
     /** Fixed order: the tool definitions are part of the cached prompt prefix. */
-    public const array ALLOWED = [self::SEARCH_OPERATIONS, self::LIST_RECORDS, self::RUN_READ_CODE];
+    public const array ALLOWED = [self::SEARCH_OPERATIONS, self::LIST_RECORDS, self::RUN_READ_CODE, self::PREPARE_WRITE];
 
     /** Argument names that identify what a call is about, in order of preference. */
     private const array OPERATION_ARGUMENTS = ['operation_id', 'domain', 'module', 'query'];
@@ -57,6 +59,7 @@ final class AssistantTools
         $text = match ($name) {
             self::SEARCH_OPERATIONS => 'Looking for the right operation',
             self::LIST_RECORDS => 'Reading the records',
+            self::PREPARE_WRITE => 'Preparing the change',
             default => 'Reading and processing the data',
         };
 

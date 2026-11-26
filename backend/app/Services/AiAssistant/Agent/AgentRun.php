@@ -57,9 +57,12 @@ final class AgentRun
         $this->costUsd = AiMoney::add($this->costUsd, $usage->costUsd ?? '0');
     }
 
+    /** Seconds already spent before a wait for the confirmation: the wait itself does not count. */
+    public float $carriedSeconds = 0.0;
+
     public function elapsedSeconds(): float
     {
-        return microtime(true) - $this->startedAt;
+        return $this->carriedSeconds + microtime(true) - $this->startedAt;
     }
 
     /**
