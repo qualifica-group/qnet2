@@ -23,6 +23,8 @@ final class ConnectorClient
 {
     private const string MCP_PATH = '/assistant/mcp';
 
+    private const array LOOPBACK_HOSTS = ['127.0.0.1', '::1', 'localhost'];
+
     private const string TOOLS_CACHE_KEY = 'ai-assistant.connector-tools';
 
     private const int TOOLS_CACHE_SECONDS = 300;
@@ -106,6 +108,8 @@ final class ConnectorClient
     {
         $body = json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => (object) $params], JSON_THROW_ON_ERROR);
 
+        $this->assertSafeTransport();
+
         try {
             $response = $this->request($credential)->withBody($body, 'application/json')->post(self::url());
         } catch (ConnectionException) {
@@ -167,9 +171,25 @@ final class ConnectorClient
             $headers['Host'] = (string) config('ai-assistant.connector.host');
         }
 
+        // A redirect would carry the secret and the credential to another address (security.md, outbound network).
         return Http::withHeaders($headers)
+            ->withoutRedirecting()
             ->timeout((int) config('ai-assistant.connector.timeout_seconds'))
             ->connectTimeout((int) config('ai-assistant.connector.connect_timeout_seconds'));
+    }
+
+    /**
+     * The secret and the credential travel in headers: plain http is only for the loopback of the
+     * same machine, anything else needs https.
+     */
+    private function assertSafeTransport(): void
+    {
+        $parts = parse_url((string) config('ai-assistant.connector.url'));
+        $host = trim((string) ($parts['host'] ?? ''), '[]');
+
+        if (($parts['scheme'] ?? '') === 'http' && ! in_array($host, self::LOOPBACK_HOSTS, true)) {
+            $this->unavailable('insecure_url');
+        }
     }
 
     private static function url(): string

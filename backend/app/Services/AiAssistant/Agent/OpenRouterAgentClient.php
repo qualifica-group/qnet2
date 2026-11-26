@@ -46,6 +46,7 @@ final class OpenRouterAgentClient
         try {
             $response = Http::withHeaders($this->headers())
                 ->withOptions(['stream' => true])
+                ->withoutRedirecting()
                 ->timeout((int) config('ai-assistant.timeout_seconds'))
                 ->connectTimeout((int) config('ai-assistant.connect_timeout_seconds'))
                 ->acceptJson()
@@ -80,53 +81,65 @@ final class OpenRouterAgentClient
         $model = null;
         $provider = null;
 
-        foreach ($events as $event) {
-            if ($event['data'] === '[DONE]') {
-                break;
-            }
+        $started = false;
 
-            $chunk = $this->decode($event['data']);
-            $model = $chunk['model'] ?? $model;
-            $provider = $chunk['provider'] ?? $provider;
+        try {
+            foreach ($events as $event) {
+                $started = true;
 
-            if (isset($chunk['error'])) {
-                $this->fail(AiTurnErrorCode::StreamError, 'stream_error_chunk', ['code' => $chunk['error']['code'] ?? null]);
-            }
-
-            $choice = $chunk['choices'][0] ?? [];
-            $delta = $choice['delta'] ?? [];
-
-            if (is_string($delta['content'] ?? null) && $delta['content'] !== '') {
-                $text .= $delta['content'];
-                if ($onText !== null) {
-                    $onText($delta['content']);
+                if ($event['data'] === '[DONE]') {
+                    break;
                 }
-            }
 
-            if (is_string($delta['reasoning'] ?? null)) {
-                $reasoning .= $delta['reasoning'];
-            }
+                $chunk = $this->decode($event['data']);
+                $model = $chunk['model'] ?? $model;
+                $provider = $chunk['provider'] ?? $provider;
 
-            // Each object is kept exactly as it arrived and in order: OpenRouter wants the sequence back unchanged.
-            foreach ($delta['reasoning_details'] ?? [] as $detail) {
-                if (is_array($detail)) {
-                    $details[] = $detail;
+                if (is_array($chunk['usage'] ?? null)) {
+                    $usage = $chunk['usage'];
                 }
+
+                if (isset($chunk['error'])) {
+                    $this->fail(AiTurnErrorCode::StreamError, 'stream_error_chunk', ['code' => $chunk['error']['code'] ?? null]);
+                }
+
+                $choice = $chunk['choices'][0] ?? [];
+                $delta = $choice['delta'] ?? [];
+
+                if (is_string($delta['content'] ?? null) && $delta['content'] !== '') {
+                    $text .= $delta['content'];
+                    if ($onText !== null) {
+                        $onText($delta['content']);
+                    }
+                }
+
+                if (is_string($delta['reasoning'] ?? null)) {
+                    $reasoning .= $delta['reasoning'];
+                }
+
+                // Each object is kept exactly as it arrived and in order: OpenRouter wants the sequence back unchanged.
+                foreach ($delta['reasoning_details'] ?? [] as $detail) {
+                    if (is_array($detail)) {
+                        $details[] = $detail;
+                    }
+                }
+
+                foreach ($delta['tool_calls'] ?? [] as $fragment) {
+                    $this->mergeToolCall($calls, $fragment);
+                }
+
+                $finish = $choice['finish_reason'] ?? $finish;
             }
 
-            foreach ($delta['tool_calls'] ?? [] as $fragment) {
-                $this->mergeToolCall($calls, $fragment);
+            if ($finish === null || $finish === 'error') {
+                $this->fail(AiTurnErrorCode::StreamError, $finish === null ? 'truncated_stream' : 'finish_reason_error');
             }
-
-            $finish = $choice['finish_reason'] ?? $finish;
-
-            if (is_array($chunk['usage'] ?? null)) {
-                $usage = $chunk['usage'];
-            }
-        }
-
-        if ($finish === null || $finish === 'error') {
-            $this->fail(AiTurnErrorCode::StreamError, $finish === null ? 'truncated_stream' : 'finish_reason_error');
+        } catch (AgentModelException $exception) {
+            // The reason was already logged; what matters here is whether the provider may have charged the call.
+            throw new AgentModelException($exception->errorCode, $started, $usage ?? []);
+        } catch (Throwable $exception) {
+            // Mid-stream read timeouts surface as plain runtime exceptions of the HTTP stream.
+            $this->fail(AiTurnErrorCode::ModelUnavailable, 'transport', ['exception' => $exception::class], $started, $usage ?? []);
         }
 
         ksort($calls);
@@ -231,13 +244,14 @@ final class OpenRouterAgentClient
      * Logs a sanitized reason (never keys, URLs, bodies or user content) and throws.
      *
      * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $rawUsage
      *
      * @throws AgentModelException
      */
-    private function fail(AiTurnErrorCode $code, string $reason, array $context = []): never
+    private function fail(AiTurnErrorCode $code, string $reason, array $context = [], bool $responseStarted = false, array $rawUsage = []): never
     {
         Log::warning('AI agent model call failed', ['reason' => $reason] + $context);
 
-        throw new AgentModelException($code);
+        throw new AgentModelException($code, $responseStarted, $rawUsage);
     }
 }

@@ -105,7 +105,8 @@ class OpenRouterCatalog
 
             foreach ($this->get('/models/'.$modelId.'/endpoints')['data']['endpoints'] ?? [] as $endpoint) {
                 $pricing = is_array($endpoint) ? ($endpoint['pricing'] ?? null) : null;
-                if (! is_array($pricing) || ! is_numeric($pricing['prompt'] ?? null) || ! is_numeric($pricing['completion'] ?? null)
+                // A negative price ("-1" on routers with a variable price) cannot bound a cost: the endpoint is left out.
+                if (! is_array($pricing) || AiMoney::fromNonNegative($pricing['prompt'] ?? null) === null || AiMoney::fromNonNegative($pricing['completion'] ?? null) === null
                     || ! in_array(self::TOOLS_PARAMETER, $endpoint['supported_parameters'] ?? [], true)
                     || ($zdrTags !== null && ! in_array($endpoint['tag'] ?? null, $zdrTags, true))) {
                     continue;
