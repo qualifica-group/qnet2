@@ -131,7 +131,6 @@ use App\Models\WorkOrderStage;
 use App\Models\WorkOrderWorkflow;
 use App\Models\WorkOrderWorkflowStatus;
 use App\Models\Workspace;
-use App\Services\AiAssistant\Drivers\AiChatDriverManager;
 use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\Graph\GraphMailClient;
 use App\Services\Notifications\TaskNotifier;
@@ -236,10 +235,6 @@ class AppServiceProvider extends ServiceProvider
         // Scoped (spec 0327): the denied Gate evaluations of ONE request, read
         // when that request ends in a 403 to say which permission was missing.
         $this->app->scoped(AuthorizationDenialLog::class);
-
-        // Singleton (spec 0347): stateless chooser of the AI provider driver; it
-        // reads config on every call, so it can be shared safely.
-        $this->app->singleton(AiChatDriverManager::class);
     }
 
     /**

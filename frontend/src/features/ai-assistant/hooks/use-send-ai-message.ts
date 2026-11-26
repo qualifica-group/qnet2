@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { createAiConversation } from '@/features/ai-assistant/api'
-import { AI_STREAM_INTERRUPTED, AiStreamError, streamAiMessage } from '@/features/ai-assistant/ai-sse-stream'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createAiConversation, sendAiMessage } from '@/features/ai-assistant/api'
 import { aiAssistantKeys } from '@/features/ai-assistant/query-keys'
 import type {
   AiConversation,
   AiConversationDetail,
-  AiStreamEvent,
+  AiTurn,
   SendAiMessageInput,
 } from '@/features/ai-assistant/types'
 
@@ -20,59 +18,16 @@ export interface SendAiMessageVariables {
 
 export interface SendAiMessageResult {
   conversationId: number
-  assistantText: string
-}
-
-function patchConversation(
-  queryClient: QueryClient,
-  id: number,
-  patch: (detail: AiConversationDetail) => AiConversationDetail,
-): void {
-  queryClient.setQueryData<AiConversationDetail>(aiAssistantKeys.conversation(id), (detail) =>
-    detail ? patch(detail) : detail,
-  )
-}
-
-/** Applies one SSE event to the TanStack cache. */
-function applyEvent(queryClient: QueryClient, conversationId: number, event: AiStreamEvent): void {
-  if (event.event === 'message.created') {
-    patchConversation(queryClient, conversationId, (detail) => ({
-      ...detail,
-      messages: [...detail.messages, event.data.user_message],
-    }))
-  } else if (event.event === 'message.completed') {
-    const { assistant_message, conversation } = event.data
-    patchConversation(queryClient, conversationId, (detail) => ({
-      ...detail,
-      ...conversation,
-      messages: [...detail.messages, assistant_message],
-    }))
-  }
-}
-
-/** The server removed the user message on failure (D-13): drop it from the cache too. */
-function dropUserMessage(queryClient: QueryClient, conversationId: number, messageId: number | null): void {
-  if (messageId === null) {
-    return
-  }
-  patchConversation(queryClient, conversationId, (detail) => ({
-    ...detail,
-    messages: detail.messages.filter((message) => message.id !== messageId),
-  }))
+  turn: AiTurn
 }
 
 /**
- * Sends a message and streams the reply. Resolves when the stream completes;
- * rejects with `AiStreamHttpError` (before the stream) or `AiStreamError`
- * (`error` event) so the caller can restore draft, files and mentions
- * (D-13/AC-021): nothing is lost from the cache either.
+ * Saves the message and queues the turn (spec 0433: 202, no stream). Resolves with
+ * the queued turn, which the caller follows by polling; rejects with the HTTP error
+ * so the composer can give draft, files and mentions back (nothing was saved).
  */
 export function useSendAiMessage() {
   const queryClient = useQueryClient()
-  const abortRef = useRef<AbortController | null>(null)
-  const [streamingText, setStreamingText] = useState('')
-
-  useEffect(() => () => abortRef.current?.abort(), [])
 
   const mutation = useMutation<SendAiMessageResult, Error, SendAiMessageVariables>({
     mutationFn: async ({ input, conversationId, onConversationCreated }) => {
@@ -88,56 +43,20 @@ export function useSendAiMessage() {
         onConversationCreated?.(created)
       }
 
-      // Step 2: open the stream
-      const controller = new AbortController()
-      abortRef.current = controller
-      setStreamingText('')
-      let text = ''
-      let userMessageId: number | null = null
-      let completed = false
+      // Step 2: save the message and queue the turn
+      const { user_message, turn } = await sendAiMessage(id, input)
 
-      // Step 3: fold events into text and cache
-      for await (const event of streamAiMessage(id, input, controller.signal)) {
-        if (event.event === 'error') {
-          dropUserMessage(queryClient, id, userMessageId)
-          throw new AiStreamError(event.data.message)
-        }
-        if (event.event === 'message.created') {
-          userMessageId = event.data.user_message.id
-        }
-        if (event.event === 'delta') {
-          text += event.data.text
-          setStreamingText(text)
-        }
-        completed = completed || event.event === 'message.completed'
-        applyEvent(queryClient, id, event)
-      }
-
-      // Step 4: a stream closed without a final event is an error; the server is the truth
-      if (!completed) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: aiAssistantKeys.conversation(id) }),
-          queryClient.invalidateQueries({ queryKey: aiAssistantKeys.conversations }),
-        ])
-        throw new AiStreamError(AI_STREAM_INTERRUPTED)
-      }
-      return { conversationId: id, assistantText: text }
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: aiAssistantKeys.conversations }),
-    onSettled: () => {
-      abortRef.current = null
-      setStreamingText('')
+      // Step 3: the message is saved for good (D-16): show it at once
+      queryClient.setQueryData<AiConversationDetail>(aiAssistantKeys.conversation(id), (detail) =>
+        detail ? { ...detail, messages: [...detail.messages, user_message] } : detail,
+      )
+      return { conversationId: id, turn }
     },
   })
 
-  const cancel = useCallback(() => abortRef.current?.abort(), [])
-
   return {
     send: mutation.mutateAsync,
-    cancel,
     reset: mutation.reset,
-    /** Assistant reply accumulated so far; empty when idle. */
-    streamingText,
     isSending: mutation.isPending,
     error: mutation.error,
   }

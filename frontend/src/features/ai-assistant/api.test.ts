@@ -4,6 +4,9 @@ vi.mock('@/api/client', () => ({ apiClient: { get: vi.fn(), post: vi.fn(), delet
 
 import { apiClient } from '@/api/client'
 import {
+  buildAiMessageFormData,
+  fetchAiTurn,
+  sendAiMessage,
   createAiConversation,
   deleteAiConversation,
   downloadAiAttachment,
@@ -37,6 +40,46 @@ describe('ai-assistant api', () => {
     expect(mocked.get).toHaveBeenCalledWith('/ai-assistant/conversations', {
       params: { offset: 30, limit: 30 },
     })
+  })
+
+  it('builds the multipart body of the send endpoint with the contract field names', () => {
+    const form = buildAiMessageFormData({
+      content: 'hi',
+      mentions: [{ module: 'companies', id: 5, label: 'ACME' }],
+      files: [new File(['x'], 'a.pdf', { type: 'application/pdf' })],
+      pageGuideKey: 'general',
+      pageGuideText: 'guide',
+      locale: 'it',
+    })
+    expect(form.get('content')).toBe('hi')
+    expect(form.get('mentions[0][module]')).toBe('companies')
+    expect(form.get('mentions[0][id]')).toBe('5')
+    expect(form.getAll('files[]')).toHaveLength(1)
+    expect(form.get('page_guide_key')).toBe('general')
+    expect(form.get('page_guide_text')).toBe('guide')
+    expect(form.get('locale')).toBe('it')
+  })
+
+  // REQUIREMENT CHANGED (spec 0433 D-15): the POST answers 202 with the turn, no SSE stream.
+  it('posts the message as plain multipart and unwraps the 202 payload', async () => {
+    const started = { user_message: { id: 1 }, turn: { id: 2, status: 'queued' } }
+    mocked.post.mockResolvedValueOnce({ data: { data: started } })
+
+    const result = await sendAiMessage(7, {
+      content: 'hi', mentions: [], files: [], pageGuideKey: null, pageGuideText: null, locale: 'en',
+    })
+
+    expect(result).toBe(started)
+    const [url, body, config] = mocked.post.mock.calls[0]
+    expect(url).toBe('/ai-assistant/conversations/7/messages')
+    expect(body).toBeInstanceOf(FormData)
+    expect(config).toBeUndefined()
+  })
+
+  it('reads one turn from the turn endpoint', async () => {
+    mocked.get.mockResolvedValueOnce({ data: { data: { id: 2, status: 'running' } } })
+    expect(await fetchAiTurn(7, 2)).toEqual({ id: 2, status: 'running' })
+    expect(mocked.get).toHaveBeenLastCalledWith('/ai-assistant/conversations/7/turns/2')
   })
 
   it('deletes a conversation and downloads an attachment as blob', async () => {

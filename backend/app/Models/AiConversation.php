@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\AiTurnStatus;
 use App\Models\Abstracts\BaseModel;
 use Database\Factories\AiConversationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -44,6 +46,19 @@ class AiConversation extends BaseModel
     public function messages(): HasMany
     {
         return $this->hasMany(AiMessage::class)->orderBy('id');
+    }
+
+    public function turns(): HasMany
+    {
+        return $this->hasMany(AiTurn::class);
+    }
+
+    /**
+     * The turn that is not final yet (queued, running or waiting for a confirmation), if any.
+     */
+    public function activeTurn(): HasOne
+    {
+        return $this->hasOne(AiTurn::class)->whereIn('status', AiTurnStatus::activeValues())->latest('id');
     }
 
     /**

@@ -131,6 +131,7 @@ export const navigation = {
   apiDocs: 'API documentation',
   aiAssistant: 'AI assistant',
   aiAssistantSettings: 'AI assistant settings',
+  aiAssistantCosts: 'AI assistant costs',
   workspaces: 'Apps',
   develop: 'Develop',
   settings: 'Settings',

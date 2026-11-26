@@ -17,30 +17,30 @@ beforeEach(function () {
     aiapi_configure();
 });
 
-it('AC-009: sends the mentioned record data in the current turn only and keeps [menzione] in history', function () {
-    aiapi_fake_provider();
+it('AC-009: sends the mentioned record as type and identifier in the current turn only and keeps [menzione] in history', function () {
+    aiapi_fake_agent([aiapi_text_body(['a']), aiapi_text_body(['b'])]);
     $user = aiapi_super_admin();
     $conversation = aiapi_conversation($user);
     $company = Company::factory()->create(['denomination' => 'Acme Spa', 'vat_number' => '01234567890']);
 
-    $events = aiapi_parse_sse(aiapi_send($user, $conversation, [
+    // REQUIREMENT CHANGED (spec 0433): the answer is 202 with the turn; the model gets only type and identifier, no field and no label.
+    $response = aiapi_send($user, $conversation, [
         'content' => 'Summarize @Acme',
         'mentions' => [['module' => 'companies', 'id' => $company->id]],
-    ])->assertOk()->streamedContent());
+    ])->assertStatus(202);
 
-    // REQUIREMENT CHANGED (spec 0433): the model gets only type and identifier, no field and no label.
-    $current = aiapi_sent_payload()['messages'][1]['content'];
+    $current = aiapi_sent('chat/completions')[0]['messages'][1]['content'];
     expect($current)->toContain('<record module="companies" id="'.$company->id.'"/>')
         ->and($current)->not->toContain('01234567890')
         ->and($current)->not->toContain('Acme Spa')
-        ->and($events[0]['data']['user_message']['mentions'])->toBe([['module' => 'companies', 'id' => $company->id, 'label' => 'Acme Spa']]);
+        ->and($response->json('data.user_message.mentions'))->toBe([['module' => 'companies', 'id' => $company->id, 'label' => 'Acme Spa']]);
 
     $stored = AiMessage::query()->where('role', 'user')->sole();
     expect($stored->mentions)->toBe([['module' => 'companies', 'id' => $company->id, 'label' => 'Acme Spa']]);
 
-    aiapi_send($user, $conversation, ['content' => 'and now?'])->assertOk()->streamedContent();
+    aiapi_send($user, $conversation, ['content' => 'and now?'])->assertStatus(202);
 
-    $history = aiapi_sent_payload()['messages'][1]['content'];
+    $history = aiapi_sent('chat/completions')[1]['messages'][1]['content'];
     expect($history)->toContain("[menzione: companies #{$company->id}]")
         ->and($history)->not->toContain('Acme Spa')
         ->and($history)->not->toContain('01234567890')
@@ -77,53 +77,39 @@ it('AC-010: a missing record answers 422 on mentions.N.id, an unknown module on 
     expect(AiMessage::query()->count())->toBe(0);
 });
 
-it('AC-012: stores a PDF and an image as attachments, sends them in the turn only, and serves the download', function () {
-    aiapi_fake_provider();
+it('AC-012: stores a PDF and an image as attachments, never sends their bytes to the model, and serves the download', function () {
+    aiapi_fake_agent([aiapi_text_body(['a'])]);
     $user = aiapi_user();
     $conversation = aiapi_conversation($user);
 
-    $events = aiapi_parse_sse(aiapi_send($user, $conversation, ['files' => [aiapi_pdf('doc.pdf'), aiapi_png('pic.png')]])
-        ->assertOk()->streamedContent());
+    // REQUIREMENT CHANGED (spec 0433): the agent model is text-only in the loop; files are kept and listed, not forwarded.
+    $response = aiapi_send($user, $conversation, ['files' => [aiapi_pdf('doc.pdf'), aiapi_png('pic.png')]])->assertStatus(202);
 
     $attachments = Attachment::query()->orderBy('id')->get();
     $userMessage = AiMessage::query()->where('role', 'user')->sole();
     expect($attachments)->toHaveCount(2)
         ->and($attachments->pluck('attachable_id')->unique()->all())->toBe([$userMessage->id])
         ->and($attachments->pluck('collection')->unique()->all())->toBe(['ai-assistant'])
-        ->and($events[0]['data']['user_message']['attachments'])->toHaveCount(2)
-        ->and($events[0]['data']['user_message']['attachments'][0])->toHaveKeys(['id', 'original_name', 'mime_type', 'size']);
+        ->and($response->json('data.user_message.attachments'))->toHaveCount(2)
+        ->and($response->json('data.user_message.attachments.0'))->toHaveKeys(['id', 'original_name', 'mime_type', 'size']);
     foreach ($attachments as $attachment) {
         Storage::disk($attachment->disk)->assertExists($attachment->path);
     }
 
-    $parts = aiapi_sent_payload()['messages'][1]['content'];
-    expect(collect($parts)->pluck('type')->all())->toBe(['file', 'image_url', 'text']);
+    $sent = json_encode(aiapi_sent('chat/completions')[0]['messages']);
+    expect($sent)->not->toContain('data:application/pdf')->not->toContain('image_url');
 
+    app('auth')->forgetGuards();
     Sanctum::actingAs($user);
     $this->get("/api/ai-assistant/messages/{$userMessage->id}/attachments/{$attachments[0]->id}")->assertOk();
-
-    aiapi_send($user, $conversation, ['content' => 'again'])->assertOk()->streamedContent();
-    $history = aiapi_sent_payload()['messages'][1]['content'];
-    expect($history)->toBeString()->toContain('[allegato: doc.pdf]')->toContain('[allegato: pic.png]');
-});
-
-it('AC-012: sends the files to anthropic as document and image blocks', function () {
-    aiapi_configure('anthropic');
-    aiapi_fake_provider(aiapi_anthropic_body());
-    $user = aiapi_user();
-
-    aiapi_send($user, aiapi_conversation($user), ['files' => [aiapi_pdf(), aiapi_png()]])->assertOk()->streamedContent();
-
-    $content = aiapi_sent_payload()['messages'][0]['content'];
-    expect(collect($content)->pluck('type')->all())->toContain('document')->toContain('image');
 });
 
 it('spec 0433: a text-only model rejects new attachments with a fixed text and keeps the saved ones downloadable', function () {
-    aiapi_fake_provider();
+    aiapi_fake_agent([aiapi_text_body(['a'])]);
     $user = aiapi_user();
     $conversation = aiapi_conversation($user);
 
-    aiapi_send($user, $conversation, ['files' => [aiapi_pdf('doc.pdf')]])->assertOk()->streamedContent();
+    aiapi_send($user, $conversation, ['files' => [aiapi_pdf('doc.pdf')]])->assertStatus(202);
     $message = AiMessage::query()->where('role', 'user')->sole();
     $attachment = Attachment::query()->sole();
 
@@ -140,6 +126,7 @@ it('spec 0433: a text-only model rejects new attachments with a fixed text and k
     Http::assertNothingSent();
     expect(Attachment::query()->count())->toBe(1);
 
+    app('auth')->forgetGuards();
     Sanctum::actingAs($user);
     $this->get("/api/ai-assistant/messages/{$message->id}/attachments/{$attachment->id}")->assertOk();
 });

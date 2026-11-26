@@ -5,6 +5,9 @@ import type {
   AiConversation,
   AiConversationDetail,
   AiConversationsPage,
+  AiMessageStarted,
+  AiTurn,
+  SendAiMessageInput,
 } from '@/features/ai-assistant/types'
 
 export const AI_CONVERSATIONS_PAGE_SIZE = 30
@@ -34,6 +37,41 @@ export async function fetchAiConversation(id: number): Promise<AiConversationDet
 
 export async function createAiConversation(): Promise<AiConversation> {
   const { data } = await apiClient.post<ApiResponse<AiConversation>>('/ai-assistant/conversations', {})
+  return data.data
+}
+
+/** Builds the multipart body of the send endpoint (spec 0433 data_contract). */
+export function buildAiMessageFormData(input: SendAiMessageInput): FormData {
+  const form = new FormData()
+  form.append('content', input.content)
+  input.mentions.forEach((mention, index) => {
+    form.append(`mentions[${index}][module]`, mention.module)
+    form.append(`mentions[${index}][id]`, String(mention.id))
+  })
+  input.files.forEach((file) => form.append('files[]', file))
+  if (input.pageGuideKey) {
+    form.append('page_guide_key', input.pageGuideKey)
+  }
+  if (input.pageGuideText) {
+    form.append('page_guide_text', input.pageGuideText)
+  }
+  form.append('locale', input.locale)
+  return form
+}
+
+/** Saves the message and queues the turn (202); the answer is read later with `fetchAiTurn`. */
+export async function sendAiMessage(conversationId: number, input: SendAiMessageInput): Promise<AiMessageStarted> {
+  const { data } = await apiClient.post<ApiResponse<AiMessageStarted>>(
+    `/ai-assistant/conversations/${conversationId}/messages`,
+    buildAiMessageFormData(input),
+  )
+  return data.data
+}
+
+export async function fetchAiTurn(conversationId: number, turnId: number): Promise<AiTurn> {
+  const { data } = await apiClient.get<ApiResponse<AiTurn>>(
+    `/ai-assistant/conversations/${conversationId}/turns/${turnId}`,
+  )
   return data.data
 }
 

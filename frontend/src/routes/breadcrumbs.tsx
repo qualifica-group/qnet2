@@ -138,6 +138,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   dev: 'navigation.develop',
   'system-health': 'navigation.systemHealth',
   'ai-assistant-settings': 'navigation.aiAssistantSettings',
+  'ai-assistant-costs': 'navigation.aiAssistantCosts',
   'api-clients': 'navigation.apiIntegrations',
   'api-docs': 'navigation.apiDocs',
   workspaces: 'navigation.workspaces',

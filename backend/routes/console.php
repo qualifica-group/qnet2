@@ -39,6 +39,10 @@ Schedule::command('absences:carry-over')->yearlyOn(1, 1, '00:45')->withoutOverla
 // idle for more than the retention window.
 Schedule::command('ai-assistant:prune')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
 
+// Spec 0433, state machine: closes the turns stuck in queued or running beyond the
+// longest job plus a margin, so a killed worker never blocks a conversation.
+Schedule::command('ai-assistant:close-stale-turns')->everyMinute()->withoutOverlapping()->onOneServer();
+
 // Spec 0362, D-9: sends the occurrences due of the recurring work order emails
 // (from outbound_emails.recurrence.send_at on). Idempotent per series and day.
 Schedule::command('outbound-emails:send-recurrences')->hourly()->withoutOverlapping()->onOneServer();

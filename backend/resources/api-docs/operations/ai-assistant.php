@@ -38,8 +38,12 @@ return [
         'description' => 'Deletes the conversation, its messages and their uploaded files. Only the owner can delete it (403 otherwise). Returns success with null data. Requires ai-assistant.use.',
     ],
     'POST /ai-assistant/conversations/{conversation}/messages' => [
-        'summary' => 'Send a message and stream the AI answer',
-        'description' => 'Sends one user turn (content, locale it or en, optional mentions as module + record id, optional files as multipart, refused with 422 on files when the model is text-only, optional page guide text; the model receives only module and id of a mention) and answers with a text/event-stream: message.created, then delta events with text chunks, then message.completed with the stored answer and conversation, or error. Validation, mention access (403/422) and 503 when no provider is configured are returned as JSON before the stream opens. A failed turn stores nothing. Owner only; requires ai-assistant.use.',
+        'summary' => 'Send a message and start an assistant turn',
+        'description' => 'Sends one user turn (content, locale it or en, optional mentions as module + record id, optional files as multipart, refused with 422 on files when the model is text-only, optional page guide text; the model receives only module and id of a mention). The message is saved at once and the turn is queued: answers 202 with the saved user message and the turn (status queued), with no stream; the answer is read by polling the turn. 409 when the conversation already has a turn that is not final; 503 with data.reason not_configured or switched_off, in which case nothing is written. Validation and mention access (403/422) are checked before any row is written. The message stays even if the turn fails. Owner only; requires ai-assistant.use.',
+    ],
+    'GET /ai-assistant/conversations/{conversation}/turns/{turn}' => [
+        'summary' => 'Get the state of an assistant turn',
+        'description' => 'Returns the turn the browser polls until its status is final: status (queued, running, awaiting_confirmation, completed, failed, cancelled, limit_reached), the partial answer text while running, the steps taken with a short translated label and their state, the saved answer message once completed, the queue position while queued and, for a turn that ended without an answer, a fixed error code and text. The turn must belong to the conversation (404 otherwise); only the owner can read it (403). Requires ai-assistant.use.',
     ],
     'GET /ai-assistant/messages/{message}/attachments/{attachment}' => [
         'summary' => 'Download an AI message attachment',

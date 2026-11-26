@@ -385,7 +385,7 @@
 
   <internal_contract>
     <item>Apertura del collegamento (D-8, ADR 0020): metodo nuovo del modulo MCP, nome proposto
-      `McpLinkService::openForAssistant(User $user, PersonalAccessToken $token)`: chiamata interna dalla sessione attiva,
+      `AssistantLinkService::credentialFor(User $user, PersonalAccessToken $session): string`: chiamata interna dalla sessione attiva,
       nessuna rotta nuova raggiungibile dal browser. Il collegamento appartiene al client API del connettore come quelli
       della pagina di accesso e si distingue come assistente nel registro. E' legato al token di accesso: cade alla
       revoca o scadenza (logout, `POST /api/auth/refresh`, `SANCTUM_EXPIRATION`) oltre che per le cause di
@@ -394,14 +394,17 @@
       nascosto da serializzazione, risorse e registro delle attivita'. Mai nel browser, nei log, nelle risposte.</item>
     <item>Due conversazioni della stessa persona con lo stesso token usano lo stesso collegamento: una sola anteprima
       aperta in tutto; la seconda che prepara una scrittura riceve il rifiuto del connettore ("preview-busy").</item>
-    <item>Ingresso del connettore per l'assistente (implementato nel repository del connettore; qui solo il contratto
-      che QNET2 consuma). Nomi PROPOSTI, da congelare nel ticket del connettore: percorso MCP `/assistant/mcp`
-      (JSON-RPC `initialize`, `tools/list`, `tools/call`), percorso di conferma `/assistant/confirm` (riceve solo
-      `{ preview_id }`), intestazioni `X-Assistant-Secret` (segreto QNET2-connettore, confronto in tempo costante) e
-      `X-Assistant-Credential` (credenziale di collegamento della persona); `Host` uguale all'host pubblico configurato
-      del connettore, richieste su `127.0.0.1`. `tools/list` non pubblica `confirm_write`; `tools/call` di `confirm_write`
-      e' rifiutato. Senza entrambe le intestazioni, o con credenziale rifiutata dallo scambio: rifiuto con testo fisso e
-      nessuna richiesta di dati verso QNET2. `clientId` fisso dell'assistente nel registro di audit.</item>
+    <item>Ingresso del connettore per l'assistente (implementato nel repository del connettore, commit fce0149; qui il
+      contratto che QNET2 consuma, CONGELATO): percorso MCP `POST /assistant/mcp` (JSON-RPC `initialize`, `tools/list`,
+      `tools/call`; protocollo `2025-06-18`; nessun `Mcp-Session-Id`; `Accept` con `application/json` e
+      `text/event-stream`; risposta `text/event-stream` con un solo evento `data:`), percorso di conferma
+      `POST /assistant/confirm` (corpo solo `{ "preview_id": "..." }`), intestazioni `x-assistant-secret` (segreto
+      QNET2-connettore, confronto in tempo costante) e `x-assistant-link-credential` (credenziale di collegamento della
+      persona); `Host` uguale all'host pubblico configurato del connettore, richieste su `127.0.0.1`. `tools/list`
+      pubblica `search_operations`, `list_records`, `run_read_code`, `prepare_write` e non `confirm_write`;
+      `tools/call` di `confirm_write` e' rifiutato. Senza entrambe le intestazioni, o con credenziale rifiutata dallo
+      scambio: 401 con testo fisso `accesso_assistente_rifiutato` e nessuna richiesta di dati verso QNET2; QNET2 del
+      connettore non raggiungibile: 503. `clientId` fisso dell'assistente nel registro di audit.</item>
     <item>QNET2 non scrive il segreto dell'assistente in log, risposte o registro delle attivita'; la variabile e'
       letta solo da `config()`. Client MCP di QNET2: client HTTP di Laravel, nessuna dipendenza nuova.</item>
     <item>Tetti per turno (configurazione, valori iniziali nel ticket di implementazione): chiamate al modello, chiamate
@@ -467,7 +470,7 @@
   <open_points>
     <item>D-20 (stato `cancelled` e assenza della rotta di arresto) e' una mia derivazione dal testo, non una frase del committente.</item>
     <item>Forma esatta del contenuto dell'anteprima del connettore (`changes`, `effects`, `record`): normalizzata qui da `spec.md` ("operazione, record, campi prima e dopo, effetti, scadenza"), da riallineare alla busta reale del connettore nel ticket M-5.</item>
-    <item>Percorsi e nomi delle intestazioni dell'ingresso del connettore e il nome del metodo `openForAssistant`: proposti, non esistenti nel codice.</item>
+    <item>Percorsi e intestazioni dell'ingresso del connettore: congelati (vedi `internal_contract`). Il metodo che apre il collegamento e' `AssistantLinkService::credentialFor(User, PersonalAccessToken): string` (ticket 03).</item>
     <item>Valore del limite `api-client` del client del connettore sotto carico condiviso: da controllare prima dell'uso con tutti gli utenti.</item>
   </open_points>
 
