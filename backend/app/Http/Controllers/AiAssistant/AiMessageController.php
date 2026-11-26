@@ -11,6 +11,7 @@ use App\Http\Resources\AiAssistant\AiTurnResource;
 use App\Models\AiConversation;
 use App\Services\AiAssistant\Agent\AiAssistantNotConfiguredException;
 use App\Services\AiAssistant\Agent\AiAssistantSwitchedOffException;
+use App\Services\AiAssistant\Agent\AiTooManyActiveTurnsException;
 use App\Services\AiAssistant\Agent\AiTurnAlreadyActiveException;
 use Illuminate\Http\JsonResponse;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -47,6 +48,8 @@ class AiMessageController extends BaseApiController
             return $this->fail(__('The AI assistant is not configured.'), Response::HTTP_SERVICE_UNAVAILABLE, null, ['reason' => 'not_configured']);
         } catch (AiTurnAlreadyActiveException) {
             return $this->fail(__('The assistant is still working on your previous message.'), HttpStatusEnum::CONFLICT->value);
+        } catch (AiTooManyActiveTurnsException) {
+            return $this->fail(__('You have too many assistant requests running at once. Wait for one to finish.'), HttpStatusEnum::CONFLICT->value);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['conversation' => $conversation->id]);
         }

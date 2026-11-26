@@ -244,7 +244,9 @@
         Il messaggio della persona e' gia' salvato; il turno e' accodato su `ai-assistant`. Nessuno stream.</response>
       <errors>
         401; 403 senza permesso o conversazione altrui o menzione non visibile (policy `view`); 404 conversazione;
-        409 turno gia' attivo nella conversazione ("The assistant is still working on your previous message.");
+        409 turno gia' attivo nella conversazione ("The assistant is still working on your previous message.") o persona con
+        gia' `max_active_turns_per_user` turni non finali (default 3) su tutte le sue conversazioni ("You have too many
+        assistant requests running at once. Wait for one to finish.");
         422 validazione, menzione inesistente, allegato con modello di solo testo ("Attachments are not available with the
         current model."); 503 assistente spento ("The AI assistant is switched off.", `data.reason = "switched_off"`) o non
         configurato ("The AI assistant is not configured.", `data.reason = "not_configured"`); in tali casi nessuna riga e
@@ -372,6 +374,7 @@
     <text code="limit_total">The company monthly assistant spending limit has been reached.</text>
     <text code="internal">Something went wrong. Try again later.</text>
     <text route="messages">The assistant is still working on your previous message.</text>
+    <text route="messages">You have too many assistant requests running at once. Wait for one to finish.</text>
     <text route="messages">Attachments are not available with the current model.</text>
     <text route="confirm|cancel">Preview not found.</text>
     <text route="confirm|cancel">This preview is no longer open.</text>

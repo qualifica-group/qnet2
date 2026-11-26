@@ -13,6 +13,7 @@ use App\Models\Attachment;
 use App\Models\User;
 use App\Services\AiAssistant\Agent\AiAssistantNotConfiguredException;
 use App\Services\AiAssistant\Agent\AiAssistantSwitchedOffException;
+use App\Services\AiAssistant\Agent\AiTooManyActiveTurnsException;
 use App\Services\AiAssistant\Agent\AiTurnAlreadyActiveException;
 use App\Services\AiAssistant\Agent\ConnectorClient;
 use App\Services\AiAssistant\Agent\OpenRouterAgentClient;
@@ -48,6 +49,7 @@ final class SendAiMessage
      * @throws AiAssistantSwitchedOffException
      * @throws AiAssistantNotConfiguredException
      * @throws AiTurnAlreadyActiveException
+     * @throws AiTooManyActiveTurnsException
      * @throws ValidationException unknown mentioned record (mentions.N.id)
      * @throws AuthorizationException mentioned record not visible to the user
      */
@@ -108,6 +110,16 @@ final class SendAiMessage
 
                 if ($conversation->turns()->whereIn('status', AiTurnStatus::activeValues())->exists()) {
                     throw new AiTurnAlreadyActiveException;
+                }
+
+                // The person's row is the lock for the count over all their conversations (always taken after the conversation's).
+                User::query()->whereKey($conversation->user_id)->lockForUpdate()->first();
+
+                $active = AiTurn::query()->whereIn('status', AiTurnStatus::activeValues())
+                    ->whereHas('conversation', fn ($query) => $query->where('user_id', $conversation->user_id))->count();
+
+                if ($active >= (int) config('ai-assistant.agent.max_active_turns_per_user')) {
+                    throw new AiTooManyActiveTurnsException;
                 }
 
                 $message = $conversation->messages()->create([

@@ -102,6 +102,9 @@ return [
         // `reasoning.max_tokens` for a model that reasons; the call always sends less than `max_output_tokens`.
         'reasoning_max_tokens' => (int) env('AI_ASSISTANT_AGENT_REASONING_MAX_TOKENS', 2048),
 
+        // Turns not yet final one person may have at once, over all their conversations: one more is refused with 409.
+        'max_active_turns_per_user' => (int) env('AI_ASSISTANT_AGENT_MAX_ACTIVE_TURNS_PER_USER', 3),
+
         // A turn left queued or running longer than the longest job plus this margin is closed as failed.
         'stale_margin_seconds' => (int) env('AI_ASSISTANT_AGENT_STALE_MARGIN_SECONDS', 120),
 
