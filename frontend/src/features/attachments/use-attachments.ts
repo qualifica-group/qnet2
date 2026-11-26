@@ -11,14 +11,20 @@ import type { Attachment, AttachmentList } from '@/features/attachments/types'
 /** Stable empty array: avoids a new reference (and a rerender trigger) while the list query has no data yet. */
 const EMPTY_DOCUMENTS: Attachment[] = []
 
+/** One file of a batch the server refused, with the request error that says why. */
+export interface FailedUpload {
+  name: string
+  error: unknown
+}
+
 /**
  * Outcome of a multi-file upload: the API takes one file per request, so a
- * batch can succeed partially. The caller reports the failed names instead of
- * losing the files that did upload.
+ * batch can succeed partially. The caller reports the failed files (and the
+ * reason of each) instead of losing the files that did upload.
  */
 export interface UploadBatchResult {
   uploaded: number
-  failed: string[]
+  failed: FailedUpload[]
 }
 
 /**
@@ -46,7 +52,7 @@ export function useAttachments(resource: string, id: number, collection: string)
 
   const uploadMutation = useMutation<UploadBatchResult, AxiosError, File[]>({
     mutationFn: async (files) => {
-      const failed: string[] = []
+      const failed: FailedUpload[] = []
       let uploaded = 0
 
       // Sequential on purpose: the endpoint takes one file per request, and a
@@ -55,8 +61,8 @@ export function useAttachments(resource: string, id: number, collection: string)
         try {
           await uploadAttachment({ resource, id, collection, file })
           uploaded += 1
-        } catch {
-          failed.push(file.name)
+        } catch (error) {
+          failed.push({ name: file.name, error })
         }
       }
 

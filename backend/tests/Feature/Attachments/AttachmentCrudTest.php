@@ -89,6 +89,19 @@ it('upload: 422 when MIME type is not allowed', function () {
         ->assertJsonValidationErrors('file');
 });
 
+it('upload: 422 with the limit in MB when the file is over attachments.max_size', function () {
+    config(['attachments.max_size' => 10240]);
+    $actor = userWithAttachmentAbilities(['create']);
+    Sanctum::actingAs($actor);
+
+    $file = UploadedFile::fake()->create('scan.pdf', 10241, 'application/pdf');
+
+    $this->withHeader('Accept-Language', 'it')
+        ->postJson('/api/attachments', ['file' => $file])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['file' => 'Il file supera la dimensione massima di 10 MB.']);
+});
+
 it('upload: 201 for a real .zip archive (MIME detected from content)', function () {
     $actor = userWithAttachmentAbilities(['create']);
     Sanctum::actingAs($actor);

@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Documenti: motivo per ogni file scartato (2026-11-26) — VERDE, NON COMMITTATO
+
+- Causa segnalata: PDF scansionato da 36 MB, oltre `attachments.max_size` (10 MB) e oltre `post_max_size` (20M) -> 413 prima della validazione; la UI diceva solo il nome del file.
+- `useAttachments().upload` ora restituisce `failed: { name, error }[]`; `uploadFailureReason()` (`features/attachments/upload-failure-reason.ts`): 413 -> `attachments.errors.reasons.tooLarge`, 422 -> messaggio del server su `file`, altro -> nessun motivo. L'avviso mostra `uploadSome` (alcuni caricati) o `uploadNone` (nessuno) + elenco "nome: motivo".
+- Backend: `StoreAttachmentRequest::messages()` `file.max` -> `attachments.file_too_large` ("Il file supera la dimensione massima di :max MB."), nuovi `lang/{it,en}/attachments.php`.
+- Guide in-app `general` IT+EN e manuale Claude Docs (nota Documenti) aggiornati.
+
 ## Cedolini, parte B statini (spec 0431, 2026-11-25) — VERDE, NON COMMITTATO
 
 - `PurchaseInvoiceType::Payslip` ('Cedolino'); tabella `payslips` (chiave societa'+utente+period+payslip_type, `purchase_invoice_id` unico), `users.supplier_registry_id`; tipo di costo `63.01.001` "Retribuzioni al personale" sotto conto 63.01 (migrazione dati); `config/payroll.php` `payslip.payment_method_code` (bonifico_bancario) e `payslip.cost_type_code`.

@@ -19,6 +19,8 @@ use Illuminate\Validation\Rule;
  */
 class StoreAttachmentRequest extends FormRequest
 {
+    private const KILOBYTES_PER_MEGABYTE = 1024;
+
     public function authorize(): bool
     {
         // Authorization handled in the controller via the AttachmentPolicy.
@@ -36,6 +38,18 @@ class StoreAttachmentRequest extends FormRequest
             'attachable_type' => ['sometimes', 'required_with:attachable_id', 'string', Rule::in($this->allowedAliases())],
             'attachable_id' => ['sometimes', 'required_with:attachable_type', 'integer', 'min:1'],
         ];
+    }
+
+    /**
+     * The size limit in MB: the framework's default speaks in kilobytes.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        $max_megabytes = round((int) config('attachments.max_size') / self::KILOBYTES_PER_MEGABYTE, 1);
+
+        return ['file.max' => __('attachments.file_too_large', ['max' => $max_megabytes])];
     }
 
     /**

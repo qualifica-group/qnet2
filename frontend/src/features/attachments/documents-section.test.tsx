@@ -2,6 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import type { ReactElement } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -18,6 +19,14 @@ import type { Attachment, AttachmentList } from '@/features/attachments/types'
 
 const DROPZONE_LABEL = 'Drop one or more files here or click to browse'
 const OBJECT_URL = 'blob:mock-object-url'
+
+/** A refused upload as axios rejects it: status plus the backend envelope. */
+function uploadRejection(status: number, errors?: Record<string, string[]>) {
+  return new AxiosError('error', String(status), undefined, undefined, {
+    status,
+    data: errors ? { success: false, message: 'Validation failed', errors } : {},
+  } as never)
+}
 
 const listAttachmentsMock = vi.fn()
 const uploadAttachmentMock = vi.fn()
@@ -292,11 +301,15 @@ describe('DocumentsSection', () => {
     await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalledTimes(2))
   })
 
-  it('keeps the successful uploads and reports only the failed files of a batch', async () => {
+  it('keeps the successful uploads and lists each failed file of a batch with its reason', async () => {
     listAttachmentsMock.mockResolvedValue(documentList([]))
     uploadAttachmentMock
       .mockResolvedValueOnce(attachment())
-      .mockRejectedValueOnce(new Error('too large'))
+      .mockRejectedValueOnce(uploadRejection(413))
+      .mockRejectedValueOnce(
+        uploadRejection(422, { file: ['The file exceeds the maximum size of 10 MB.'] }),
+      )
+      .mockRejectedValueOnce(new Error('Network Error'))
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload canDelete={false} />,
@@ -309,16 +322,45 @@ describe('DocumentsSection', () => {
         files: [
           new File(['%PDF-1.4'], 'contract.pdf', { type: 'application/pdf' }),
           new File(['data'], 'huge.zip', { type: 'application/zip' }),
+          new File(['data'], 'scan.pdf', { type: 'application/pdf' }),
+          new File(['data'], 'offline.pdf', { type: 'application/pdf' }),
         ],
       },
     })
 
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'Unable to upload 1 file: huge.zip. The others were uploaded.',
-      ),
-    )
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Unable to upload 3 files. The others were uploaded.')
+    const reasons = within(alert).getAllByRole('listitem').map((item) => item.textContent)
+    expect(reasons).toEqual([
+      'huge.zip: The file exceeds the maximum allowed size: make it smaller (for example by compressing the PDF) and try again.',
+      'scan.pdf: The file exceeds the maximum size of 10 MB.',
+      'offline.pdf',
+    ])
     expect(listAttachmentsMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not claim other files were uploaded when every file of the batch fails', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([]))
+    uploadAttachmentMock.mockRejectedValueOnce(
+      uploadRejection(422, { file: ['The file field must be a file of type: pdf.'] }),
+    )
+
+    renderSection(
+      <DocumentsSection resource="opportunity" id={42} canUpload canDelete={false} />,
+    )
+
+    await waitFor(() => expect(screen.getByText('No documents yet.')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText(DROPZONE_LABEL), {
+      target: { files: [new File(['MZ'], 'tool.exe', { type: 'application/x-msdownload' })] },
+    })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Unable to upload the file.')
+    expect(alert).not.toHaveTextContent('The others were uploaded.')
+    expect(within(alert).getByRole('listitem')).toHaveTextContent(
+      'tool.exe: The file field must be a file of type: pdf.',
+    )
   })
 
   it('does not render the dropzone when the caller has no upload permission', async () => {

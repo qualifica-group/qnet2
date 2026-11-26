@@ -22,8 +22,14 @@ export const attachments = {
   errors: {
     load: 'Unable to load the documents. Please try again.',
     upload: 'Unable to upload the file. Please try again.',
-    uploadSome_one: 'Unable to upload 1 file: {{names}}. The others were uploaded.',
-    uploadSome_other: 'Unable to upload {{count}} files: {{names}}. The others were uploaded.',
+    uploadSome_one: 'Unable to upload 1 file. The others were uploaded.',
+    uploadSome_other: 'Unable to upload {{count}} files. The others were uploaded.',
+    uploadNone_one: 'Unable to upload the file.',
+    uploadNone_other: 'Unable to upload the {{count}} files.',
+    failedFile: '{{name}}: {{reason}}',
+    reasons: {
+      tooLarge: 'The file exceeds the maximum allowed size: make it smaller (for example by compressing the PDF) and try again.',
+    },
     delete: 'Unable to delete the document. Please try again.',
     preview: 'Unable to open the document. Please try again.',
     previewBlocked: 'Your browser blocked the preview window. Allow pop-ups for this site.',
