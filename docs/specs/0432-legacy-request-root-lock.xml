@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0432-legacy-request-root-lock" status="approved" owner="utente" date="2026-11-26">
+
+  <goal>
+    Richiesta utente 2026-11-26: in una Gestione Richieste con linee di prodotto del catalogo vecchio ([OLD]), in
+    lavorazione non deve essere possibile inserire linee di un'altra categoria madre. "Solo per le legacy": le richieste
+    non legate del catalogo nuovo restano libere come oggi.
+  </goal>
+
+  <context>
+    - Spec 0411: un'offerta legata (`quotes.root_product_category_id`) resta nella sua radice (D-4). Le offerte non
+      legate (da Offerte/lead, pre-0411 con piu' radici) non avevano alcun blocco: un operatore poteva aggiungere
+      linee di qualsiasi radice attiva, mescolando catalogo vecchio e nuovo.
+    - DB 2026-11-26 (copia di prod): 28.707 offerte con linee [OLD]; 27.699 gia' legate alla loro radice [OLD] (gia'
+      sotto D-4 della 0411); 1.008 non legate (993 con piu' radici, es. 505 "No categoria" + [OLD] SICUREZZA 81/08;
+      15 con una sola): sono quelle che questa spec blocca.
+    - Il catalogo vecchio e' marcato `product_categories.is_legacy` (spec 0374/0429).
+  </context>
+
+  <decisions>
+    D-1 Richiesta legacy = offerta NON legata le cui linee salvate (quelle dell'opportunita') includono almeno una
+        categoria `is_legacy`, sulla categoria stessa o sulla sua radice.
+    D-2 Modifica delle linee (pannello Lavora e cella della griglia, `RequestProductLineWriter`): ogni categoria inviata
+        deve stare sotto una delle radici delle linee salvate, altrimenti 422 su `product_lines`
+        (`QuoteRootScope::assertWithinLegacyRoots`). Si puo' togliere una radice, aggiungere categorie nelle radici
+        presenti; non si puo' aggiungere ne' sostituire con un'altra radice.
+    D-3 Offerte non legate del catalogo nuovo e offerte legate: invariate (le seconde restano sotto D-4 della 0411).
+    D-4 Pannello: nuovo `legacy_root_categories` (radici a cui la richiesta legacy e' bloccata, per nome); il form
+        propone solo quelle radici nella scelta della categoria madre, con un avviso dedicato.
+    D-5 Fuori scope: modifica delle linee dal modulo Opportunita' (invariata), nessuna modifica ai dati esistenti.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="GET|PATCH" path="/api/request-management/{quote}">
+      <response>Nuovo `data.legacy_root_categories` = { id, name }[] (ordinate per nome); `[]` per un'offerta legata o
+        del catalogo nuovo.</response>
+      <request>`product_lines` di una richiesta legacy: solo categorie delle radici gia' presenti (altrimenti 422
+        `product_lines`).</request>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Richiesta con sola linea [OLD]: aggiungere una linea ISO = 422, linee invariate.</criterion>
+    <criterion id="AC-002">Richiesta con sola linea [OLD]: sostituirla con una linea ISO = 422.</criterion>
+    <criterion id="AC-003">Richiesta legacy: aggiungere un'altra categoria della stessa radice [OLD] = ok.</criterion>
+    <criterion id="AC-004">Richiesta mista [OLD] + ISO: aggiungere Sicurezza = 422; togliere la radice [OLD] = ok.</criterion>
+    <criterion id="AC-005">Richiesta non legata del catalogo nuovo: aggiungere un'altra radice = ok.</criterion>
+    <criterion id="AC-006">Pannello: `legacy_root_categories` elenca le radici della richiesta legacy, `[]` altrimenti.</criterion>
+    <criterion id="AC-007">FE: la scelta della categoria madre propone solo le radici bloccate, con l'avviso del catalogo vecchio.</criterion>
+  </acceptance>
+</spec>

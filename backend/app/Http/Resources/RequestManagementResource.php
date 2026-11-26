@@ -164,6 +164,9 @@ class RequestManagementResource extends JsonResource
             // Spec 0411, D-3: a bound offer shows (and edits) only its root's lines.
             'product_lines' => $this->summarizeProductLines(app(QuoteRootScope::class)->linesOf($quote)),
             'root_product_category' => $this->summarizeByName($quote->rootProductCategory),
+            // Spec 0432: the roots a legacy request's lines are locked to ([] otherwise).
+            'legacy_root_categories' => app(QuoteRootScope::class)->legacyRootsOf($quote)
+                ->map(fn (Model $root): array => $this->summarizeByName($root))->values()->all(),
             // Spec 0411, D-2: every offer a creation produced (POST only).
             ...(array_key_exists('created_quote_ids', $this->resource) ? ['created_quote_ids' => $this->resource['created_quote_ids']] : []),
             // Spec 0086, D-7/AC-021: replaces `products_of_interest` — the

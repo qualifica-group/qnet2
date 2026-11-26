@@ -157,7 +157,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto. Una richiesta creata per una categoria madre mostra solo le sue linee e accetta solo categorie e prodotti di quella madre: per un'altra categoria madre crea una nuova richiesta.",
+            "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto. Una richiesta creata per una categoria madre mostra solo le sue linee e accetta solo categorie e prodotti di quella madre: per un'altra categoria madre crea una nuova richiesta. Una richiesta con linee del catalogo vecchio ([OLD]) accetta solo categorie delle categorie madri che ha già: non puoi aggiungere né sostituire con una categoria madre diversa.",
             '**Righe offerta**: prodotti scelti dal **Catalogo prodotti**, con quantità, prezzi e IVA.',
             "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
             "**Stato**: alcuni stati richiedono una **Nota**. Per uno stato validato serve almeno una riga offerta. Per chiudere non serve, né con esito positivo né con esito negativo: la riga prodotto diventa obbligatoria quando si valida il contratto.",

@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Richieste legacy bloccate sulle loro categorie madri (spec 0432, 2026-11-26) — VERDE, NON COMMITTATO
+
+- Richiesta legacy = offerta NON legata (`root_product_category_id` null) con almeno una linea `is_legacy` (categoria o radice). In modifica linee (pannello Lavora + cella, `RequestProductLineWriter`) ogni categoria deve stare sotto le radici gia' presenti: `QuoteRootScope::assertWithinLegacyRoots` -> 422 `product_lines`. Togliere una radice si', aggiungerne/sostituirne no. Offerte non legate del catalogo nuovo: libere come prima.
+- Pannello: nuovo `legacy_root_categories` ({id,name}[], `[]` se non legacy) da `QuoteRootScope::legacyRootsOf`. FE: `ProductLinesField.lockedRootCategoryIds` e `ProductCategoryRootSelect.onlyRootIds` (lista, sostituiscono i singoli `lockedRootCategoryId`/`onlyRootId` della 0411); hint `requestManagement.workPanel.productLines.legacyRootsLocked`.
+- Test: `tests/Feature/RequestManagement/RequestLegacyRootLockTest.php` (6), `request-product-lines-root-lock.test.tsx`, `locked-root-select.test.tsx`. Guide `request-management` IT+EN aggiornate.
+- Portata: delle 28.707 offerte con linee [OLD], 27.699 erano gia' legate alla radice [OLD] (gia' bloccate dalla 0411 D-4); la 0432 tocca le 1.008 non legate (993 multi-radice). Manuale Claude Docs aggiornato (paragrafo "Una richiesta per categoria madre").
+- Fuori scope: modulo Opportunita' (linee libere sulle opportunita' senza offerte legate), dati esistenti (21 richieste non legate del catalogo nuovo con piu' madri, elencate in chat il 2026-11-26).
+- Pre-esistente, non toccato: `RequestManagementAllColumnsSortFilterTest` fallisce su "managers is not sortable".
+
 ## Documenti: motivo per ogni file scartato (2026-11-26) — VERDE, NON COMMITTATO
 
 - Causa segnalata: PDF scansionato da 36 MB, oltre `attachments.max_size` (10 MB) e oltre `post_max_size` (20M) -> 413 prima della validazione; la UI diceva solo il nome del file.

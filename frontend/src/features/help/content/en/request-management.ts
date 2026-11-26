@@ -157,7 +157,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again. A request created for a parent category shows only its lines and accepts only categories and products of that parent: for another parent category create a new request.',
+            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again. A request created for a parent category shows only its lines and accepts only categories and products of that parent: for another parent category create a new request. A request with lines of the old catalogue ([OLD]) accepts only categories of the parent categories it already has: you cannot add or switch to a different parent category.',
             '**Offer rows**: products picked from the **Product catalogue**, with quantities, prices and VAT.',
             "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
             '**Status**: some statuses require a **Note**. A validated status requires at least one offer row. Closing does not, with either a positive or a negative outcome: the product row becomes mandatory when the contract is validated.',
