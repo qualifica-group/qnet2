@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * attachment binaries on disk would be orphaned: always remove a conversation
  * through deleteWithFiles().
  */
-#[Fillable(['user_id', 'title', 'last_message_at'])]
+#[Fillable(['user_id', 'title', 'last_message_at', 'summary', 'summary_count', 'summary_through_message_id'])]
 class AiConversation extends BaseModel
 {
     /** @use HasFactory<AiConversationFactory> */
@@ -31,6 +31,8 @@ class AiConversation extends BaseModel
         return [
             'user_id' => 'int',
             'last_message_at' => 'datetime',
+            'summary_count' => 'int',
+            'summary_through_message_id' => 'int',
         ];
     }
 

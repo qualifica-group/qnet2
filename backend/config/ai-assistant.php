@@ -90,6 +90,18 @@ return [
 
     'retention_days' => (int) env('AI_ASSISTANT_RETENTION_DAYS', 30),
 
+    // Memory of the conversation (spec 0433, D-5). The old part is summarised when the request passes
+    // `summary_threshold_percent` of the model's context window; the last `keep_recent_turns` turns
+    // always stay whole; after `max_summaries` summaries a new conversation is proposed.
+    // `bytes_per_token` is the prudent divisor of the token estimate (2.0 overestimates on purpose).
+    'memory' => [
+        'summary_threshold_percent' => (int) env('AI_ASSISTANT_SUMMARY_THRESHOLD_PERCENT', 70),
+        'keep_recent_turns' => (int) env('AI_ASSISTANT_KEEP_RECENT_TURNS', 2),
+        'max_summaries' => (int) env('AI_ASSISTANT_MAX_SUMMARIES', 3),
+        'summary_max_words' => (int) env('AI_ASSISTANT_SUMMARY_MAX_WORDS', 300),
+        'bytes_per_token' => (float) env('AI_ASSISTANT_BYTES_PER_TOKEN', 2.0),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Super-admin settings (spec 0433)
