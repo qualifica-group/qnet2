@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tabelle AG Grid alte quanto lo schermo (richiesta utente 2026-11-26) — VERDE, NON COMMITTATO
+
+- Come in q-net (qtask, `TABLE_DEFAULT_HEIGHT = calc(100dvh - 16rem)`): la griglia di ogni `TableView` arriva sempre al fondo dello schermo, su qualunque monitor. Tolto il tetto "altezza di una pagina di righe" (`maxHeight` = `estimateGridHeight(defaultPagination.limit)`) da `useViewportTableHeight`: supera la decisione del 2026-07-31 ("niente griglia vuota sotto l'ultima riga"). Con meno righe della pagina resta spazio vuoto in griglia, come in q-net.
+- L'altezza ora sottrae anche i fratelli dopo la griglia nella card (riga totali `pinnedRowSlot`, `footer`), sommando i loro `offsetHeight` (non il bordo inferiore della card, che se stirata ricadrebbe sull'altezza). Restano il pavimento (max 320px / meta' viewport), lo spazio di 24px in fondo e il fullscreen (flex).
+- Rimossi `FALLBACK_PAGE_SIZE` e l'uso di `estimateGridHeight`/`useUiScale` in `use-table-view-filters-state.ts`; `estimateGridHeight` resta per `time-entry-day-entries-table.tsx` (griglia dimensionata sulle righe, fuori scope). Fuori scope anche `review-grid.tsx` (import) e il dettaglio preventivi delle opportunita' (`max-h-[22rem]`, `autoHeight`).
+- Test: `use-viewport-table-height.test.tsx` (REQUIREMENT CHANGED: tolti i 2 test sul tetto, aggiunti "cresce con lo schermo" e "spazio per totali/footer"). Vitest table+data-table+time-entries 821/821, `tsc -b --force` e ESLint puliti. Da verificare a mano su monitor alto e su una tabella con riga totali. Manuale: nessun impatto.
+
 ## Regole commissione su piu' categorie / piu' prodotti, spec 0430 (richiesta utente 2026-11-25) — VERDE, COMMITTATO
 
 - Pivot `commission_configuration_product_category` e `commission_configuration_product` (FK con nomi corti `cc_*_fk`, unique `cc_*_unique`), unica fonte: tolte le colonne `product_category_id`/`product_id`, i 4 indici di risoluzione e il CHECK `commission_configurations_scope_check`. Migrazione `2026_12_26_100000_create_commission_configuration_product_pivots.php`, GIA' APPLICATA su qnet2 con `--path` (2.441 regole -> 985 righe categoria + 1.456 prodotto, 0 differenze col fotogramma prima; 2.998/3.000 commissioni salvate risolvono la stessa regola, le 2 diverse sono un limite dello script di prova: riga senza fornitore).
