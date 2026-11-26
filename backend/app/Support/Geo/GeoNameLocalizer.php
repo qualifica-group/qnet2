@@ -64,6 +64,8 @@ final class GeoNameLocalizer
         'Trentino' => 'Trento',
         'Turin' => 'Torino',
         'Venice' => 'Venezia',
+        // Comuni the dataset spells differently from the ISTAT name
+        'Sannicandro Garganico' => 'San Nicandro Garganico',
     ];
 
     /**

@@ -42,8 +42,8 @@ export interface CommissionRelationRef {
 
 /** The names the closed rows show for the three relations: persisted on a detail, resolved from the draft's ids on create. */
 export interface CommissionConfigurationRefs {
-  category: CommissionRelationRef | null
-  product: CommissionRelationRef | null
+  categories: CommissionRelationRef[]
+  products: CommissionRelationRef[]
   recipient: CommissionRelationRef | null
 }
 
@@ -54,15 +54,15 @@ export interface CommissionConfigurationDetail {
   name: string
   recipient_role: CommissionRole
   application_scope: CommissionScope
-  product_category_id: number | null
-  product_category: CommissionRelationRef | null
-  product_id: number | null
-  product: CommissionRelationRef | null
+  product_category_ids: number[]
+  product_categories: CommissionRelationRef[]
+  product_ids: number[]
+  products: CommissionRelationRef[]
   /**
    * The recipient's identity type, chosen by the operator among the role's
    * allow-list (spec 0090 D-4, emenda 0089 D-7); `null` for a role rule. The
    * three keys are OMITTED (not `null`) when `recipient_id` is not visible
-   * for field permission — same rule as `product_id`/`product`.
+   * for field permission — same rule as `product_ids`/`products`.
    */
   recipient_type?: CommissionRecipientType | null
   recipient_id?: number | null
@@ -89,8 +89,8 @@ export interface CommissionConfigurationPayload {
   name: string
   recipient_role: CommissionRole
   application_scope: CommissionScope
-  product_category_id: number | null
-  product_id: number | null
+  product_category_ids: number[]
+  product_ids: number[]
   /**
    * The identity type of `recipient_id`, chosen among the role's allow-list
    * (spec 0090 D-4, emenda 0089 D-7); omitted -> the server derives it from

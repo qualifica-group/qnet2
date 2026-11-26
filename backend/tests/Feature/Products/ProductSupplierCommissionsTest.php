@@ -14,6 +14,7 @@ use App\Models\ProductTypology;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -40,7 +41,13 @@ function supComProduct(bool $enabled = true): array
 /** @param  array<string, mixed>  $attributes */
 function supComRule(array $attributes): CommissionConfiguration
 {
-    return CommissionConfiguration::factory()->create([
+    $productId = Arr::pull($attributes, 'product_id');
+    $categoryId = Arr::pull($attributes, 'product_category_id');
+    $factory = CommissionConfiguration::factory();
+    $factory = $productId === null ? $factory : $factory->forProducts([$productId]);
+    $factory = $categoryId === null ? $factory : $factory->forCategories([$categoryId]);
+
+    return $factory->create([
         'recipient_role' => CommissionRecipientRole::Supplier,
         'value' => 7,
         ...$attributes,

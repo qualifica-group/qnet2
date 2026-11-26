@@ -89,11 +89,9 @@ if (! function_exists('recalcProduct')) {
 if (! function_exists('recalcRule')) {
     function recalcRule(Product $product, CommissionRecipientRole $role, float $value, array $attributes = []): CommissionConfiguration
     {
-        return CommissionConfiguration::factory()->create([
+        return CommissionConfiguration::factory()->forProducts([$product->id])->create([
             'recipient_role' => $role,
             'application_scope' => CommissionApplicationScope::Product,
-            'product_id' => $product->id,
-            'product_category_id' => null,
             'commission_type' => CommissionType::Percentage,
             'value' => $value,
             'valid_from' => '2026-01-01',

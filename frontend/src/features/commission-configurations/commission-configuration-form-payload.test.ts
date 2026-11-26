@@ -7,10 +7,10 @@ const saved: CommissionConfigurationDetail = {
   name: 'Rule',
   recipient_role: 'COMMERCIAL',
   application_scope: 'PRODUCT',
-  product_category_id: null,
-  product_category: null,
-  product_id: 3,
-  product: { id: 3, name: 'Product' },
+  product_category_ids: [],
+  product_categories: [],
+  product_ids: [3],
+  products: [{ id: 3, name: 'Product' }],
   recipient_type: 'referent',
   recipient_id: 5,
   recipient: { id: 5, name: 'Jane' },
@@ -57,13 +57,13 @@ describe('commission configuration form payload', () => {
     const payload = buildCreatePayload({
       ...toFormValues(saved),
       application_scope: 'PRODUCT_CATEGORY',
-      product_category_id: 8,
-      product_id: 99,
+      product_category_ids: [8],
+      product_ids: [99],
       valid_until: '',
       internal_note: '',
     })
 
-    expect(payload).toMatchObject({ product_category_id: 8, product_id: null, valid_until: null, internal_note: null })
+    expect(payload).toMatchObject({ product_category_ids: [8], product_ids: [], valid_until: null, internal_note: null })
   })
 
   it('sends nothing for an untouched form', () => {
@@ -85,10 +85,17 @@ describe('commission configuration form payload', () => {
 
     expect(
       buildUpdatePayload(
-        { ...original, application_scope: 'PRODUCT_CATEGORY', product_category_id: 8, valid_until: '' },
+        { ...original, application_scope: 'PRODUCT_CATEGORY', product_category_ids: [8], valid_until: '' },
         original,
       ),
-    ).toEqual({ application_scope: 'PRODUCT_CATEGORY', product_category_id: 8, product_id: null, valid_until: null })
+    ).toEqual({ application_scope: 'PRODUCT_CATEGORY', product_category_ids: [8], product_ids: [], valid_until: null })
+  })
+
+  it('compares the id lists by content: same ids send nothing, a changed list is sent whole', () => {
+    const original = toFormValues({ ...saved, product_ids: [3, 4] })
+
+    expect(buildUpdatePayload({ ...original, product_ids: [3, 4] }, original)).toEqual({})
+    expect(buildUpdatePayload({ ...original, product_ids: [3, 4, 5] }, original)).toEqual({ product_ids: [3, 4, 5] })
   })
 
   it('sends the direction of a SUPPLIER rule and null for any other role (spec 0306 D-1)', () => {

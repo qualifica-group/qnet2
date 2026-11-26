@@ -36,14 +36,14 @@ final class ReporterCommissionRules
         $desired = $this->desired($referent, $rates, $targets, $reporterNote);
 
         // Step 2: create or update each of them.
-        $existing = $this->ruleQuery($referent)->get()->groupBy(fn (CommissionConfiguration $rule) => $this->ruleKey($rule));
+        $existing = $this->ruleQuery($referent)->with(['productCategories:id', 'products:id'])->get()->groupBy(fn (CommissionConfiguration $rule) => $this->ruleKey($rule));
         $counts = ['created' => 0, 'updated' => 0, 'removed' => 0];
 
         foreach ($desired as $key => $data) {
             $rule = $this->claim($existing, $key);
 
             if ($rule === null) {
-                CommissionConfiguration::query()->create($data->attributes());
+                $this->syncLists(CommissionConfiguration::query()->create($data->attributes()), $data);
                 $counts['created']++;
 
                 continue;
@@ -107,8 +107,8 @@ final class ReporterCommissionRules
                     name: Str::substr(sprintf('%s - %s - %s', ReporterCommissionCatalogue::RULE_NAME_PREFIX, $referent->name, $target['label']), 0, self::NAME_LENGTH),
                     recipientRole: CommissionRecipientRole::Reporter,
                     applicationScope: $target['scope'],
-                    productCategoryId: $isProduct ? null : $target['id'],
-                    productId: $isProduct ? $target['id'] : null,
+                    productCategoryIds: $isProduct ? [] : [$target['id']],
+                    productIds: $isProduct ? [$target['id']] : [],
                     recipientId: $referent->id,
                     recipientType: $referent->getMorphClass(),
                     commissionType: CommissionType::Percentage,
@@ -183,9 +183,21 @@ final class ReporterCommissionRules
         return ReporterCommissionCatalogue::RULE_NAME_PREFIX.' - ';
     }
 
+    /**
+     * A rule holding a list (not a single target) is a hand-made group: its key never
+     * matches a desired target, so the sync leaves it untouched.
+     */
     private function ruleKey(CommissionConfiguration $rule): string
     {
-        return $this->key($rule->application_scope, $rule->product_id ?? $rule->product_category_id);
+        $targets = $rule->application_scope === CommissionApplicationScope::Product ? $rule->products : $rule->productCategories;
+
+        return $targets->count() === 1 ? $this->key($rule->application_scope, $targets->first()->id) : 'group:'.$rule->id;
+    }
+
+    private function syncLists(CommissionConfiguration $rule, CreateCommissionConfigurationData $data): void
+    {
+        $rule->productCategories()->sync($data->productCategoryIds);
+        $rule->products()->sync($data->productIds);
     }
 
     private function key(CommissionApplicationScope $scope, ?int $id): string

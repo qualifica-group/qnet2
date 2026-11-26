@@ -22,6 +22,10 @@ vi.mock('sonner', () => ({
   toast: { success: (...args: unknown[]) => toastSuccessMock(...args), error: vi.fn() },
 }))
 
+vi.mock('@/components/form/relation-multi-select-field', async () => ({
+  RelationMultiSelectField: (await import('./commission-configuration-relation-double')).RelationMultiSelectFieldDouble,
+}))
+
 vi.mock('@/components/form/relation-select-field', async () => ({
   RelationSelectField: (await import('./commission-configuration-relation-double')).RelationSelectFieldDouble,
 }))

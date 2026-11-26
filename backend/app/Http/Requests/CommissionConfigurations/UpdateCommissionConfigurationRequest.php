@@ -34,16 +34,15 @@ class UpdateCommissionConfigurationRequest extends FormRequest
             /** @var CommissionConfiguration $model */
             $model = $this->route('commissionConfiguration');
             $scope = $this->input('application_scope', $model->application_scope->value);
-            $categoryId = $this->exists('product_category_id') ? $this->input('product_category_id') : $model->product_category_id;
-            $productId = $this->exists('product_id') ? $this->input('product_id') : $model->product_id;
 
-            if ($scope === 'PRODUCT' && ($productId === null || $categoryId !== null)) {
-                $validator->errors()->add('application_scope', __('commission_configurations.invalid_scope'));
-            }
-            if ($scope === 'PRODUCT_CATEGORY' && ($categoryId === null || $productId !== null)) {
-                $validator->errors()->add('application_scope', __('commission_configurations.invalid_scope'));
-            }
-            if ($scope === 'RECIPIENT' && ($categoryId !== null || $productId !== null)) {
+            // Spec 0430 D-2: the effective list (submitted or saved) of the scope in force must not be empty.
+            $hasCategories = $this->exists('product_category_ids') ? $this->input('product_category_ids') !== [] : $model->product_category_ids !== [];
+            $hasProducts = $this->exists('product_ids') ? $this->input('product_ids') !== [] : $model->product_ids !== [];
+
+            $foreignCategories = $scope !== 'PRODUCT_CATEGORY' && ! empty($this->input('product_category_ids'));
+            $foreignProducts = $scope !== 'PRODUCT' && ! empty($this->input('product_ids'));
+
+            if (($scope === 'PRODUCT' && ! $hasProducts) || ($scope === 'PRODUCT_CATEGORY' && ! $hasCategories) || $foreignCategories || $foreignProducts) {
                 $validator->errors()->add('application_scope', __('commission_configurations.invalid_scope'));
             }
 

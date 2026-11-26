@@ -13,7 +13,6 @@ use App\Enums\SupplierCommissionDirection;
 use App\Models\CommissionConfiguration;
 use App\Models\User;
 use App\Rules\ActiveProduct;
-use App\Rules\ActiveProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -25,6 +24,9 @@ use Illuminate\Validation\Rule;
  */
 trait CommissionConfigurationRules
 {
+    /** Spec 0430 D-7: upper bound of a rule's category / product list. */
+    private const int MAX_SCOPE_ITEMS = 500;
+
     /** @return array<string, array<int, mixed>> */
     protected function configurationRules(bool $partial): array
     {
@@ -34,18 +36,22 @@ trait CommissionConfigurationRules
             'name' => [...$required, 'string', 'max:191'],
             'recipient_role' => [...$required, Rule::enum(CommissionRecipientRole::class)],
             'application_scope' => [...$required, Rule::enum(CommissionApplicationScope::class)],
-            'product_category_id' => [
-                // Spec 0223 D-5: any ACTIVE category, containers included — the
-                // resolver applies a category rule to its whole branch (D-1).
-                'nullable', 'integer', new ActiveProductCategory($this->exemptProductCategoryIds()),
+            // Spec 0430 D-7: any category, containers and inactive ones included
+            // (spec 0223 D-5, user decision 2026-11-25: the [OLD] categories are
+            // inactive and keep rules of their own); the resolver applies a
+            // category rule to the whole branch of each category it holds.
+            'product_category_ids' => [
+                'array', 'min:1', 'max:'.self::MAX_SCOPE_ITEMS,
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::ProductCategory->value),
                 Rule::prohibitedIf(fn () => $this->scopeExcludesCategory()),
             ],
-            'product_id' => [
-                'nullable', 'integer', new ActiveProduct($this->exemptProductIds()),
+            'product_category_ids.*' => ['integer', 'distinct', Rule::exists('product_categories', 'id')],
+            'product_ids' => [
+                'array', 'min:1', 'max:'.self::MAX_SCOPE_ITEMS,
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::Product->value),
                 Rule::prohibitedIf(fn () => $this->scopeExcludesProduct()),
             ],
+            'product_ids.*' => ['integer', 'distinct', new ActiveProduct($this->exemptProductIds())],
             // Spec 0090 D-4 (emends 0089 D-7): `recipient_type` is now an
             // ACCEPTED input, gated to the union of every role's allow-list
             // here (a coarse "is this a known recipient entity at all" gate);
@@ -95,23 +101,9 @@ trait CommissionConfigurationRules
     }
 
     /**
-     * The category already persisted on the configuration being updated,
-     * exempt from the inactive check (spec 0208 D-2). Empty on create.
-     *
-     * @return array<int, int>
-     */
-    protected function exemptProductCategoryIds(): array
-    {
-        $configuration = $this->route('commissionConfiguration');
-
-        return $configuration instanceof CommissionConfiguration && $configuration->product_category_id !== null
-            ? [(int) $configuration->product_category_id]
-            : [];
-    }
-
-    /**
-     * The product already persisted on the configuration being updated,
-     * exempt from the inactive-category check (spec 0208 D-2). Empty on create.
+     * The products already persisted on the configuration being updated,
+     * exempt from the inactive-category check (spec 0208 D-2, 0430 D-7).
+     * Empty on create.
      *
      * @return array<int, int>
      */
@@ -119,9 +111,7 @@ trait CommissionConfigurationRules
     {
         $configuration = $this->route('commissionConfiguration');
 
-        return $configuration instanceof CommissionConfiguration && $configuration->product_id !== null
-            ? [(int) $configuration->product_id]
-            : [];
+        return $configuration instanceof CommissionConfiguration ? $configuration->product_ids : [];
     }
 
     /** Spec 0089 D-2: RECIPIENT scope admits neither product nor category. */

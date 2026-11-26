@@ -11,14 +11,15 @@ use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\CommissionConfigurationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 #[Fillable([
-    'name', 'recipient_role', 'application_scope', 'product_category_id',
-    'product_id', 'recipient_type', 'recipient_id', 'commission_type', 'supplier_commission_direction', 'value',
+    'name', 'recipient_role', 'application_scope',
+    'recipient_type', 'recipient_id', 'commission_type', 'supplier_commission_direction', 'value',
     'priority', 'valid_from', 'valid_until', 'status', 'internal_note',
 ])]
 class CommissionConfiguration extends BaseModel
@@ -41,14 +42,43 @@ class CommissionConfiguration extends BaseModel
         ];
     }
 
-    public function productCategory(): BelongsTo
+    /** Spec 0430: the categories a PRODUCT_CATEGORY rule covers. */
+    public function productCategories(): BelongsToMany
     {
-        return $this->belongsTo(ProductCategory::class);
+        return $this->belongsToMany(ProductCategory::class, 'commission_configuration_product_category');
     }
 
-    public function product(): BelongsTo
+    /** Spec 0430: the products a PRODUCT rule covers. */
+    public function products(): BelongsToMany
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsToMany(Product::class, 'commission_configuration_product');
+    }
+
+    /**
+     * The ids behind `product_category_ids` / `product_ids`, the shape the field
+     * permission guard compares a submitted list against.
+     *
+     * @return Attribute<list<int>, never>
+     */
+    protected function productCategoryIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->relatedIds('productCategories', 'product_categories.id'));
+    }
+
+    /** @return Attribute<list<int>, never> */
+    protected function productIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->relatedIds('products', 'products.id'));
+    }
+
+    /** @return list<int> */
+    private function relatedIds(string $relation, string $qualifiedKey): array
+    {
+        $ids = $this->relationLoaded($relation)
+            ? $this->getRelation($relation)->pluck('id')
+            : $this->{$relation}()->pluck($qualifiedKey);
+
+        return $ids->map(static fn (mixed $id): int => (int) $id)->values()->all();
     }
 
     /**

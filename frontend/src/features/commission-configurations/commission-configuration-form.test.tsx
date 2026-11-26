@@ -22,6 +22,10 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('@/features/authorization/use-resource-meta', () => ({
   useResourceMeta: (...args: unknown[]) => useMeta(...args),
 }))
+vi.mock('@/components/form/relation-multi-select-field', async () => ({
+  RelationMultiSelectField: (await import('./commission-configuration-relation-double')).RelationMultiSelectFieldDouble,
+}))
+
 vi.mock('@/components/form/relation-select-field', async () => ({
   RelationSelectField: (await import('./commission-configuration-relation-double')).RelationSelectFieldDouble,
 }))
@@ -99,7 +103,7 @@ describe('CommissionConfigurationForm create (spec 0241 AC-004)', () => {
     save()
 
     expect(await screen.findByText('Configuration name is required.')).toHaveAttribute('role', 'alert')
-    expect(await screen.findByText('Select a product category.')).toBeInTheDocument()
+    expect(await screen.findByText('Select at least one product category.')).toBeInTheDocument()
     expect(createMock).not.toHaveBeenCalled()
   })
 
@@ -112,7 +116,7 @@ describe('CommissionConfigurationForm create (spec 0241 AC-004)', () => {
     fireEvent.change(screen.getByLabelText(/^Configuration name/), { target: { value: 'Network rule' } })
     applyRow()
     openRow('Application scope')
-    fireEvent.click(screen.getByRole('button', { name: 'pick product_category_id' }))
+    fireEvent.click(screen.getByRole('button', { name: 'pick product_category_ids' }))
     applyRow()
     expect(screen.getByText('Name 99')).toBeInTheDocument()
     openRow('Commission value')
@@ -126,8 +130,8 @@ describe('CommissionConfigurationForm create (spec 0241 AC-004)', () => {
         name: 'Network rule',
         recipient_role: 'COMMERCIAL',
         application_scope: 'PRODUCT_CATEGORY',
-        product_category_id: 99,
-        product_id: null,
+        product_category_ids: [99],
+        product_ids: [],
         recipient_type: 'referent',
         recipient_id: null,
         commission_type: 'PERCENTAGE',
@@ -193,7 +197,7 @@ describe('CommissionConfigurationForm create (spec 0241 AC-004)', () => {
     fireEvent.change(screen.getByLabelText(/^Configuration name/), { target: { value: 'Rule' } })
     applyRow()
     openRow('Application scope')
-    fireEvent.click(screen.getByRole('button', { name: 'pick product_category_id' }))
+    fireEvent.click(screen.getByRole('button', { name: 'pick product_category_ids' }))
     applyRow()
     save()
 

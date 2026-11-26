@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Throwable;
 
 /**
- * GET /api/product-category-nodes/for-select — every active product category,
+ * GET /api/product-category-nodes/for-select — every product category, inactive included,
  * containers included, `is_selectable` ignored (spec 0223 D-5): the commission
  * configurator's category, whose rule covers the whole branch.
  *

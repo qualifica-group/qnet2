@@ -122,5 +122,5 @@ it('does not change the rules resolved for other products', function (): void {
 
     test()->seed(DemoCommissionShowcaseSeeder::class);
 
-    expect(CommissionConfiguration::query()->whereNull('product_id')->count())->toBe(0);
+    expect(CommissionConfiguration::query()->whereDoesntHave('products')->count())->toBe(0);
 });

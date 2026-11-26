@@ -47,15 +47,14 @@ it('lets a personal PRODUCT rule beat a role PRODUCT rule for the same recipient
     $commercial = Referent::factory()->create();
     $product = Product::factory()->create();
 
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
         'value' => 5,
     ]);
     $personal = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id, 'value' => 12]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'value' => 12]);
 
     $match = resolveOneRole($product, new CommissionRecipient('referent', $commercial->id));
 
@@ -68,14 +67,13 @@ it('lets a personal CATEGORY rule beat a role PRODUCT rule — the recipient dim
     $category = ProductCategory::factory()->create();
     $product = Product::factory()->create(['category_id' => $category->id]);
 
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
     ]);
     $personalCategory = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::ProductCategory)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_category_id' => $category->id]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::ProductCategory)->forCategories([$category->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial]);
 
     $match = resolveOneRole($product, new CommissionRecipient('referent', $commercial->id));
 
@@ -91,8 +89,8 @@ it('orders the same recipient product over category over the recipient-wide RECI
         ->forRecipient('referent', $commercial->id)
         ->create(['recipient_role' => CommissionRecipientRole::Commercial]);
     $personalCategory = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::ProductCategory)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_category_id' => $category->id]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::ProductCategory)->forCategories([$category->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial]);
 
     $matchAgainstCategoryAndRecipient = resolveOneRole($product, new CommissionRecipient('referent', $commercial->id));
     expect($matchAgainstCategoryAndRecipient->configurationId)->toBe($personalCategory->id);
@@ -121,16 +119,14 @@ it('falls back to the role gradini when the personal rule is suspended or out of
     $product = Product::factory()->create();
 
     CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([$product->id])
         ->create([
             'recipient_role' => CommissionRecipientRole::Commercial,
-            'product_id' => $product->id,
             'status' => CommissionConfigurationStatus::Suspended,
         ]);
-    $roleRule = CommissionConfiguration::factory()->create([
+    $roleRule = CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
     ]);
 
     $match = resolveOneRole($product, new CommissionRecipient('referent', $commercial->id));
@@ -147,10 +143,9 @@ it('resolves every role independently — a personal SUPPLIER rule never influen
     CommissionConfiguration::factory()
         ->forRecipient('registry', $supplier->id)
         ->create(['recipient_role' => CommissionRecipientRole::Supplier, 'value' => 99]);
-    $commercialRoleRule = CommissionConfiguration::factory()->create([
+    $commercialRoleRule = CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
     ]);
 
     $matches = app(CommissionRuleResolver::class)->resolve(new CommissionResolutionContext(
@@ -174,11 +169,11 @@ it('keeps the priority/valid_from/id tie-break inside a single gradino (personal
     $product = Product::factory()->create();
 
     CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id, 'priority' => 5]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'priority' => 5]);
     $winner = CommissionConfiguration::factory()
-        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => $product->id, 'priority' => 50]);
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)->forProducts([$product->id])
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'priority' => 50]);
 
     $match = resolveOneRole($product, new CommissionRecipient('referent', $commercial->id));
 

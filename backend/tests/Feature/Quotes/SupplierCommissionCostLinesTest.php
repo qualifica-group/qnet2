@@ -49,10 +49,9 @@ function costZeroProduct(): array
         'product_typology_id' => ProductTypology::factory()->supplierCommission()->create()->id,
     ], $paid);
     ProductSupplier::factory()->create(['product_id' => $product->id, 'supplier_id' => $free->id]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Supplier,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
         'recipient_type' => 'registry',
         'recipient_id' => $paid->id,
     ]);

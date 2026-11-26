@@ -71,8 +71,8 @@ function draftLines(ProformaRequest $request): array
 function supplierPercentage(Registry $supplier, QuoteLine $line, float $value): void
 {
     CommissionConfiguration::factory()
-        ->forRecipient(CommissionRecipientRole::Supplier->recipientType(), $supplier->id, CommissionApplicationScope::Product)
-        ->create(['recipient_role' => CommissionRecipientRole::Supplier, 'product_id' => $line->product_id, 'value' => $value, 'valid_from' => '2026-01-01']);
+        ->forRecipient(CommissionRecipientRole::Supplier->recipientType(), $supplier->id, CommissionApplicationScope::Product)->forProducts([$line->product_id])
+        ->create(['recipient_role' => CommissionRecipientRole::Supplier, 'value' => $value, 'valid_from' => '2026-01-01']);
 }
 
 it('AC-004: the institution draft lists the supplier lines of every offer of the same company, nothing else', function () {
