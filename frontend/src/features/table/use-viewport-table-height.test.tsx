@@ -19,14 +19,29 @@ function setWindowMetric(key: 'innerHeight' | 'scrollY', value: number) {
   Object.defineProperty(window, key, { value, configurable: true })
 }
 
-function Probe({ enabled, maxHeight }: { enabled: boolean; maxHeight: number }) {
-  const { containerRef, height } = useViewportTableHeight({ enabled, maxHeight })
+function Probe({ enabled, trailing = [] }: { enabled: boolean; trailing?: number[] }) {
+  const { containerRef, height } = useViewportTableHeight({ enabled })
 
   return (
-    <div ref={containerRef}>
-      <output>{height === null ? 'unset' : String(height)}</output>
+    <div>
+      <div ref={containerRef}>
+        <output>{height === null ? 'unset' : String(height)}</output>
+      </div>
+      {trailing.map((px, index) => (
+        <div key={index} data-trailing-height={px} />
+      ))}
     </div>
   )
+}
+
+/** jsdom lays nothing out; give the trailing siblings their declared height. */
+function stubTrailingHeights() {
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return Number(this.dataset.trailingHeight ?? 0)
+    },
+  })
 }
 
 function measuredHeight() {
@@ -35,6 +50,7 @@ function measuredHeight() {
 
 afterEach(() => {
   Element.prototype.getBoundingClientRect = originalGetBoundingClientRect
+  delete (HTMLElement.prototype as { offsetHeight?: number }).offsetHeight
   setWindowMetric('scrollY', 0)
 })
 
@@ -43,25 +59,35 @@ describe('useViewportTableHeight', () => {
     placeContainerAt(180)
     setWindowMetric('innerHeight', 1000)
 
-    render(<Probe enabled maxHeight={5000} />)
+    render(<Probe enabled />)
 
     expect(measuredHeight()).toBe(String(1000 - 180 - BOTTOM_GAP))
   })
 
-  it('never exceeds the height the page of rows needs', () => {
+  it('keeps growing with a tall screen, whatever the page size', () => {
     placeContainerAt(180)
     setWindowMetric('innerHeight', 2000)
 
-    render(<Probe enabled maxHeight={760} />)
+    render(<Probe enabled />)
 
-    expect(measuredHeight()).toBe('760')
+    expect(measuredHeight()).toBe(String(2000 - 180 - BOTTOM_GAP))
+  })
+
+  it('leaves room for the summary row and footer rendered below the grid', () => {
+    placeContainerAt(180)
+    setWindowMetric('innerHeight', 1000)
+    stubTrailingHeights()
+
+    render(<Probe enabled trailing={[30, 40]} />)
+
+    expect(measuredHeight()).toBe(String(1000 - 180 - 30 - 40 - BOTTOM_GAP))
   })
 
   it('falls back to half the viewport when the grid sits far down the page', () => {
     placeContainerAt(900)
     setWindowMetric('innerHeight', 1000)
 
-    render(<Probe enabled maxHeight={5000} />)
+    render(<Probe enabled />)
 
     expect(measuredHeight()).toBe('500')
   })
@@ -70,18 +96,9 @@ describe('useViewportTableHeight', () => {
     placeContainerAt(400)
     setWindowMetric('innerHeight', 500)
 
-    render(<Probe enabled maxHeight={5000} />)
+    render(<Probe enabled />)
 
     expect(measuredHeight()).toBe(String(MIN_TABLE_HEIGHT))
-  })
-
-  it('keeps the content ceiling above the floor, so a short page draws no empty grid', () => {
-    placeContainerAt(900)
-    setWindowMetric('innerHeight', 1000)
-
-    render(<Probe enabled maxHeight={200} />)
-
-    expect(measuredHeight()).toBe('200')
   })
 
   it('measures from the top of the document, so scrolling does not grow the grid', () => {
@@ -91,7 +108,7 @@ describe('useViewportTableHeight', () => {
     setWindowMetric('scrollY', 300)
     setWindowMetric('innerHeight', 1000)
 
-    render(<Probe enabled maxHeight={5000} />)
+    render(<Probe enabled />)
 
     expect(measuredHeight()).toBe(String(1000 - 180 - BOTTOM_GAP))
   })
@@ -100,7 +117,7 @@ describe('useViewportTableHeight', () => {
     placeContainerAt(180)
     setWindowMetric('innerHeight', 1000)
 
-    render(<Probe enabled maxHeight={5000} />)
+    render(<Probe enabled />)
 
     setWindowMetric('innerHeight', 700)
     act(() => {
@@ -114,7 +131,7 @@ describe('useViewportTableHeight', () => {
     placeContainerAt(180)
     setWindowMetric('innerHeight', 1000)
 
-    render(<Probe enabled={false} maxHeight={5000} />)
+    render(<Probe enabled={false} />)
 
     expect(measuredHeight()).toBe('unset')
   })

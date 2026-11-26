@@ -32,8 +32,7 @@ const MIN_PAGINATION_PANEL_HEIGHT = 22
 /**
  * Pixel height a grid needs to show `rowCount` rows without scrolling
  * internally: column header + rows + pagination panel, at the given UI scale.
- * Callers sizing a grid container use it as the ceiling, so a tall viewport
- * does not leave empty grid below the last row of the page.
+ * Used by grids sized to their rows rather than to the screen.
  */
 export function estimateGridHeight(rowCount: number, factor: number): number {
   const rowHeight = Math.round(BASE_ROW_HEIGHT * factor)
