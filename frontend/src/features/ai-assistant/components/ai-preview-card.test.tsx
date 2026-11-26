@@ -77,7 +77,7 @@ describe('AiPreviewCard', () => {
     expect(within(card).getAllByRole('row')).toHaveLength(3)
     expect(within(card).getByRole('cell', { name: 'Chiusa' })).toBeInTheDocument()
     expect(container.querySelector('b, a')).toBeNull()
-    expect(container).toHaveTextContent('[a](javascript:alert(1))')
+    expect(container.innerHTML).not.toContain('javascript')
   })
 
   it('shows only the connector content, never the model text of the turn', () => {
@@ -93,7 +93,7 @@ describe('AiPreviewCard', () => {
 
     expect(container.querySelector('img, script, a')).toBeNull()
     expect(container).toHaveTextContent('<img src=x onerror=alert(1)>')
-    expect(container).toHaveTextContent('[a](javascript:alert(1))')
+    expect(container.innerHTML).not.toContain('javascript')
   })
 
   it('keeps Confirm off, with a fixed reason, when the connector says it is not confirmable', () => {

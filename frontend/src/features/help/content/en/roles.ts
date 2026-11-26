@@ -66,6 +66,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'The **Cross-cutting** area also holds **Saved filters**, with the **Publish shared filters** permission: without it, a user can only save private views and custom filters, never shared with colleagues, on any module with a list.' },
         { type: 'paragraph', text: 'The **Cross-cutting** area also holds **Legacy IDs**, with the **View** permission: it shows the old system\'s id, as the **Legacy ID** column in lists and as the **OLD ID #123** badge next to record titles. Without it the id appears nowhere; the super-admin always sees it.' },
         { type: 'list', items: ['**Search modules or permissions…** filters the tree.', '**Select area** turns on every permission of an area.', '**Select all** turns on every permission of a module.', '**Select all permissions** turns on the whole catalog.', 'Next to each area and module, a counter shows the permissions chosen out of the total.'] },
+        { type: 'paragraph', text: 'The **AI assistant** permission is given to every role, new ones included. Clearing it from a role removes the assistant for all its members: the conversation in the Chat bar and the page no longer appear for them.' },
       ],
     },
     {
