@@ -9,6 +9,9 @@ export const activityLog = {
   emptyFiltered: 'Nessuna attività corrisponde al filtro selezionato.',
   loadMore: 'Carica altro',
   systemCauser: 'Sistema',
+  via: {
+    mcp: 'Fatta con MCP AI',
+  },
   filter: {
     label: 'Filtra per tipo di operazione',
     all: 'Tutto',
