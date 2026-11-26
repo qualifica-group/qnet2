@@ -24,7 +24,8 @@ it('answers 409 with a fixed text when the person already has the maximum of act
 
     aiapi_send($user, aiapi_conversation($user), ['content' => 'one too many'])->assertStatus(409)
         ->assertJsonPath('success', false)
-        ->assertJsonPath('message', ACTIVE_TURNS_TEXT);
+        ->assertJsonPath('message', ACTIVE_TURNS_TEXT)
+        ->assertJsonPath('data.reason', 'too_many_active_turns');
 
     expect(AiTurn::query()->count())->toBe(3)->and(AiMessage::query()->where('content', 'one too many')->exists())->toBeFalse();
 });

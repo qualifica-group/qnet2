@@ -49,7 +49,7 @@ class AiMessageController extends BaseApiController
         } catch (AiTurnAlreadyActiveException) {
             return $this->fail(__('The assistant is still working on your previous message.'), HttpStatusEnum::CONFLICT->value);
         } catch (AiTooManyActiveTurnsException) {
-            return $this->fail(__('You have too many assistant requests running at once. Wait for one to finish.'), HttpStatusEnum::CONFLICT->value);
+            return $this->fail(__('You have too many assistant requests running at once. Wait for one to finish.'), HttpStatusEnum::CONFLICT->value, null, ['reason' => 'too_many_active_turns']);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['conversation' => $conversation->id]);
         }

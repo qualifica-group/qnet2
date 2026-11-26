@@ -13,6 +13,7 @@ describe('classifyAiSendError', () => {
     [503, {}, 'notConfigured'],
     [403, {}, 'forbidden'],
     [409, {}, 'busy'],
+    [409, { data: { reason: 'too_many_active_turns' } }, 'tooManyTurns'],
     [500, {}, 'generic'],
   ])('maps %s %j to %s', (status, body, kind) => {
     expect(classifyAiSendError(httpError(status, body)).kind).toBe(kind)

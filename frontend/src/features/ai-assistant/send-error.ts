@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { ApiErrorResponse } from '@/api/types'
 
-export type AiSendErrorKind = 'notConfigured' | 'switchedOff' | 'forbidden' | 'busy' | 'validation' | 'generic'
+export type AiSendErrorKind = 'notConfigured' | 'switchedOff' | 'forbidden' | 'busy' | 'tooManyTurns' | 'validation' | 'generic'
 
 export type AiComposerField = 'content' | 'files' | 'mentions'
 
@@ -16,6 +16,7 @@ const HTTP_FORBIDDEN = 403
 const HTTP_CONFLICT = 409
 const HTTP_VALIDATION = 422
 const REASON_SWITCHED_OFF = 'switched_off'
+const REASON_TOO_MANY_TURNS = 'too_many_active_turns'
 
 function mapFieldErrors(errors: Record<string, string[]>): AiSendFailure['fieldErrors'] {
   const mapped: AiSendFailure['fieldErrors'] = {}
@@ -45,7 +46,7 @@ export function classifyAiSendError(error: unknown): AiSendFailure {
     return { kind: 'forbidden', fieldErrors: {} }
   }
   if (status === HTTP_CONFLICT) {
-    return { kind: 'busy', fieldErrors: {} }
+    return { kind: data?.data?.reason === REASON_TOO_MANY_TURNS ? 'tooManyTurns' : 'busy', fieldErrors: {} }
   }
   if (status === HTTP_VALIDATION) {
     return { kind: 'validation', fieldErrors: mapFieldErrors(data?.errors ?? {}) }

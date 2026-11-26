@@ -193,6 +193,17 @@ describe('AiComposer send (AC-021, AC-024)', () => {
     expect(textbox.value).toBe('Ciao')
   })
 
+  it('tells the person they have too many active requests (409 with its reason), keeping the draft', async () => {
+    const { textbox } = await renderComposer()
+    vi.mocked(sendAiMessage).mockRejectedValue(httpError(409, { data: { reason: 'too_many_active_turns' } }))
+    typeInto(textbox, 'Ciao')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invia' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('troppe richieste in corso')
+    expect(textbox.value).toBe('Ciao')
+  })
+
   it('sends Enter, forwards guide and mentions, shows the queued turn and blocks a second send', async () => {
     const { textbox } = await renderComposer()
     vi.mocked(sendAiMessage).mockResolvedValue(STARTED)

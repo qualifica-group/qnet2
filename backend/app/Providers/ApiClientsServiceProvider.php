@@ -48,25 +48,12 @@ class ApiClientsServiceProvider extends ServiceProvider
         });
     }
 
-    /**
-     * The assistant links of the whole company use one API client: its counter is split per person,
-     * otherwise a single heavy user would use up everybody's quota. Every other client keeps one counter.
-     */
-    private function personSuffix(Request $request, ?ApiClient $client): string
-    {
-        $assistantClientId = config('mcp-link.assistant_client_id');
-
-        return $client !== null && $assistantClientId !== null && $client->id === (int) $assistantClientId
-            ? ':user:'.$request->user('sanctum')?->getKey()
-            : '';
-    }
-
     private function limitFor(Request $request): Limit
     {
         $client = ApiClientRequestContext::resolve($request);
 
         return Limit::perMinute($client?->effectiveRateLimitPerMinute() ?? (int) config('external-api.rate_limit.default'))
-            ->by(ThrottleApiClientRequests::LIMITER.':'.$client?->getKey().$this->personSuffix($request, $client))
+            ->by(ThrottleApiClientRequests::LIMITER.':'.$client?->getKey())
             ->response(fn (Request $request, array $headers) => response()->json([
                 'success' => false,
                 'message' => __('Too many requests.'),
