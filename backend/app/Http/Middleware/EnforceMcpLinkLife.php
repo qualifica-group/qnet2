@@ -60,6 +60,8 @@ class EnforceMcpLinkLife
             ], HttpStatusEnum::FORBIDDEN->value);
         }
 
+        $request->attributes->set(McpLink::REQUEST_ATTRIBUTE, $link->id);
+
         return $next($request);
     }
 
