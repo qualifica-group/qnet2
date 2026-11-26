@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0430-commission-rules-multiple-categories-products" status="approved" owner="nicola" date="2026-11-25">
+
+  <goal>
+    Una regola commissione puo' valere per PIU' categorie di prodotto oppure per PIU' prodotti, scelti a mano
+    (es. "[OLD] Ente_Iso" + "ISO - Ente" nella stessa regola). Oggi ogni categoria o prodotto richiede una regola
+    a parte: 2.441 regole, che raggruppate sarebbero 453.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-11-25.
+    - `commission_configurations.product_category_id` / `product_id` (FK restrictOnDelete, indici di risoluzione
+      `commission_config_product_resolution_index` e gemello per categoria, CHECK `commission_configurations_scope_check`
+      aggiornato dalle migrazioni successive). Resolver `CommissionRuleResolver` (gradini 0089 D-4, ramo 0223 D-1/D-2).
+    - Le commissioni applicate (`quote_line_commissions`) puntano alla regola via `commission_configuration_id` e sono
+      snapshot: non cambiano.
+
+    Decisioni utente 2026-11-25:
+    D-1 Le regole esistenti restano come sono (nessun accorpamento automatico). Si raggruppa da qui in avanti.
+    D-2 Una regola raggruppa categorie OPPURE prodotti, non entrambi: l'ambito resta Categoria / Prodotto / Destinatario.
+    D-3 Categorie vecchie e nuove restano separate (spec 0223 D-5 rev.): nessun collegamento implicito via `current_category_id`.
+
+    Decisioni di progetto:
+    D-4 Due tabelle pivot sono l'unica fonte: `commission_configuration_product_category` e
+        `commission_configuration_product`. Le colonne `product_category_id` / `product_id` e il CHECK di ambito
+        vengono tolti dopo aver copiato i valori (una riga pivot per regola esistente). La coerenza ambito/elenchi
+        la garantisce la validazione (non piu' il CHECK).
+    D-5 Risoluzione invariata nella sostanza: Prodotto = la regola contiene il prodotto della riga. Categoria = la regola
+        contiene una categoria della catena del prodotto (la sua o un antenato); vince la categoria piu' vicina, poi il
+        tie-break attuale (priority desc, valid_from desc, id desc) fra le regole che contengono QUELLA categoria.
+    D-6 Una stessa categoria/prodotto puo' stare in piu' regole: nessun vincolo di unicita' fra regole (vale il tie-break).
+    D-7 Validazione: categorie esistenti, anche non attive (0223 D-5 rev.); prodotti `ActiveProduct` con esenzione degli
+        id gia' salvati sulla regola (0208 D-2). Elenco senza doppioni, da 1 a 500 elementi.
+    D-8 Storico: un cambio di categorie/prodotti compare nello storico attivita' della regola (old/new = elenchi di id),
+        seguendo il pattern di log gia' usato nel progetto per le relazioni molti-a-molti; se non ne esiste uno, voce
+        manuale `activity()` con properties `old`/`attributes`.
+    D-9 Migrazione dal legacy (`CommissionConfigurationsSource`): il legacy manda ancora una categoria o un prodotto per
+        regola; qnet-2 scrive la pivot con quell'unico id (sync). Nessuna modifica al legacy.
+    D-10 Seeder che leggono/scrivono le due colonne (QualificaCatalog, ManagementControl, IsoSubcategoriesConsolidation,
+        Demo*) passano alle pivot, stesso comportamento.
+  </context>
+
+  <data_contract>
+    <db>
+      `commission_configuration_product_category`: id, commission_configuration_id (FK cascadeOnDelete),
+      product_category_id (FK restrictOnDelete), timestamps nullable assenti; unique (commission_configuration_id,
+      product_category_id); indice product_category_id.
+      `commission_configuration_product`: stessa forma con product_id (FK restrictOnDelete).
+      Migrazione reversibile: up = crea pivot, copia i valori non null, toglie CHECK, indici e colonne; down = ricrea le
+      colonne nullable, le riempie con il MIN id della pivot (perdita dichiarata se una regola ne ha piu' d'uno),
+      ricrea indici e CHECK come prima, elimina le pivot.
+      `UsageMap`: `commission_configuration_product_category.product_category_id` al posto della colonna (blocca
+      l'eliminazione di una categoria usata).
+    </db>
+    <endpoint method="POST|PUT|PATCH" path="/api/commission-configurations[/{id}]">
+      <request>
+        `product_category_ids: int[]` — richiesto (1..500, distinct, exists product_categories) se `application_scope`
+        = PRODUCT_CATEGORY, vietato altrimenti. `product_ids: int[]` — richiesto (1..500, distinct, ActiveProduct con
+        esenzione dei salvati) se PRODUCT, vietato altrimenti. In PATCH valgono i valori inviati o quelli salvati
+        (cambiare ambito obbliga a inviare l'elenco del nuovo ambito; gli elenchi dell'ambito lasciato si svuotano).
+        `product_category_id` / `product_id` non esistono piu'.
+      </request>
+      <response>
+        `product_category_ids: int[]`, `product_categories: {id, name}[]` (ordinati per nome), `product_ids: int[]`,
+        `products: {id, name}[]` (ordinati per nome). Permessi di campo: chiavi `product_category_ids` e `product_ids`
+        (nascondono anche `product_categories` / `products`). Nessun permesso salvato usa le vecchie chiavi (verificato).
+      </response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/commission-configurations/rows (+ values, export)">
+      Colonne `category` e `product`: i nomi separati da ", " in ordine alfabetico. Filtro set: la regola passa se
+      ALMENO UNA sua categoria/prodotto ha un nome fra i valori; "(Vuoti)" = nessuna. Ordinamento sul primo nome in
+      ordine alfabetico. Valori distinti: nomi presenti nelle pivot. Le schede commissioni di Anagrafica e Referente
+      usano la stessa definizione.
+    </endpoint>
+  </data_contract>
+
+  <scope>
+    <in>
+      <item>Pivot + migrazione dati, model (`productCategories()`, `products()` BelongsToMany), resolver, FormRequest, DTO,
+        service (sync nella stessa transazione del salvataggio), resource, authorization field definitions, tabella,
+        sorgente migrazione legacy, seeder, UsageMap, factory, test.</item>
+      <item>Frontend: tipi, schema Zod, payload, riga Ambito con selettore multiplo (`RelationMultiSelectField`, stesse
+        risorse `product-category-nodes` / `products`), dettaglio in lettura con l'elenco (link ai prodotti).</item>
+      <item>Guida in-app IT/EN `commission-configurations` e manuale QNet.</item>
+    </in>
+    <out>
+      <item>Accorpamento delle regole esistenti (D-1).</item>
+      <item>Regola mista categorie + prodotti (D-2).</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Creo una regola Categoria con [A, B]: un prodotto di A e uno di un figlio di B ricevono la
+      commissione; un prodotto di C no.</criterion>
+    <criterion id="AC-002">Regola Prodotto con [P1, P2]: P1 e P2 la ricevono, P3 no; una regola Prodotto batte una regola
+      Categoria come oggi.</criterion>
+    <criterion id="AC-003">Due regole di categoria: R1 [Padre], R2 [Figlio, Altro]: un prodotto di Figlio prende R2
+      (categoria piu' vicina) anche se R1 ha priorita' piu' alta.</criterion>
+    <criterion id="AC-004">Validazione: elenco vuoto, doppioni, id inesistente, elenco dell'ambito sbagliato -> 422 sul
+      campo; categoria non attiva accettata; prodotto di categoria non attiva rifiutato salvo se gia' salvato.</criterion>
+    <criterion id="AC-005">La migrazione copia ogni regola esistente con la sua unica categoria/prodotto; la risoluzione
+      delle offerte esistenti da' lo stesso risultato di prima.</criterion>
+    <criterion id="AC-006">Tabella: colonna con piu' nomi, filtro su uno dei nomi trova la regola, ordinamento non rompe.</criterion>
+    <criterion id="AC-007">Eliminare una categoria usata da una regola resta bloccato; eliminare una regola elimina le sue
+      righe pivot.</criterion>
+    <criterion id="AC-008">Storico: cambiare le categorie di una regola registra una voce con elenco vecchio e nuovo.</criterion>
+    <criterion id="AC-009">Frontend: nel form scelgo piu' categorie (o prodotti), salvo, il dettaglio le mostra tutte;
+      cambiando ambito l'elenco dell'altro ambito si svuota.</criterion>
+  </acceptance>
+</spec>

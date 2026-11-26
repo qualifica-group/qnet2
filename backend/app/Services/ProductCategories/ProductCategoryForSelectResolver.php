@@ -149,14 +149,16 @@ class ProductCategoryForSelectResolver
     }
 
     /**
-     * The NODE picker (spec 0223 D-5): every active category, containers and
-     * leaves alike, `is_selectable` ignored — the commission configurator's
-     * category, whose rule covers the whole branch. A separate scope for the
-     * same reason as resolveBranches(): resolve() keeps its selectable filter.
+     * The NODE picker (spec 0223 D-5): every category, containers and leaves
+     * alike, `is_selectable` ignored — the commission configurator's category,
+     * whose rule covers the whole branch. Inactive ones included (user decision
+     * 2026-11-25): the [OLD] categories are inactive and still need their own
+     * rules, kept apart from the current ones. A separate scope for the same
+     * reason as resolveBranches(): resolve() keeps its selectable filter.
      */
     public function resolveNodes(ForSelectQuery $query): ForSelectResult
     {
-        return $this->resolvePlain(ProductCategory::query()->select(['id', 'name']), $query);
+        return $this->resolvePlain(ProductCategory::query()->select(['id', 'name']), $query, includeInactive: true);
     }
 
     /**

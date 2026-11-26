@@ -84,29 +84,30 @@ it('turns a subcategory commission rule into product rules, keeping an existing 
     $second = ($this->product)($sa8000, $this->consultancy);
     $reporter = Referent::factory()->create();
     $attributes = ['recipient_role' => CommissionRecipientRole::Reporter, 'recipient_type' => $reporter->getMorphClass(), 'recipient_id' => $reporter->id];
-    $categoryRule = CommissionConfiguration::factory()->create([...$attributes, 'application_scope' => CommissionApplicationScope::ProductCategory, 'product_category_id' => $sa8000->id, 'product_id' => null, 'value' => 10]);
-    $productRule = CommissionConfiguration::factory()->create([...$attributes, 'product_id' => $second->id, 'value' => 7]);
+    $categoryRule = CommissionConfiguration::factory()->forCategories([$sa8000->id])->create([...$attributes, 'application_scope' => CommissionApplicationScope::ProductCategory, 'value' => 10]);
+    $productRule = CommissionConfiguration::factory()->forProducts([$second->id])->create([...$attributes, 'value' => 7]);
 
     $this->seed(Seeder::class);
 
-    $rules = CommissionConfiguration::query()->where('recipient_id', $reporter->id)->get();
+    $rules = CommissionConfiguration::query()->where('recipient_id', $reporter->id)->with('products:id')->get();
+    $ruleOn = fn (Product $product) => $rules->first(fn (CommissionConfiguration $rule) => $rule->products->contains('id', $product->id));
     expect(CommissionConfiguration::query()->whereKey($categoryRule->id)->exists())->toBeFalse()
         ->and($rules)->toHaveCount(2)
-        ->and((float) $rules->firstWhere('product_id', $first->id)->value)->toBe(10.0)
-        ->and($rules->firstWhere('product_id', $first->id)->application_scope)->toBe(CommissionApplicationScope::Product)
+        ->and((float) $ruleOn($first)->value)->toBe(10.0)
+        ->and($ruleOn($first)->application_scope)->toBe(CommissionApplicationScope::Product)
         ->and((float) $productRule->fresh()->value)->toBe(7.0);
 });
 
 it('keeps an already applied subcategory rule as suspended history on the destination', function () {
     $sa8000 = ($this->subcategory)('ISO - SA8000');
     ($this->product)($sa8000, $this->consultancy);
-    $rule = CommissionConfiguration::factory()->create(['application_scope' => CommissionApplicationScope::ProductCategory, 'product_category_id' => $sa8000->id, 'product_id' => null]);
+    $rule = CommissionConfiguration::factory()->forCategories([$sa8000->id])->create(['application_scope' => CommissionApplicationScope::ProductCategory]);
     QuoteLineCommission::factory()->create(['commission_configuration_id' => $rule->id]);
 
     $this->seed(Seeder::class);
 
     expect($rule->fresh()->status)->toBe(CommissionConfigurationStatus::Suspended)
-        ->and($rule->fresh()->product_category_id)->toBe(($this->destination)(Seeder::CONSULTANCY_CATEGORY)->id);
+        ->and($rule->fresh()->product_category_ids)->toBe([($this->destination)(Seeder::CONSULTANCY_CATEGORY)->id]);
 });
 
 it('points the favourite tabs at the destinations and changes nothing when re-run', function () {

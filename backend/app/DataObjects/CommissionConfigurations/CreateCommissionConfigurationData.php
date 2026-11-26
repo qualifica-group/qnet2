@@ -16,8 +16,10 @@ final readonly class CreateCommissionConfigurationData
         public string $name,
         public CommissionRecipientRole $recipientRole,
         public CommissionApplicationScope $applicationScope,
-        public ?int $productCategoryId,
-        public ?int $productId,
+        /** @var list<int> */
+        public array $productCategoryIds,
+        /** @var list<int> */
+        public array $productIds,
         public ?int $recipientId,
         public ?string $recipientType,
         public CommissionType $commissionType,
@@ -40,8 +42,8 @@ final readonly class CreateCommissionConfigurationData
             name: (string) $data['name'],
             recipientRole: $recipientRole,
             applicationScope: CommissionApplicationScope::from($data['application_scope']),
-            productCategoryId: isset($data['product_category_id']) ? (int) $data['product_category_id'] : null,
-            productId: isset($data['product_id']) ? (int) $data['product_id'] : null,
+            productCategoryIds: self::ids($data['product_category_ids'] ?? []),
+            productIds: self::ids($data['product_ids'] ?? []),
             recipientId: $recipientId,
             // Spec 0090 D-4 (emends 0089 D-7): honours a submitted
             // `recipient_type` (validated against the role's allow-list by
@@ -62,6 +64,15 @@ final readonly class CreateCommissionConfigurationData
         );
     }
 
+    /**
+     * @param  array<int, mixed>  $ids
+     * @return list<int>
+     */
+    public static function ids(array $ids): array
+    {
+        return array_values(array_map(intval(...), $ids));
+    }
+
     /** @return array<string, mixed> */
     public function attributes(): array
     {
@@ -69,8 +80,6 @@ final readonly class CreateCommissionConfigurationData
             'name' => $this->name,
             'recipient_role' => $this->recipientRole,
             'application_scope' => $this->applicationScope,
-            'product_category_id' => $this->productCategoryId,
-            'product_id' => $this->productId,
             'recipient_type' => $this->recipientType,
             'recipient_id' => $this->recipientId,
             'commission_type' => $this->commissionType,

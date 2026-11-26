@@ -265,11 +265,11 @@ it('commission configurations create: an unselectable container category is acce
         'name' => 'Branch rule',
         'recipient_role' => 'COMMERCIAL',
         'application_scope' => 'PRODUCT_CATEGORY',
-        'product_category_id' => $container->id,
+        'product_category_ids' => [$container->id],
         'commission_type' => 'PERCENTAGE',
         'value' => 5,
         'priority' => 0,
         'valid_from' => '2026-01-01',
         'status' => 'ACTIVE',
-    ])->assertCreated()->assertJsonPath('data.product_category_id', $container->id);
+    ])->assertCreated()->assertJsonPath('data.product_category_ids', [$container->id]);
 });

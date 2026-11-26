@@ -9,13 +9,12 @@ use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\CommissionConfiguration;
-use App\Models\Product;
-use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\CommissionConfigurationService;
 use App\Tables\CommissionConfigurations\CommissionConfigurationAdvancedFilterCatalog;
 use App\Tables\CommissionConfigurations\CommissionConfigurationColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
@@ -28,8 +27,8 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         'name' => 'name',
         'recipient_role' => 'recipient_role',
         'application_scope' => 'application_scope',
-        'category' => 'product_category_id',
-        'product' => 'product_id',
+        'category' => 'product_category_ids',
+        'product' => 'product_ids',
         'commission_type' => 'commission_type',
         'value' => 'value',
         'priority' => 'priority',
@@ -58,7 +57,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
 
     public function baseQuery(): Builder
     {
-        return CommissionConfiguration::query()->with(['productCategory', 'product', 'recipient']);
+        return CommissionConfiguration::query()->with(['productCategories:id,name', 'products:id,name', 'recipient']);
     }
 
     public function columns(): array
@@ -140,8 +139,8 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             'name' => $row->name,
             'recipient_role' => $row->recipient_role->value,
             'application_scope' => $row->application_scope->value,
-            'category' => $row->productCategory?->name,
-            'product' => $row->product?->name,
+            'category' => $this->joinedNames($row->productCategories),
+            'product' => $this->joinedNames($row->products),
             'commission_type' => $row->commission_type->value,
             'value' => (float) $row->value,
             'priority' => $row->priority,
@@ -180,8 +179,8 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         }
 
         $relation = match ($columnId) {
-            'category' => 'productCategory',
-            'product' => 'product',
+            'category' => 'productCategories',
+            'product' => 'products',
             default => null,
         };
 
@@ -198,7 +197,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
 
         $query->where(static function (Builder $group) use ($relation, $values, $matchesBlank): void {
             if ($values !== []) {
-                $group->whereHas($relation, fn (Builder $related) => $related->whereIn('name', array_slice($values, 0, 200)));
+                $group->whereHas($relation, fn (Builder $related) => $related->whereIn($related->getModel()->getTable().'.name', array_slice($values, 0, 200)));
             }
 
             // The blank entry ("(Vuoti)"): the rules pointing at no related row.
@@ -239,15 +238,16 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
 
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        // The first name in alphabetical order of the rule's categories / products.
         $subquery = match ($columnId) {
-            'category' => ProductCategory::query()
-                ->select('name')
-                ->whereColumn('product_categories.id', 'commission_configurations.product_category_id')
-                ->limit(1),
-            'product' => Product::query()
-                ->select('name')
-                ->whereColumn('products.id', 'commission_configurations.product_id')
-                ->limit(1),
+            'category' => DB::table('commission_configuration_product_category as sort_pivot')
+                ->join('product_categories as sort_related', 'sort_related.id', '=', 'sort_pivot.product_category_id')
+                ->whereColumn('sort_pivot.commission_configuration_id', 'commission_configurations.id')
+                ->selectRaw('MIN(sort_related.name)'),
+            'product' => DB::table('commission_configuration_product as sort_pivot')
+                ->join('products as sort_related', 'sort_related.id', '=', 'sort_pivot.product_id')
+                ->whereColumn('sort_pivot.commission_configuration_id', 'commission_configurations.id')
+                ->selectRaw('MIN(sort_related.name)'),
             default => null,
         };
 
@@ -272,13 +272,13 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             return $this->distinctRecipientValues($actor, $search, $query, $limit);
         }
 
-        [$table, $foreignKey] = match ($columnId) {
-            'category' => ['product_categories', 'product_category_id'],
-            'product' => ['products', 'product_id'],
-            default => [null, null],
+        [$table, $pivot, $foreignKey] = match ($columnId) {
+            'category' => ['product_categories', 'commission_configuration_product_category', 'product_category_id'],
+            'product' => ['products', 'commission_configuration_product', 'product_id'],
+            default => [null, null, null],
         };
 
-        if ($table === null || $foreignKey === null) {
+        if ($table === null) {
             return null;
         }
 
@@ -288,7 +288,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         }
 
         $values = DB::table($table)
-            ->whereIn('id', (clone $query)->whereNotNull($foreignKey)->select($foreignKey))
+            ->whereIn('id', DB::table($pivot)->whereIn('commission_configuration_id', (clone $query)->select('commission_configurations.id'))->select($foreignKey))
             ->when($search !== null && $search !== '', fn ($builder) => $builder->where('name', 'like', '%'.$this->escapeLike($search).'%'))
             ->distinct()
             ->orderBy('name')
@@ -298,7 +298,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             ->all();
 
         return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
-            ->whereNull($foreignKey)
+            ->whereDoesntHave($columnId === 'category' ? 'productCategories' : 'products')
             ->exists());
     }
 
@@ -384,6 +384,14 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             ->resolve('commission-configurations')
             ->fieldPermissions($actor, $configuration)[$field]
             ->visible;
+    }
+
+    /**
+     * @param  Collection<int, Model>  $related
+     */
+    private function joinedNames(Collection $related): ?string
+    {
+        return $related->isEmpty() ? null : $related->pluck('name')->sort(SORT_NATURAL | SORT_FLAG_CASE)->implode(', ');
     }
 
     private function escapeLike(string $value): string

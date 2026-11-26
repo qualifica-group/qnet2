@@ -22,22 +22,35 @@ const MIN_VIEWPORT_RATIO = 0.5
 interface UseViewportTableHeightOptions {
   /** Off in fullscreen, where a flex parent owns the height. */
   enabled: boolean
-  /** Ceiling: the height the current page of rows actually needs. */
-  maxHeight: number
+}
+
+/**
+ * Height of the siblings rendered after the grid inside its frame (pinned
+ * summary row, footer): they must fit on the same screenful. Summed from the
+ * siblings themselves rather than read off the frame's bottom edge, which a
+ * stretched frame would push down and feed back into the grid height.
+ */
+function trailingSiblingsHeight(node: HTMLElement): number {
+  let total = 0
+  for (let sibling = node.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
+    if (sibling instanceof HTMLElement) {
+      total += sibling.offsetHeight
+    }
+  }
+
+  return total
 }
 
 /**
  * Sizes a grid container to the screen: it fills what is left of the first
  * screenful below whatever chrome the module renders above it (page header,
- * stats, tabs, toolbar, filter panel), floored at half the viewport and capped
- * at the height the page of rows needs.
+ * stats, tabs, toolbar, filter panel) and above what follows it in its frame,
+ * floored at half the viewport. A taller screen draws a taller grid whatever
+ * the page size: the grid always reaches the bottom of the screen.
  *
  * Attach `containerRef` to the element the returned `height` is applied to.
  */
-export function useViewportTableHeight({
-  enabled,
-  maxHeight,
-}: UseViewportTableHeightOptions) {
+export function useViewportTableHeight({ enabled }: UseViewportTableHeightOptions) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [height, setHeight] = useState<number | null>(null)
 
@@ -51,13 +64,12 @@ export function useViewportTableHeight({
     // which allows more scroll — a feedback loop. Measured this way the result
     // is the same at any scroll position.
     const documentTop = node.getBoundingClientRect().top + window.scrollY
-    const available = window.innerHeight - documentTop - VIEWPORT_BOTTOM_GAP
+    const available =
+      window.innerHeight - documentTop - trailingSiblingsHeight(node) - VIEWPORT_BOTTOM_GAP
     const floor = Math.max(MIN_TABLE_HEIGHT, window.innerHeight * MIN_VIEWPORT_RATIO)
 
-    // The content ceiling wins over the floor: a 5-row page never draws an
-    // empty half-screen of grid.
-    setHeight(Math.round(Math.min(Math.max(available, floor), maxHeight)))
-  }, [maxHeight])
+    setHeight(Math.round(Math.max(available, floor)))
+  }, [])
 
   useLayoutEffect(() => {
     if (!enabled) {

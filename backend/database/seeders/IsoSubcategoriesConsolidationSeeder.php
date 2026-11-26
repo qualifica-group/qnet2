@@ -180,14 +180,22 @@ class IsoSubcategoriesConsolidationSeeder extends Seeder
     private function convertCommissionRules(Collection $destinationOf, Collection $productsByCategory): array
     {
         $counts = ['converted' => 0, 'created' => 0];
-        $rules = CommissionConfiguration::query()->whereIn('product_category_id', $destinationOf->keys())->get();
+        $rules = CommissionConfiguration::query()
+            ->whereHas('productCategories', fn ($categories) => $categories->whereIn('product_categories.id', $destinationOf->keys()))
+            ->with('productCategories:id')
+            ->get();
 
         foreach ($rules as $rule) {
-            foreach ($productsByCategory->get($rule->product_category_id, collect()) as $product) {
-                $counts['created'] += (int) $this->productRule($rule, $product);
+            $categoryIds = $rule->productCategories->pluck('id');
+            $retiredIds = $categoryIds->intersect($destinationOf->keys());
+
+            foreach ($retiredIds as $retiredId) {
+                foreach ($productsByCategory->get($retiredId, collect()) as $product) {
+                    $counts['created'] += (int) $this->productRule($rule, $product);
+                }
             }
 
-            $this->retireRule($rule, $destinationOf->get($rule->product_category_id));
+            $this->retireRule($rule, $categoryIds->diff($retiredIds)->values(), $retiredIds->map(fn (int $id): int => $destinationOf->get($id))->unique()->values());
             $counts['converted']++;
         }
 
@@ -198,7 +206,7 @@ class IsoSubcategoriesConsolidationSeeder extends Seeder
     {
         $exists = CommissionConfiguration::query()
             ->where('application_scope', CommissionApplicationScope::Product)
-            ->where('product_id', $product->id)
+            ->whereHas('products', fn ($products) => $products->where('products.id', $product->id))
             ->where('recipient_role', $rule->recipient_role)
             ->where('recipient_type', $rule->recipient_type)
             ->where('recipient_id', $rule->recipient_id)
@@ -208,28 +216,37 @@ class IsoSubcategoriesConsolidationSeeder extends Seeder
             return false;
         }
 
-        $rule->replicate()->fill([
-            'application_scope' => CommissionApplicationScope::Product,
-            'product_category_id' => null,
-            'product_id' => $product->id,
-        ])->save();
+        $productRule = $rule->replicate()->fill(['application_scope' => CommissionApplicationScope::Product]);
+        $productRule->save();
+        $productRule->products()->attach($product->id);
 
         return true;
     }
 
     /**
      * A rule already applied to quote lines stays as history: suspended, on
-     * the destination, since its old category is about to go.
+     * the destination, since its old category is about to go. A rule that also
+     * holds categories outside the retired ones keeps only those.
+     *
+     * @param  Collection<int, int>  $remainingIds  the rule's categories that are not retired
+     * @param  Collection<int, int>  $destinationIds  where its retired categories go
      */
-    private function retireRule(CommissionConfiguration $rule, int $destinationId): void
+    private function retireRule(CommissionConfiguration $rule, Collection $remainingIds, Collection $destinationIds): void
     {
+        if ($remainingIds->isNotEmpty()) {
+            $rule->productCategories()->sync($remainingIds->all());
+
+            return;
+        }
+
         if (! $rule->appliedCommissions()->exists()) {
             $rule->delete();
 
             return;
         }
 
-        $rule->update(['product_category_id' => $destinationId, 'status' => CommissionConfigurationStatus::Suspended]);
+        $rule->productCategories()->sync($destinationIds->all());
+        $rule->update(['status' => CommissionConfigurationStatus::Suspended]);
     }
 
     /**

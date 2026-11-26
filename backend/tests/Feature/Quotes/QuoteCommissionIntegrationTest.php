@@ -54,11 +54,9 @@ it('initializes only recipient-backed revenue commissions and summarizes authori
     $opportunity = Opportunity::factory()->create(['commercial_id' => $commercial->id]);
 
     foreach ([CommissionRecipientRole::Commercial, CommissionRecipientRole::Reporter, CommissionRecipientRole::Supplier] as $role) {
-        CommissionConfiguration::factory()->create([
+        CommissionConfiguration::factory()->forProducts([$product->id])->create([
             'recipient_role' => $role,
             'application_scope' => CommissionApplicationScope::Product,
-            'product_id' => $product->id,
-            'product_category_id' => null,
             'value' => $role === CommissionRecipientRole::Supplier ? 10 : 5,
             'valid_from' => '2026-01-01',
         ]);
@@ -233,11 +231,9 @@ it('repeats automatic resolution when the submitted commission collection is sta
         'net_amount' => 100,
         'total_amount' => 100,
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'value' => 5,
         'valid_from' => '2026-01-01',
     ]);
@@ -272,11 +268,9 @@ it('initializes a role when its recipient is assigned later and removes its auto
         'net_amount' => 100,
         'total_amount' => 100,
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'valid_from' => '2026-01-01',
     ]);
     Sanctum::actingAs(quoteCommissionActor(['update']));
@@ -307,11 +301,9 @@ it('moves an automatic commission to the current quote recipient without refresh
         'net_amount' => 100,
         'total_amount' => 100,
     ]);
-    $configuration = CommissionConfiguration::factory()->create([
+    $configuration = CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'value' => 5,
         'valid_from' => '2026-01-01',
     ]);
@@ -347,11 +339,9 @@ it('moves an automatic commission to the current quote recipient without refresh
 it('AC-034 rev.: a discount row (negative net) gets its defaults on a zero base, never a negative commission', function () {
     $commercial = Referent::factory()->create();
     $product = Product::factory()->create();
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'value' => 7,
         'valid_from' => '2026-01-01',
     ]);
@@ -442,11 +432,9 @@ it('updates retained quote lines in place while deleting omissions and creating 
 it('initializes defaults in quote-create context and denies missing quote abilities', function () {
     $commercial = Referent::factory()->create();
     $product = Product::factory()->create();
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::Commercial,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'value' => 7,
         'valid_from' => '2026-01-01',
     ]);
@@ -474,11 +462,9 @@ it('initializes defaults in quote-create context and denies missing quote abilit
 it('spec 0417 AC-008/AC-009: a COMMERCIAL_PARTNER configuration yields a commission for the partner only, and the summary sums it', function () {
     $partner = Referent::factory()->create();
     $product = Product::factory()->create();
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$product->id])->create([
         'recipient_role' => CommissionRecipientRole::CommercialPartner,
         'application_scope' => CommissionApplicationScope::Product,
-        'product_id' => $product->id,
-        'product_category_id' => null,
         'value' => 8,
         'valid_from' => '2026-01-01',
     ]);

@@ -15,8 +15,8 @@ export function createDefaults(preset: CommissionRecipientPreset | null | undefi
     name: '',
     recipient_role: role,
     application_scope: preset ? 'RECIPIENT' : 'PRODUCT_CATEGORY',
-    product_category_id: null,
-    product_id: null,
+    product_category_ids: [],
+    product_ids: [],
     recipient_type: COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[role][0],
     recipient_id: preset?.recipientId ?? null,
     commission_type: 'PERCENTAGE',
@@ -36,8 +36,8 @@ export function toFormValues(configuration: CommissionConfigurationDetail): Comm
     name: configuration.name,
     recipient_role: configuration.recipient_role,
     application_scope: configuration.application_scope,
-    product_category_id: configuration.product_category_id,
-    product_id: configuration.product_id,
+    product_category_ids: configuration.product_category_ids,
+    product_ids: configuration.product_ids,
     // Omitted when not visible for field permission: falls back to the
     // role's default (server-side derivation, spec 0090 D-4).
     recipient_type:
@@ -58,8 +58,8 @@ export function toFormValues(configuration: CommissionConfigurationDetail): Comm
 export function buildCreatePayload(values: CommissionConfigurationFormValues): CommissionConfigurationPayload {
   return {
     ...values,
-    product_category_id: values.application_scope === 'PRODUCT_CATEGORY' ? values.product_category_id : null,
-    product_id: values.application_scope === 'PRODUCT' ? values.product_id : null,
+    product_category_ids: values.application_scope === 'PRODUCT_CATEGORY' ? values.product_category_ids : [],
+    product_ids: values.application_scope === 'PRODUCT' ? values.product_ids : [],
     // recipient_type/recipient_id are orthogonal to application_scope (D-2):
     // sent as-is, whichever scope is active.
     recipient_type: values.recipient_type,
@@ -70,6 +70,14 @@ export function buildCreatePayload(values: CommissionConfigurationFormValues): C
     valid_until: values.valid_until || null,
     internal_note: values.internal_note || null,
   }
+}
+
+/** Scalars compare by identity; the id lists by content (a re-picked list is a new array). */
+function isSameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((item, index) => item === b[index])
+  }
+  return a === b
 }
 
 /**
@@ -85,7 +93,7 @@ export function buildUpdatePayload(
   const previous = buildCreatePayload(original)
   const changed: Record<string, unknown> = {}
   for (const key of Object.keys(next) as (keyof CommissionConfigurationPayload)[]) {
-    if (next[key] !== previous[key]) {
+    if (!isSameValue(next[key], previous[key])) {
       changed[key] = next[key]
     }
   }

@@ -66,11 +66,11 @@ beforeEach(function () {
 function reporterRules(Referent $referent): array
 {
     return CommissionConfiguration::query()
-        ->with(['productCategory', 'product'])
+        ->with(['productCategories', 'products'])
         ->where('recipient_type', 'referent')
         ->where('recipient_id', $referent->id)
         ->get()
-        ->mapWithKeys(fn (CommissionConfiguration $rule) => [($rule->product ?? $rule->productCategory)->name => $rule])
+        ->mapWithKeys(fn (CommissionConfiguration $rule) => [($rule->products->first() ?? $rule->productCategories->first())->name => $rule])
         ->all();
 }
 
@@ -174,9 +174,9 @@ it('converges on a re-run: restores edited rules, drops stale and orphaned seede
     $edited = reporterRules($carbone)['ISO'];
     $edited->update(['value' => '12']);
     $extra = ProductCategory::factory()->create(['name' => 'Altro']);
-    $stale = CommissionConfiguration::factory()->create([
+    $stale = CommissionConfiguration::factory()->forCategories([$extra->id])->create([
         'name' => 'Segnalatore - Antonio Carbone - Altro', 'recipient_role' => CommissionRecipientRole::Reporter,
-        'application_scope' => CommissionApplicationScope::ProductCategory, 'product_category_id' => $extra->id, 'product_id' => null,
+        'application_scope' => CommissionApplicationScope::ProductCategory,
         'recipient_type' => 'referent', 'recipient_id' => $carbone->id,
     ]);
     $handMade = $stale->replicate()->fill(['name' => 'Accordo speciale Carbone']);

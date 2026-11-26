@@ -37,7 +37,7 @@ it('supports authorized CRUD with cross-field validation and protected deletion'
         'name' => 'Sales product rule',
         'recipient_role' => 'COMMERCIAL',
         'application_scope' => 'PRODUCT',
-        'product_id' => $product->id,
+        'product_ids' => [$product->id],
         'commission_type' => 'PERCENTAGE',
         'value' => '5.5000',
         'priority' => 10,
@@ -54,13 +54,13 @@ it('supports authorized CRUD with cross-field validation and protected deletion'
         'name' => 'Invalid scope',
         'recipient_role' => 'COMMERCIAL',
         'application_scope' => 'PRODUCT',
-        'product_category_id' => $product->category_id,
+        'product_category_ids' => [$product->category_id],
         'commission_type' => 'PERCENTAGE',
         'value' => 5,
         'priority' => 0,
         'valid_from' => '2026-01-01',
         'status' => 'ACTIVE',
-    ])->assertUnprocessable()->assertJsonValidationErrors(['product_id', 'product_category_id']);
+    ])->assertUnprocessable()->assertJsonValidationErrors(['product_ids', 'product_category_ids']);
 
     $configuration = CommissionConfiguration::findOrFail($id);
     QuoteLineCommission::factory()->create(['commission_configuration_id' => $configuration->id]);
@@ -132,7 +132,7 @@ it('redacts hidden fields from detail and activity log responses', function () {
         'commission-configurations.view',
         'commission-configurations.viewActivity',
     ]);
-    foreach (['product_id', 'valid_until', 'internal_note'] as $field) {
+    foreach (['product_ids', 'valid_until', 'internal_note'] as $field) {
         $role->fieldPermissions()->create([
             'resource' => 'commission-configurations',
             'field' => $field,
@@ -146,21 +146,19 @@ it('redacts hidden fields from detail and activity log responses', function () {
     $actor->assignRole($role);
     Sanctum::actingAs($actor);
 
-    $configuration = CommissionConfiguration::factory()->create([
-        'product_id' => Product::factory()->create()->id,
-        'product_category_id' => null,
+    $configuration = CommissionConfiguration::factory()->forProducts([Product::factory()->create()->id])->create([
         'valid_until' => '2026-12-31',
         'internal_note' => 'Sensitive internal commission note',
     ]);
 
     $detail = $this->getJson("/api/commission-configurations/{$configuration->id}")
         ->assertOk()
-        ->assertJsonPath('permissions.fields.product_id.hidden', true)
+        ->assertJsonPath('permissions.fields.product_ids.hidden', true)
         ->json('data');
 
     expect($detail)->not->toHaveKeys([
-        'product_id',
-        'product',
+        'product_ids',
+        'products',
         'valid_until',
         'internal_note',
     ]);
@@ -182,7 +180,7 @@ it('redacts hidden fields from detail and activity log responses', function () {
             ->json('data.items'),
     )->flatMap(fn (array $activity): array => collect($activity['changes'])->pluck('field')->all());
 
-    expect($activityFields)->not->toContain('product_id', 'valid_until', 'internal_note');
+    expect($activityFields)->not->toContain('product_ids', 'valid_until', 'internal_note');
 });
 
 it('deletes an unreferenced configuration through REST and preserves the same guard in bulk delete', function () {
@@ -220,7 +218,7 @@ it('denies every configurator controller action without its matching ability', f
         'name' => 'Forbidden rule',
         'recipient_role' => 'COMMERCIAL',
         'application_scope' => 'PRODUCT',
-        'product_id' => $product->id,
+        'product_ids' => [$product->id],
         'commission_type' => 'PERCENTAGE',
         'value' => 5,
         'priority' => 0,
@@ -238,27 +236,19 @@ it('filters, sorts and resolves distinct values for derived category and product
     $zetaCategory = ProductCategory::factory()->create(['name' => 'Zeta category']);
     $alphaProduct = Product::factory()->create(['name' => 'Alpha product', 'category_id' => $alphaCategory->id]);
     $zetaProduct = Product::factory()->create(['name' => 'Zeta product', 'category_id' => $zetaCategory->id]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$alphaProduct->id])->create([
         'name' => 'Alpha rule',
-        'product_id' => $alphaProduct->id,
-        'product_category_id' => null,
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forProducts([$zetaProduct->id])->create([
         'name' => 'Zeta rule',
-        'product_id' => $zetaProduct->id,
-        'product_category_id' => null,
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forCategories([$alphaCategory->id])->create([
         'name' => 'Alpha category rule',
         'application_scope' => 'PRODUCT_CATEGORY',
-        'product_id' => null,
-        'product_category_id' => $alphaCategory->id,
     ]);
-    CommissionConfiguration::factory()->create([
+    CommissionConfiguration::factory()->forCategories([$zetaCategory->id])->create([
         'name' => 'Zeta category rule',
         'application_scope' => 'PRODUCT_CATEGORY',
-        'product_id' => null,
-        'product_category_id' => $zetaCategory->id,
     ]);
 
     $filtered = $this->postJson('/api/tables/commission-configurations/rows', [

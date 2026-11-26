@@ -1,8 +1,6 @@
 import { useCallback, useMemo, type RefObject } from 'react'
 import type { TFunction } from 'i18next'
 import type { GridApi } from 'ag-grid-community'
-import { estimateGridHeight } from '@/components/data-table/data-table-theme'
-import { useUiScale } from '@/features/appearance/ui-scale-context'
 import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
 import type { AdvancedFilterDescriptor } from '@/features/table/advanced-filters/types'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
@@ -213,17 +211,10 @@ export function useTableViewFiltersState(
   }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions, inlineAllActions, resolveActionState, domain, resolveActionHref])
 
   // Fit the grid to the screen instead of a fixed height: it takes what is
-  // left of the viewport below this module's chrome, never taller than the
-  // page of rows needs (no empty grid under the last row on a large screen).
-  // Skipped in fullscreen, where the flex parent owns the height.
-  const { factor } = useUiScale()
-  const maxGridHeight = useMemo(
-    () => estimateGridHeight(config?.defaultPagination.limit ?? FALLBACK_PAGE_SIZE, factor),
-    [config?.defaultPagination.limit, factor],
-  )
+  // left of the viewport below this module's chrome, down to the bottom of the
+  // screen. Skipped in fullscreen, where the flex parent owns the height.
   const { containerRef: gridContainerRef, height: gridHeight } = useViewportTableHeight({
     enabled: !fullscreen,
-    maxHeight: maxGridHeight,
   })
 
   return {
@@ -246,10 +237,3 @@ export function useTableViewFiltersState(
     gridHeight,
   }
 }
-
-/**
- * Page size assumed while the config is still loading, only to size the grid
- * container: it mirrors the limit every `TableDefinition::defaultPagination`
- * returns, so the skeleton block does not resize when the real config lands.
- */
-const FALLBACK_PAGE_SIZE = 25

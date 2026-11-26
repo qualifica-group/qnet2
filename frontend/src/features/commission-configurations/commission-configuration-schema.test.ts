@@ -6,8 +6,8 @@ const valid = {
   name: 'Sales product rule',
   recipient_role: 'COMMERCIAL' as const,
   application_scope: 'PRODUCT' as const,
-  product_category_id: null,
-  product_id: 10,
+  product_category_ids: [],
+  product_ids: [10],
   recipient_type: 'referent' as const,
   recipient_id: null,
   commission_type: 'PERCENTAGE' as const,
@@ -23,14 +23,14 @@ const valid = {
 describe('commission configuration schema', () => {
   it('requires the relation selected by scope', () => {
     expect(
-      buildCommissionConfigurationSchema(t).safeParse({ ...valid, product_id: null }).success,
+      buildCommissionConfigurationSchema(t).safeParse({ ...valid, product_ids: [] }).success,
     ).toBe(false)
     expect(
       buildCommissionConfigurationSchema(t).safeParse({
         ...valid,
         application_scope: 'PRODUCT_CATEGORY',
-        product_id: null,
-        product_category_id: null,
+        product_ids: [],
+        product_category_ids: [],
       }).success,
     ).toBe(false)
   })
@@ -48,7 +48,7 @@ describe('commission configuration schema', () => {
     const result = buildCommissionConfigurationSchema(t).safeParse({
       ...valid,
       application_scope: 'RECIPIENT',
-      product_id: null,
+      product_ids: [],
       recipient_id: null,
     })
     expect(result.success).toBe(false)
@@ -62,7 +62,7 @@ describe('commission configuration schema', () => {
       buildCommissionConfigurationSchema(t).safeParse({
         ...valid,
         application_scope: 'RECIPIENT',
-        product_id: null,
+        product_ids: [],
         recipient_id: 42,
       }).success,
     ).toBe(true)

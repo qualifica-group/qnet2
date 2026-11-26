@@ -8,6 +8,8 @@ it('translates anglicized Italy names to Italian and passes everything else thro
         ->and(GeoNameLocalizer::toItalian('Apulia'))->toBe('Puglia')
         ->and(GeoNameLocalizer::toItalian('Naples'))->toBe('Napoli')
         ->and(GeoNameLocalizer::toItalian('South Tyrol'))->toBe('Bolzano')
+        ->and(GeoNameLocalizer::toItalian('Sannicandro Garganico'))->toBe('San Nicandro Garganico')
+        ->and(GeoNameLocalizer::toItalian('Sannicandro di Bari'))->toBe('Sannicandro di Bari')
         // Already-Italian dataset names pass through untouched.
         ->and(GeoNameLocalizer::toItalian('Campania'))->toBe('Campania')
         ->and(GeoNameLocalizer::toItalian('Avellino'))->toBe('Avellino')
