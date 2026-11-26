@@ -8,7 +8,6 @@ use App\Enums\AiMessageRole;
 use App\Enums\AiTurnStatus;
 use App\Jobs\AiAssistant\RunAiTurn;
 use App\Models\AiConversation;
-use App\Models\AiMessage;
 use App\Models\AiTurn;
 use App\Models\Attachment;
 use App\Models\User;

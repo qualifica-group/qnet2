@@ -13,7 +13,7 @@ final readonly class AgentModelResult
     /**
      * @param  list<array{id: string, name: string, arguments: string}>  $toolCalls
      * @param  list<array<string, mixed>>  $reasoningDetails
-     * @param  array{input_tokens: int, output_tokens: int, cached_tokens: int, reasoning_tokens: int, cost: float}  $usage
+     * @param  array<string, mixed>  $rawUsage  the `usage` object of the last chunk, as OpenRouter sent it
      */
     public function __construct(
         public string $text,
@@ -21,7 +21,8 @@ final readonly class AgentModelResult
         public array $reasoningDetails,
         public ?string $reasoning,
         public string $finishReason,
-        public array $usage,
+        public array $rawUsage,
         public ?string $model,
+        public ?string $provider,
     ) {}
 }

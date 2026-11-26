@@ -6,10 +6,10 @@ use App\Jobs\AiAssistant\RunAiTurn;
 use App\Models\AiAssistantSetting;
 use App\Models\AiMessage;
 use App\Models\AiTurn;
-use App\Services\AiAssistant\Agent\AiTurnRunner;
-use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use App\Models\Company;
 use App\Models\User;
+use App\Services\AiAssistant\Agent\AiTurnRunner;
+use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -114,7 +114,7 @@ it('AC-003: a list in one tool call: the model asks, the connector answers with 
         ->and($call->body())->toContain('"name":"list_records"')->toContain('"arguments":{"domain":"work-orders"}');
 
     // The second model round carries the assistant tool call and the connector result untouched.
-    $second = aiapi_sent('openrouter.test')[1]['messages'];
+    $second = aiapi_sent('chat/completions')[1]['messages'];
     expect(end($second))->toBe(['role' => 'tool', 'tool_call_id' => 'call_1', 'content' => $envelope])
         ->and($second[count($second) - 2]['tool_calls'][0]['function'])->toBe(['name' => 'list_records', 'arguments' => '{"domain":"work-orders"}']);
     expect($turn->fresh()->usage)->toMatchArray(['model_calls' => 2, 'tool_calls' => 1, 'input_tokens' => 150, 'cost_usd' => '0.001700']);
@@ -126,7 +126,7 @@ it('sends the reasoning blocks back unchanged after a tool call', function () {
 
     [, $turn] = turn_send();
 
-    $assistant = aiapi_sent('openrouter.test')[1]['messages'];
+    $assistant = aiapi_sent('chat/completions')[1]['messages'];
     expect($turn->fresh()->status)->toBe(AiTurnStatus::Completed)
         ->and($assistant[count($assistant) - 2]['reasoning_details'])->toBe($details);
 });
@@ -137,7 +137,7 @@ it('AC-005: a tool name outside the allowed list is discarded and never reaches 
     [, $turn] = turn_send();
 
     $methods = collect(aiapi_sent('connector.test'))->pluck('method')->all();
-    $messages = aiapi_sent('openrouter.test')[1]['messages'];
+    $messages = aiapi_sent('chat/completions')[1]['messages'];
     expect($turn->fresh()->status)->toBe(AiTurnStatus::Completed)
         ->and($methods)->toBe(['tools/list'])
         ->and($turn->fresh()->steps)->toBeNull()
@@ -150,7 +150,7 @@ it('publishes only the allowed tools to the model, in a fixed order, even if the
 
     turn_send();
 
-    $names = array_map(fn (array $tool): string => $tool['function']['name'], aiapi_sent('openrouter.test')[0]['tools']);
+    $names = array_map(fn (array $tool): string => $tool['function']['name'], aiapi_sent('chat/completions')[0]['tools']);
     expect($names)->toBe(['search_operations', 'list_records', 'run_read_code']);
 });
 
@@ -159,20 +159,17 @@ it('arguments that are not a JSON object go back to the model as an error, with 
 
     [, $turn] = turn_send();
 
-    $messages = aiapi_sent('openrouter.test')[1]['messages'];
+    $messages = aiapi_sent('chat/completions')[1]['messages'];
     expect($turn->fresh()->status)->toBe(AiTurnStatus::Completed)
         ->and(collect(aiapi_sent('connector.test'))->pluck('method')->all())->toBe(['tools/list'])
         ->and(end($messages)['content'])->toContain('parametri_non_validi');
 });
 
 it('a tool the connector reports as error is a failed step but a normal result for the model', function () {
-    Http::fake([
-        'openrouter.test/*' => Http::sequence()->push(aiapi_tool_body('run_read_code', ['{"code":"x"}']), 200)->push(aiapi_text_body(['sorry']), 200),
-        'connector.test/*' => fn (Request $r) => Http::response(
-            $r->data()['method'] === 'tools/list' ? aiapi_connector_tools() : aiapi_connector_result('{"connettore":{"esito":"fallita","codice":"fuori_perimetro"},"dati":null}', true),
-            200,
-        ),
-    ]);
+    aiapi_fake_agent(
+        [aiapi_tool_body('run_read_code', ['{"code":"x"}']), aiapi_text_body(['sorry'])],
+        [['{"connettore":{"esito":"fallita","codice":"fuori_perimetro"},"dati":null}', true]],
+    );
 
     [, $turn] = turn_send();
 
@@ -201,7 +198,7 @@ it('AC-012: no repetition after an error in the stream: one model call only', fu
 
     turn_send();
 
-    expect(aiapi_sent('openrouter.test'))->toHaveCount(1);
+    expect(aiapi_sent('chat/completions'))->toHaveCount(1);
 });
 
 it('AC-008: a provider failure leaves the person message saved, the title set and a fixed Italian text', function () {
@@ -255,7 +252,7 @@ it('turn caps: too many model calls and too many tool calls close the turn with 
     turn_state($turn)->assertJsonPath('data.status', 'failed')
         ->assertJsonPath('data.error_code', 'too_many_steps')
         ->assertJsonPath('data.error_message', 'The assistant stopped: this request needed too many steps.');
-    expect(count(aiapi_sent('openrouter.test')))->toBeLessThanOrEqual(3);
+    expect(count(aiapi_sent('chat/completions')))->toBeLessThanOrEqual(3);
 })->with(['max_model_calls', 'max_tool_calls']);
 
 it('the turn duration cap closes the turn with turn_timeout', function () {
@@ -265,7 +262,7 @@ it('the turn duration cap closes the turn with turn_timeout', function () {
     [, $turn] = turn_send();
 
     turn_state($turn)->assertJsonPath('data.error_code', 'turn_timeout');
-    expect(aiapi_sent('openrouter.test'))->toBe([]);
+    expect(aiapi_sent('chat/completions'))->toBe([]);
 });
 
 it('a connector refusing the link cancels the turn with link_lost; an unreachable connector fails it', function (int $status, string $expectedStatus, string $code) {
@@ -288,7 +285,7 @@ it('a session token that is gone cancels the turn with link_lost', function () {
     $user->tokens()->delete();
     aiapi_fake_agent([aiapi_text_body()]);
 
-    app(App\Services\AiAssistant\Agent\AiTurnRunner::class)->run(AiTurn::query()->sole()->id);
+    app(AiTurnRunner::class)->run(AiTurn::query()->sole()->id);
 
     expect(AiTurn::query()->sole()->error_code)->toBe(AiTurnErrorCode::LinkLost)
         ->and(AiTurn::query()->sole()->status)->toBe(AiTurnStatus::Cancelled);
@@ -300,10 +297,10 @@ it('AC-007/D-18: a duplicate job does nothing once the turn left queued', functi
     [, $turn] = turn_send();
     $before = $turn->fresh()->only(['status', 'assistant_message_id', 'updated_at']);
 
-    app(App\Services\AiAssistant\Agent\AiTurnRunner::class)->run($turn->id);
+    app(AiTurnRunner::class)->run($turn->id);
 
     expect($turn->fresh()->only(['status', 'assistant_message_id', 'updated_at']))->toEqual($before)
-        ->and(aiapi_sent('openrouter.test'))->toHaveCount(1)
+        ->and(aiapi_sent('chat/completions'))->toHaveCount(1)
         ->and(AiMessage::query()->where('role', 'assistant')->count())->toBe(1);
 });
 
@@ -316,7 +313,7 @@ it('the prompt: one byte-identical system message across requests, routing and s
     aiapi_send($user, $conversation, ['content' => 'first', 'locale' => 'it', 'page_guide_key' => 'quotes', 'page_guide_text' => 'GUIDE BODY'])->assertStatus(202);
     aiapi_send($user, $conversation, ['content' => 'second', 'locale' => 'en'])->assertStatus(202);
 
-    [$one, $two] = aiapi_sent('openrouter.test');
+    [$one, $two] = aiapi_sent('chat/completions');
     $systemOne = $one['messages'][0]['content'];
     expect($one['messages'][0]['role'])->toBe('system')
         ->and($two['messages'][0]['content'])->toBe($systemOne)
@@ -325,7 +322,7 @@ it('the prompt: one byte-identical system message across requests, routing and s
         ->and($systemOne)->toContain('# Examples')->toContain('# Results to avoid')->toContain('# Criteria of success')
         ->and($systemOne)->not->toContain('GUIDE BODY')
         ->and($one['messages'][1]['content'])->toContain('first')->toContain('<page_guide key="quotes">')->toContain('GUIDE BODY')->toContain('<interface_language>it</interface_language>')
-        ->and($two['messages'][1])->toBe(['role' => 'user', 'content' => "first"])
+        ->and($two['messages'][1])->toBe(['role' => 'user', 'content' => 'first'])
         ->and($two['messages'][2])->toBe(['role' => 'assistant', 'content' => 'a'])
         ->and($two['session_id'])->toBe((string) $conversation->id)
         ->and($two['provider']['zdr'])->toBeTrue()
@@ -342,10 +339,10 @@ it('the turn reads model, routing and additional instructions from the settings,
 
     [, $turn] = turn_send();
 
-    $sent = aiapi_sent('openrouter.test')[0];
+    $sent = aiapi_sent('chat/completions')[0];
     $system = $sent['messages'][0]['content'];
     expect($sent['model'])->toBe('vendor/chosen-model')
-        ->and($sent['provider'])->toBe(['zdr' => false, 'data_collection' => 'allow', 'require_parameters' => false, 'sort' => 'price'])
+        ->and($sent['provider'])->toMatchArray(['zdr' => false, 'data_collection' => 'allow', 'require_parameters' => false, 'sort' => 'price'])
         ->and(strpos($system, '# Role'))->toBe(0)
         ->and(strpos($system, '# Additional instructions'))->toBeGreaterThan(strpos($system, '# Criteria of success'))
         ->and($system)->toEndWith("# Additional instructions\nADMIN RULE: be formal.");
@@ -372,6 +369,53 @@ it('a switched-off assistant: start answers 503 switched_off with no row, a queu
     Http::assertNothingSent();
 });
 
+it('AC-007: the model gets the last history_window messages and then the current one', function () {
+    config()->set('ai-assistant.history_window', 20);
+    aiapi_fake_agent([aiapi_text_body()]);
+    $user = aiapi_user();
+    $conversation = aiapi_conversation($user);
+    foreach (range(1, 25) as $n) {
+        $factory = AiMessage::factory()->for($conversation, 'conversation');
+        ($n % 2 === 1 ? $factory : $factory->assistant())->create(['content' => "m{$n}"]);
+    }
+
+    aiapi_send($user, $conversation, ['content' => 'the 26th'])->assertStatus(202);
+
+    $messages = aiapi_sent('chat/completions')[0]['messages'];
+    expect($messages)->toHaveCount(22)
+        ->and($messages[1]['content'])->toBe('m6')
+        ->and($messages[20]['content'])->toBe('m25')
+        ->and($messages[21]['role'])->toBe('user')
+        ->and($messages[21]['content'])->toContain('the 26th');
+});
+
+it('AC-008: a guide longer than guide_max_chars is rejected with 422 and nothing is written', function () {
+    config()->set('ai-assistant.guide_max_chars', 10);
+    Http::fake();
+    $user = aiapi_user();
+
+    aiapi_send($user, aiapi_conversation($user), ['page_guide_text' => str_repeat('g', 11)])
+        ->assertStatus(422)->assertJsonValidationErrors(['page_guide_text']);
+
+    Http::assertNothingSent();
+    expect(AiMessage::query()->count())->toBe(0)->and(AiTurn::query()->count())->toBe(0);
+});
+
+it('AC-015: the first message sets the title (60 chars) and last_message_at, an existing title is kept', function () {
+    Queue::fake();
+    $user = aiapi_user();
+    $content = str_repeat('abcdefghij', 8);
+    $fresh = aiapi_conversation($user);
+    $titled = aiapi_conversation($user, ['title' => 'Kept']);
+
+    aiapi_send($user, $fresh, ['content' => $content])->assertStatus(202);
+    aiapi_send($user, $titled, ['content' => 'something else'])->assertStatus(202);
+
+    expect($fresh->fresh()->title)->toBe(substr($content, 0, 60))
+        ->and($fresh->fresh()->last_message_at)->not->toBeNull()
+        ->and($titled->fresh()->title)->toBe('Kept');
+});
+
 it('a mention reaches the model only as a type and an identifier', function () {
     aiapi_fake_agent([aiapi_text_body()]);
     $user = aiapi_super_admin();
@@ -379,7 +423,7 @@ it('a mention reaches the model only as a type and an identifier', function () {
 
     aiapi_send($user, aiapi_conversation($user), ['content' => 'Summarize @Acme', 'mentions' => [['module' => 'companies', 'id' => $company->id]]])->assertStatus(202);
 
-    $user_text = aiapi_sent('openrouter.test')[0]['messages'][1]['content'];
+    $user_text = aiapi_sent('chat/completions')[0]['messages'][1]['content'];
     expect($user_text)->toContain("<record module=\"companies\" id=\"{$company->id}\"/>")
         ->and($user_text)->not->toContain('Acme Spa')->not->toContain('01234567890')
         ->and(AiMessage::query()->where('role', 'user')->sole()->mentions)->toBe([['module' => 'companies', 'id' => $company->id, 'label' => 'Acme Spa']]);
@@ -492,7 +536,7 @@ it('deleting the conversation while the turn runs stops the turn without writing
         return Http::response(aiapi_connector_tools(), 200);
     }]);
 
-    app(App\Services\AiAssistant\Agent\AiTurnRunner::class)->run($id);
+    app(AiTurnRunner::class)->run($id);
 
     expect(AiTurn::query()->count())->toBe(0)->and(AiMessage::query()->count())->toBe(0);
 });

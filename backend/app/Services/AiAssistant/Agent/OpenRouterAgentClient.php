@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AiAssistant\Agent;
 
 use App\Enums\AiTurnErrorCode;
+use App\Services\AiAssistant\Costs\AiPriceCeiling;
 use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -26,13 +27,21 @@ final class OpenRouterAgentClient
     }
 
     /**
+     * `max_tokens` of every call: the same number the cost reservation is priced with (reasoning tokens count under it).
+     */
+    public static function maxTokens(): int
+    {
+        return (int) config('ai-assistant.agent.max_output_tokens');
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $messages  system message first
      * @param  list<array<string, mixed>>  $tools  OpenAI function definitions, in a fixed order
      * @param  (callable(string): void)|null  $onText  receives each text fragment as it streams
      *
      * @throws AgentModelException
      */
-    public function complete(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, ?callable $onText = null): AgentModelResult
+    public function complete(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices, ?callable $onText = null): AgentModelResult
     {
         try {
             $response = Http::withHeaders($this->headers())
@@ -40,7 +49,7 @@ final class OpenRouterAgentClient
                 ->timeout((int) config('ai-assistant.timeout_seconds'))
                 ->connectTimeout((int) config('ai-assistant.connect_timeout_seconds'))
                 ->acceptJson()
-                ->post($this->url(), $this->payload($messages, $tools, $conversationId, $settings));
+                ->post($this->url(), $this->payload($messages, $tools, $conversationId, $settings, $prices));
 
             if (! $response->successful()) {
                 $this->fail(AiTurnErrorCode::ModelUnavailable, 'http_status', ['status' => $response->status()]);
@@ -69,6 +78,7 @@ final class OpenRouterAgentClient
         $finish = null;
         $usage = null;
         $model = null;
+        $provider = null;
 
         foreach ($events as $event) {
             if ($event['data'] === '[DONE]') {
@@ -77,6 +87,7 @@ final class OpenRouterAgentClient
 
             $chunk = $this->decode($event['data']);
             $model = $chunk['model'] ?? $model;
+            $provider = $chunk['provider'] ?? $provider;
 
             if (isset($chunk['error'])) {
                 $this->fail(AiTurnErrorCode::StreamError, 'stream_error_chunk', ['code' => $chunk['error']['code'] ?? null]);
@@ -126,8 +137,9 @@ final class OpenRouterAgentClient
             reasoningDetails: $details,
             reasoning: $details === [] && $reasoning !== '' ? $reasoning : null,
             finishReason: (string) $finish,
-            usage: $this->usage($usage),
+            rawUsage: $usage ?? [],
             model: is_string($model) ? $model : null,
+            provider: is_string($provider) ? $provider : null,
         );
     }
 
@@ -154,21 +166,6 @@ final class OpenRouterAgentClient
         }
 
         $calls[$index] = $call;
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $usage
-     * @return array{input_tokens: int, output_tokens: int, cached_tokens: int, reasoning_tokens: int, cost: float}
-     */
-    private function usage(?array $usage): array
-    {
-        return [
-            'input_tokens' => (int) ($usage['prompt_tokens'] ?? 0),
-            'output_tokens' => (int) ($usage['completion_tokens'] ?? 0),
-            'cached_tokens' => (int) ($usage['prompt_tokens_details']['cached_tokens'] ?? 0),
-            'reasoning_tokens' => (int) ($usage['completion_tokens_details']['reasoning_tokens'] ?? 0),
-            'cost' => (float) ($usage['cost'] ?? 0),
-        ];
     }
 
     /**
@@ -210,15 +207,16 @@ final class OpenRouterAgentClient
      * @param  list<array<string, mixed>>  $tools
      * @return array<string, mixed>
      */
-    private function payload(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings): array
+    private function payload(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices): array
     {
         $payload = [
             'model' => $settings->modelId,
             'stream' => true,
-            'max_tokens' => (int) config('ai-assistant.agent.max_output_tokens'),
+            'max_tokens' => self::maxTokens(),
             'messages' => $messages,
             'session_id' => (string) $conversationId,
-            'provider' => $settings->routing,
+            // The price ceiling that priced the reservation: a dearer endpoint is never used.
+            'provider' => $settings->routing + ['max_price' => $prices->maxPrice()],
         ];
 
         if ($tools !== []) {

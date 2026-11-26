@@ -8,13 +8,13 @@ use App\Enums\AiMessageRole;
 use App\Enums\AiTurnErrorCode;
 use App\Enums\AiTurnStatus;
 use App\Models\AiTurn;
+use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
+use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use App\Services\McpLinks\AssistantClientNotConfiguredException;
 use App\Services\McpLinks\AssistantLinkService;
 use App\Services\McpLinks\AssistantSessionInvalidException;
 use App\Services\McpLinks\FirstAccessPendingException;
 use App\Services\McpLinks\McpLinkRejectedException;
-use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
-use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -37,7 +37,7 @@ final class AiTurnRunner
     public function __construct(
         private readonly AssistantLinkService $links,
         private readonly ConnectorClient $connector,
-        private readonly OpenRouterAgentClient $model,
+        private readonly MeteredModelCall $model,
         private readonly AgentMessageBuilder $messages,
         private readonly AiAssistantSettingsService $settings,
     ) {}
@@ -57,7 +57,9 @@ final class AiTurnRunner
         try {
             $this->execute($run);
         } catch (AgentModelException|AgentTurnLimitException $exception) {
-            $this->close($run, AiTurnStatus::Failed, $exception->errorCode);
+            $limit = in_array($exception->errorCode, [AiTurnErrorCode::LimitPerson, AiTurnErrorCode::LimitTotal], true);
+
+            $this->close($run, $limit ? AiTurnStatus::LimitReached : AiTurnStatus::Failed, $exception->errorCode);
         } catch (ConnectorLinkRejectedException|AssistantSessionInvalidException|McpLinkRejectedException|FirstAccessPendingException) {
             $this->close($run, AiTurnStatus::Cancelled, AiTurnErrorCode::LinkLost);
         } catch (ConnectorUnavailableException|AssistantClientNotConfiguredException) {
@@ -146,15 +148,8 @@ final class AiTurnRunner
         $run->modelCalls++;
         $run->text = '';
 
-        $result = $this->model->complete(
-            $messages,
-            $tools,
-            $run->turn->ai_conversation_id,
-            $settings,
-            fn (string $fragment) => $this->streamText($run, $fragment),
-        );
+        $result = $this->model->call($run, $settings, $messages, $tools, fn (string $fragment) => $this->streamText($run, $fragment));
 
-        $run->addUsage($result->usage);
         $run->model = $result->model ?? $run->model;
 
         // The preamble of a tool round is not the answer: the text shown restarts empty.
@@ -244,8 +239,8 @@ final class AiTurnRunner
                 'role' => AiMessageRole::Assistant,
                 'content' => $text,
                 'model' => $run->model ?? $settings->modelId,
-                'input_tokens' => $run->usage['input_tokens'],
-                'output_tokens' => $run->usage['output_tokens'],
+                'input_tokens' => $run->inputTokens,
+                'output_tokens' => $run->outputTokens,
             ]);
 
             AiTurn::query()->whereKey($turn->id)->update(['assistant_message_id' => $message->id]);

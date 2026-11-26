@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\AiAssistant\Agent;
 
 use App\Models\AiTurn;
+use App\Services\AiAssistant\Costs\AiCallUsage;
+use App\Services\AiAssistant\Costs\AiMoney;
 
 /**
  * Mutable state of one execution of a turn: what the runner counts against the caps and
@@ -29,8 +31,15 @@ final class AgentRun
 
     public ?string $model = null;
 
-    /** @var array{input_tokens: int, output_tokens: int, cached_tokens: int, reasoning_tokens: int, cost: float} */
-    public array $usage = ['input_tokens' => 0, 'output_tokens' => 0, 'cached_tokens' => 0, 'reasoning_tokens' => 0, 'cost' => 0.0];
+    public int $inputTokens = 0;
+
+    public int $outputTokens = 0;
+
+    public int $cachedTokens = 0;
+
+    public int $reasoningTokens = 0;
+
+    public string $costUsd = '0';
 
     public readonly float $startedAt;
 
@@ -39,14 +48,13 @@ final class AgentRun
         $this->startedAt = microtime(true);
     }
 
-    /**
-     * @param  array{input_tokens: int, output_tokens: int, cached_tokens: int, reasoning_tokens: int, cost: float}  $usage
-     */
-    public function addUsage(array $usage): void
+    public function addUsage(AiCallUsage $usage): void
     {
-        foreach ($usage as $key => $value) {
-            $this->usage[$key] += $value;
-        }
+        $this->inputTokens += $usage->inputTokens;
+        $this->outputTokens += $usage->outputTokens;
+        $this->cachedTokens += $usage->cachedTokens;
+        $this->reasoningTokens += $usage->reasoningTokens;
+        $this->costUsd = AiMoney::add($this->costUsd, $usage->costUsd ?? '0');
     }
 
     public function elapsedSeconds(): float
@@ -55,7 +63,7 @@ final class AgentRun
     }
 
     /**
-     * What the turn row stores: the totals plus the call counters, the cost as a 6-digit decimal string.
+     * What the turn row stores: the totals plus the call counters (the ledger keeps the per-call rows).
      *
      * @return array<string, int|string>
      */
@@ -64,11 +72,11 @@ final class AgentRun
         return [
             'model_calls' => $this->modelCalls,
             'tool_calls' => $this->toolCalls,
-            'input_tokens' => $this->usage['input_tokens'],
-            'output_tokens' => $this->usage['output_tokens'],
-            'cached_tokens' => $this->usage['cached_tokens'],
-            'reasoning_tokens' => $this->usage['reasoning_tokens'],
-            'cost_usd' => number_format($this->usage['cost'], 6, '.', ''),
+            'input_tokens' => $this->inputTokens,
+            'output_tokens' => $this->outputTokens,
+            'cached_tokens' => $this->cachedTokens,
+            'reasoning_tokens' => $this->reasoningTokens,
+            'cost_usd' => bcadd($this->costUsd, '0', 6),
         ];
     }
 }

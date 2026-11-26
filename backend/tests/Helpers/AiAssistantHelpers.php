@@ -22,6 +22,7 @@ const AIAPI_OPENROUTER_URL = 'https://openrouter.test/api/v1';
 const AIAPI_CONNECTOR_URL = 'http://connector.test';
 const AIAPI_CONNECTOR_SECRET = 'fake-assistant-secret-0123456789abcdef';
 const AIAPI_OPENROUTER_KEY = 'sk-or-fake-key';
+const AIAPI_MODEL_IDS = ['deepseek/deepseek-v4-flash-0731', 'vendor/chosen-model'];
 
 if (! function_exists('aiapi_user')) {
     /**
@@ -184,17 +185,26 @@ if (! function_exists('aiapi_fake_agent')) {
 
         $calls = 0;
 
+        // The price ceiling the reservation is priced with: one endpoint with tools, $1 / $2 per million tokens.
+        $endpoint = ['tag' => 'fast', 'supported_parameters' => ['tools'], 'pricing' => ['prompt' => '0.000001', 'completion' => '0.000002', 'request' => '0']];
+
         Http::fake([
-            'openrouter.test/*' => $model,
+            '*/endpoints/zdr' => Http::response(['data' => array_map(fn (string $id): array => ['model_id' => $id, 'tag' => 'fast', 'safety_retention' => false], AIAPI_MODEL_IDS)]),
+            '*/models/*/endpoints' => Http::response(['data' => ['endpoints' => [$endpoint]]]),
+            'openrouter.test/api/v1/chat/completions' => $model,
             'connector.test/*' => function (Request $request) use ($toolResults, $connectorStatus, $withConfirm, &$calls) {
                 if ($connectorStatus !== 200) {
                     return Http::response('', $connectorStatus);
                 }
 
                 $method = $request->data()['method'] ?? '';
-                $body = $method === 'tools/list'
-                    ? aiapi_connector_tools($withConfirm)
-                    : aiapi_connector_result($toolResults[$calls++] ?? '{"connettore":{"esito":"riuscita"},"dati":[]}');
+                if ($method === 'tools/list') {
+                    return Http::response(aiapi_connector_tools($withConfirm), 200, ['Content-Type' => 'text/event-stream']);
+                }
+
+                // A result is the text, or [text, isError].
+                $result = (array) ($toolResults[$calls++] ?? '{"connettore":{"esito":"riuscita"},"dati":[]}');
+                $body = aiapi_connector_result($result[0], $result[1] ?? false);
 
                 return Http::response($body, 200, ['Content-Type' => 'text/event-stream']);
             },

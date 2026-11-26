@@ -3,6 +3,7 @@
 use App\Enums\AiTurnErrorCode;
 use App\Services\AiAssistant\Agent\AgentModelException;
 use App\Services\AiAssistant\Agent\OpenRouterAgentClient;
+use App\Services\AiAssistant\Costs\AiPriceCeiling;
 use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
@@ -25,7 +26,12 @@ function agent_client_call(string $body, int $status = 200, array $tools = [], ?
 {
     Http::fake(['openrouter.test/*' => Http::response($body, $status, ['Content-Type' => 'text/event-stream'])]);
 
-    return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], $tools, 7, agent_client_settings(), $onText);
+    return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], $tools, 7, agent_client_settings(), agent_client_prices(), $onText);
+}
+
+function agent_client_prices(): AiPriceCeiling
+{
+    return new AiPriceCeiling('0.000001', '0.000002', '0');
 }
 
 it('streams the text, reports each fragment and reads usage with cost, cache and reasoning tokens', function () {
@@ -40,7 +46,8 @@ it('streams the text, reports each fragment and reads usage with cost, cache and
         ->and($result->toolCalls)->toBe([])
         ->and($result->finishReason)->toBe('stop')
         ->and($result->model)->toBe('model-x')
-        ->and($result->usage)->toBe(['input_tokens' => 100, 'output_tokens' => 20, 'cached_tokens' => 40, 'reasoning_tokens' => 5, 'cost' => 0.0012]);
+        ->and($result->rawUsage['cost'])->toBe(0.0012)
+        ->and($result->rawUsage['prompt_tokens_details']['cached_tokens'])->toBe(40);
 });
 
 it('sends the routing, session id, tools and the key, and nothing else about the person', function () {
@@ -56,7 +63,7 @@ it('sends the routing, session id, tools and the key, and nothing else about the
             && $payload['model'] === 'vendor/model-y'
             && $payload['stream'] === true
             && $payload['session_id'] === '7'
-            && $payload['provider'] === ['zdr' => true, 'data_collection' => 'deny', 'require_parameters' => true, 'sort' => 'throughput']
+            && $payload['provider'] === ['zdr' => true, 'data_collection' => 'deny', 'require_parameters' => true, 'sort' => 'throughput', 'max_price' => ['prompt' => '1', 'completion' => '2', 'request' => '0']]
             && $payload['tools'] === $tools
             && $payload['parallel_tool_calls'] === false
             && $payload['max_tokens'] === 4096;
@@ -130,7 +137,7 @@ it('fails with model_unavailable on an HTTP error and on a connection error', fu
     foreach ([fn () => agent_client_call('boom', 500), function () {
         Http::fake(fn () => throw new ConnectionException('cURL error 28: timed out SECRET'));
 
-        return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], [], 1, agent_client_settings());
+        return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], [], 1, agent_client_settings(), agent_client_prices());
     }] as $attempt) {
         try {
             $attempt();
