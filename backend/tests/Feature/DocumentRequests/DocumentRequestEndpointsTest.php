@@ -92,16 +92,17 @@ it('AC-004: rejects an inactive or not synced checklist, a past date, a bad emai
     'missing checklist' => ['document_checklist_id', fn () => [999999, []]],
     'past due date' => ['due_date', fn () => [documentRequestChecklist()->id, ['due_date' => now()->subDay()->toDateString()]]],
     'invalid email' => ['recipient_email', fn () => [documentRequestChecklist()->id, ['recipient_email' => 'non-una-email']]],
+    'missing email (AC-021)' => ['recipient_email', fn () => [documentRequestChecklist()->id, ['recipient_email' => null]]],
     'message of 2001 characters' => ['message', fn () => [documentRequestChecklist()->id, ['message' => str_repeat('a', 2001)]]],
 ]);
 
-it('AC-004: accepts a message of 2000 characters, today as due date and no optional field', function () {
+it('AC-004: accepts a message of 2000 characters, today as due date and only the required fields', function () {
     $workOrder = documentRequestWorkOrder();
     $checklist = documentRequestChecklist();
     Sanctum::actingAs(documentRequestUserWith(['create']));
 
     $this->postJson("/api/work-orders/{$workOrder->id}/document-requests", documentRequestPayload($checklist->id, ['message' => str_repeat('a', 2000), 'due_date' => now()->toDateString()]))->assertCreated();
-    $this->postJson("/api/work-orders/{$workOrder->id}/document-requests", ['document_checklist_id' => $checklist->id])->assertCreated();
+    $this->postJson("/api/work-orders/{$workOrder->id}/document-requests", ['document_checklist_id' => $checklist->id, 'recipient_email' => 'destinatario@example.test'])->assertCreated();
 });
 
 it('AC-005: every endpoint answers 403 without the document-requests permission', function (string $method, string $uri) {
@@ -278,7 +279,7 @@ it('AC-007: edit answers 422 on status without a job when the request is complet
     $request = documentRequestFor(documentRequestWorkOrder(), ['status' => $status]);
     Sanctum::actingAs(documentRequestUserWith(['update']));
 
-    $this->putJson("/api/document-requests/{$request->id}", ['message' => 'x'])
+    $this->putJson("/api/document-requests/{$request->id}", ['recipient_email' => 'a@example.test', 'message' => 'x'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['status']);
 
@@ -290,12 +291,14 @@ it('AC-007: edit validates the fields, but a past due date left unchanged is acc
     $request = documentRequestFor(documentRequestWorkOrder(), ['due_date' => now()->subDays(3)->toDateString()]);
     Sanctum::actingAs(documentRequestUserWith(['update']));
 
-    $this->putJson("/api/document-requests/{$request->id}", ['due_date' => now()->subDay()->toDateString()])
+    $this->putJson("/api/document-requests/{$request->id}", ['due_date' => now()->subDay()->toDateString(), 'recipient_email' => 'a@example.test'])
         ->assertUnprocessable()->assertJsonValidationErrors(['due_date']);
     $this->putJson("/api/document-requests/{$request->id}", ['recipient_email' => 'no'])
         ->assertUnprocessable()->assertJsonValidationErrors(['recipient_email']);
+    $this->putJson("/api/document-requests/{$request->id}", ['message' => 'senza email'])
+        ->assertUnprocessable()->assertJsonValidationErrors(['recipient_email']);
 
-    $this->putJson("/api/document-requests/{$request->id}", ['due_date' => now()->subDays(3)->toDateString(), 'message' => 'ok'])->assertOk();
+    $this->putJson("/api/document-requests/{$request->id}", ['due_date' => now()->subDays(3)->toDateString(), 'recipient_email' => 'a@example.test', 'message' => 'ok'])->assertOk();
 });
 
 it('AC-008: remind queues the operation on a sent or in progress request', function (string $status) {
@@ -354,6 +357,49 @@ it('AC-009: cancel answers 422 on a completed or expired request', function (str
 
     Queue::assertNothingPushed();
 })->with(['completed', 'expired']);
+
+it('AC-022: cancel on a request that never reached ArchivioSmart cancels it only in QNet, with nothing queued', function () {
+    $request = documentRequestFor(documentRequestWorkOrder(), [
+        'status' => null,
+        'delivery_status' => 'failed',
+        'pending_operation' => 'refresh',
+        'delivery_error' => 'Risposta imprevista da ArchivioSmart (404)',
+    ]);
+    Sanctum::actingAs(documentRequestUserWith(['update']));
+
+    $this->postJson("/api/document-requests/{$request->id}/cancel")
+        ->assertOk()
+        ->assertJsonPath('data.status', 'cancelled')
+        ->assertJsonPath('data.delivery_status', 'delivered')
+        ->assertJsonPath('data.pending_operation', null)
+        ->assertJsonPath('data.delivery_error', null);
+
+    expect($request->fresh()->cancelled_at)->not->toBeNull();
+    Queue::assertNothingPushed();
+});
+
+it('AC-022: cancel while the first upsert is still queued goes through ArchivioSmart', function () {
+    $request = documentRequestFor(documentRequestWorkOrder(), ['status' => null, 'delivery_status' => 'pending', 'pending_operation' => 'upsert']);
+    Sanctum::actingAs(documentRequestUserWith(['update']));
+
+    $this->postJson("/api/document-requests/{$request->id}/cancel")
+        ->assertOk()
+        ->assertJsonPath('data.status', null)
+        ->assertJsonPath('data.pending_operation', 'cancel');
+
+    Queue::assertPushed(SyncDocumentRequestJob::class, fn (SyncDocumentRequestJob $job) => $job->operation === DocumentRequestOperation::Cancel);
+});
+
+it('AC-022: refresh answers 422 on status without a job on a request that never reached ArchivioSmart', function () {
+    $request = documentRequestFor(documentRequestWorkOrder(), ['status' => null, 'delivery_status' => 'failed']);
+    Sanctum::actingAs(documentRequestUserWith(['update']));
+
+    $this->postJson("/api/document-requests/{$request->id}/refresh")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['status']);
+
+    Queue::assertNothingPushed();
+});
 
 it('AC-010: refresh queues the operation whatever the state', function () {
     $request = documentRequestFor(documentRequestWorkOrder(), ['status' => 'completed']);

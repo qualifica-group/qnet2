@@ -14,8 +14,8 @@ use Carbon\CarbonImmutable;
 
 /**
  * Expected payments of the open commitments (spec 0270, D-2): the committed
- * amount of the order lines, summed in SQL by (company, payment method, order
- * date); the expected date of each group, which is few, is then the first due
+ * amount of the order lines VAT included (D-15), summed in SQL by (company,
+ * payment method, order date); the expected date of each group, which is few, is then the first due
  * date of the order's payment method from the order date (the order date
  * itself without method). The document type does not apply to orders.
  */
@@ -37,9 +37,9 @@ final class CommittedFlowAggregator
      */
     public function cents(CashFlowFilters $filters, string $today): array
     {
-        // Step 1: committed cents by (company, method, order date)
-        $amount = CommittedOrderLineQuery::COMMITTED_AMOUNT;
-        $groups = FlowSupport::scope($this->lines->lines(), $filters->companyIds, $filters->companySiteIds, $filters->operationalSiteIds, self::SCOPE_COLUMNS)
+        // Step 1: committed cents VAT included (D-15), by (company, method, order date)
+        $amount = CommittedOrderLineQuery::COMMITTED_GROSS_AMOUNT;
+        $groups = FlowSupport::scope($this->lines->linesWithVatRate(), $filters->companyIds, $filters->companySiteIds, $filters->operationalSiteIds, self::SCOPE_COLUMNS)
             ->selectRaw("purchase_orders.company_id AS group_company_id, purchase_orders.payment_method_id AS group_method_id, purchase_orders.order_date AS group_order_date, SUM({$amount}) AS total")
             ->groupBy('purchase_orders.company_id', 'purchase_orders.payment_method_id', 'purchase_orders.order_date')
             ->having('total', '>', 0)

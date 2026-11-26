@@ -69,9 +69,6 @@ class DocumentRequestController extends BaseApiController
     public function store(StoreDocumentRequestRequest $request, WorkOrder $workOrder): JsonResponse
     {
         try {
-            $this->authorize('create', DocumentRequest::class);
-            $this->authorize('view', $workOrder);
-
             $created = $this->service->create($workOrder, $request->user(), $request->checklist(), $request->requestData(), $request->shouldSend());
 
             return $this->created(new DocumentRequestResource($created));
@@ -100,8 +97,6 @@ class DocumentRequestController extends BaseApiController
     public function update(UpdateDocumentRequestRequest $request, DocumentRequest $documentRequest): JsonResponse
     {
         try {
-            $this->authorize('update', $documentRequest);
-
             return $this->ok(new DocumentRequestResource(
                 $this->service->update($documentRequest, $request->requestData(), $request->shouldSend()),
             ));

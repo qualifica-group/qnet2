@@ -16,6 +16,26 @@
 - Voce "Chat" nella riga dei tab del dettaglio (D-14): `WorkOrderChatTabButton` (pallino `RecordTabCount` dal `unread_count` della lista) chiama `useChatDock().openChannel()`; stato finestre in `ChatDockProvider` (`layouts/app-layout.tsx`, avvolge `Outlet` e `ChatDock`). Commessa fuori dalla lista (super-admin fuori team): canale costruito dal dettaglio in `extraChannels`, finestra senza realtime della lista. Il punto aperto sul super-admin e' CHIUSO.
 - Manuale: guide in-app IT/EN `project-work-orders`, `work-orders` e `ai-assistant` aggiornate; Manuale Claude Docs aggiornato (Assistente AI, Commessa, Commesse e Commesse di Progetto, nuovo "Chat dei progetti"); il PDF va rigenerato.
 
+## Cash flow previsionale: impegni ODA IVA compresa (spec 0270 D-15, 2026-11-25) — COMMITTATO (e0f1c0462)
+
+- `CommittedOrderLineQuery::COMMITTED_GROSS_AMOUNT` (= `COMMITTED_AMOUNT` + IVA all'aliquota della riga, arrotondata come `LineAmountCalculator`, riga senza aliquota = nessuna IVA) su `linesWithVatRate()` (left join `vat_rates`). Usata SOLO da `CommittedFlowAggregator` (cash flow). Conto economico, costi di struttura, cifre di commessa, esposizione e costi passivi di commessa restano su `COMMITTED_AMOUNT` (imponibile).
+- Shape API invariata. Test: `CashFlowPayableTest` "AC-004 / D-15" (22% + riga senza aliquota + residuo di riga parzialmente fatturata = 184.21). Guide in-app IT/EN `management-control-cash-flow` aggiornate.
+- Da verificare: manuale Claude Docs non raggiungibile dalla sessione, sezione "Cash flow previsionale" -> voce Impegni da aggiornare a "IVA compresa".
+- Fallimento preesistente non toccato: `ExposureAccessTest` AC-001 cerca la sezione menu `management-control-section`, che non esiste piu' (voce spostata in `config/navigation/accounting.php`).
+- In progettazione (nessun codice): import statini paga (file costi del consulente -> costo reale sulle commesse via segnatempo; file netti -> documento "Cedolino" in Fatture Acquisto con rata = netto). Decisioni utente 2026-11-25: campo codice fiscale nella scheda utente (compilato dall'utente; oggi 0/428), societa' riconosciute dal codice azienda del consulente (mappa una tantum), Italian Quality Institute SRL da creare, divisore della tariffa = ore registrate nel segnatempo, fine rapporto riconosciuta dal TIPO CEDOLINO, costo di 13a/14a sul mese in cui sono pagate. File netti: CF nella colonna `RIP.1: CODICE` con `RIP.1: TIPO` = "Codice fiscale", codifica non UTF-8, campi tra virgolette. Report per la direzione: `C:\Users\PC\Documents\Statini_paga_flusso_di_lavoro.pdf`. Prossimo passo: `/plan-feature` fase A (costi sulle commesse).
+
+## Richieste documenti mai arrivate ad ArchivioSmart + email obbligatoria (spec 0428 rev. 2026-11-25, AC-021/022) — NON PROVATO NEL BROWSER
+
+- Bug: richiesta creata senza email → upsert 422 → mai creata su ArchivioSmart; cancel/refresh davano sempre 404, richiesta bloccata.
+- `DocumentRequest::neverReachedArchivioSmart()` = `status` null e `delivery_status` diverso da pending.
+  - `cancel` su quella richiesta: annullata solo in QNet (`status` cancelled, `cancelled_at`, delivered, niente job). Con upsert ancora in coda passa da ArchivioSmart come prima.
+  - `refresh`: 422 `status` (`archivio_smart.request_never_delivered`); il FE nasconde "Aggiorna stato" (`neverReachedArchivioSmart` in `document-request-status.ts`).
+- `recipient_email` obbligatoria in POST e PUT (FormRequest + schema Zod, `FormLabel required`, chiave i18n `validation.emailRequired`).
+- Authz di store/update spostata in `StoreDocumentRequestRequest::authorize()` / `UpdateDocumentRequestRequest::authorize()` (prima del validate: senza permesso resta 403, non 422); tolte le `authorize()` duplicate dal controller.
+- Test: Pest `tests/Feature/DocumentRequests` + `DocumentChecklists` 329 verdi; Vitest `document-requests` + `help` 211 verdi; tsc -b e ESLint puliti. Guide IT/EN `work-orders` aggiornate.
+- Da verificare nel browser: la richiesta id 5 (commessa 20) ora si annulla con "Annulla richiesta".
+
+## Duplicare un ruolo (richiesta utente 2026-11-25) — VERDE, COMMITTATO (dd430cf68)
 ## Tabelle AG Grid alte quanto lo schermo (richiesta utente 2026-11-26) — VERDE, NON COMMITTATO
 
 - Come in q-net (qtask, `TABLE_DEFAULT_HEIGHT = calc(100dvh - 16rem)`): la griglia di ogni `TableView` arriva sempre al fondo dello schermo, su qualunque monitor. Tolto il tetto "altezza di una pagina di righe" (`maxHeight` = `estimateGridHeight(defaultPagination.limit)`) da `useViewportTableHeight`: supera la decisione del 2026-07-31 ("niente griglia vuota sotto l'ultima riga"). Con meno righe della pagina resta spazio vuoto in griglia, come in q-net.

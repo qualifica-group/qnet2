@@ -57,7 +57,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Each month shows **Receipts** (open active installments), **Payments** (open purchase installments, already net of withholding tax and ENASARCO), **Commitments** (approved supplier orders not yet invoiced), the **Net** (receipts − payments − commitments) and the **Cumulative**. An installment falls in the month of its due date; an order falls in the month of its first expected due date, from the order date and the payment method (the order date itself if it has no payment method).',
+          text: 'Each month shows **Receipts** (open active installments), **Payments** (open purchase installments, already net of withholding tax and ENASARCO), **Commitments** (approved supplier orders not yet invoiced, VAT included like the installments), the **Net** (receipts − payments − commitments) and the **Cumulative**. An installment falls in the month of its due date; an order falls in the month of its first expected due date, from the order date and the payment method (the order date itself if it has no payment method).',
         },
         {
           type: 'paragraph',

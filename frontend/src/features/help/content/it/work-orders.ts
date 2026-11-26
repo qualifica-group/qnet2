@@ -427,14 +427,14 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "**Richiedi documenti**: scegli la checklist (puoi restringere l'elenco per **categoria**; compaiono solo le checklist attive e già sincronizzate con ArchivioSmart), la **scadenza** (oggi o dopo), l'**email del destinatario** (precompilata con l'email principale dell'anagrafica del cliente, se c'è) e un **messaggio** di al massimo 2000 caratteri. Con l'interruttore acceso la richiesta parte subito.",
-            "**Stato**: ogni richiesta mostra lo stato remoto (**Inviata**, **In corso**, **Completata**, **Scaduta**, **Annullata**, **Bozza**), una barra con le voci soddisfatte sul totale e le voci raggruppate come nella checklist, ciascuna con il suo stato, il motivo (per esempio perché un documento va corretto) e il numero di file caricati.",
+            "**Richiedi documenti**: scegli la checklist (puoi restringere l'elenco per **categoria**; compaiono solo le checklist attive e già sincronizzate con ArchivioSmart), la **scadenza** (oggi o dopo), l'**email del destinatario** (obbligatoria; precompilata con l'email principale dell'anagrafica del cliente, se c'è, altrimenti va scritta a mano) e un **messaggio** di al massimo 2000 caratteri. Con l'interruttore acceso la richiesta parte subito.",
+            "**Stato**: ogni richiesta mostra lo stato remoto (**Inviata**, **In corso**, **Completata**, **Scaduta**, **Annullata**, **Bozza**), una barra con le voci soddisfatte sul totale e le voci raggruppate come nella checklist, ciascuna con il suo stato, il motivo (per esempio perché un documento va corretto) e il numero di file caricati. Le richieste chiuse (**Completata**, **Scaduta**, **Annullata**) compaiono compatte, con solo stato e avanzamento: clicca il titolo per aprirle o richiuderle. Quelle ancora aperte restano sempre espanse.",
             "**In attesa di invio** significa che la richiesta è in coda verso ArchivioSmart; se l'invio non riesce compare **Invio non riuscito** con il messaggio di ArchivioSmart, e puoi correggere i dati con **Modifica**.",
           ],
         },
         {
           type: 'paragraph',
-          text: "Azioni (con il permesso di modifica): **Modifica** (scadenza, destinatario e messaggio; la checklist non cambia, e non è possibile se la richiesta è completata, scaduta o annullata), **Sollecita** (solo se la richiesta è inviata o in corso), **Annulla richiesta** (chiede conferma e non è possibile se è completata o scaduta), **Aggiorna stato** (rilegge la richiesta da ArchivioSmart) e **Sincronizzazioni** (le ultime 20 chiamate verso ArchivioSmart).",
+          text: "Azioni (con il permesso di modifica): **Modifica** (scadenza, destinatario e messaggio; la checklist non cambia, e non è possibile se la richiesta è completata, scaduta o annullata), **Sollecita** (solo se la richiesta è inviata o in corso), **Annulla richiesta** (chiede conferma e non è possibile se è completata o scaduta; se la richiesta non è mai arrivata ad ArchivioSmart, per esempio perché l'invio è fallito, viene annullata subito solo in QNet), **Aggiorna stato** (rilegge la richiesta da ArchivioSmart; non compare se la richiesta non vi è mai arrivata: correggila con **Modifica** e inviala di nuovo) e **Sincronizzazioni** (le ultime 20 chiamate verso ArchivioSmart).",
         },
         {
           type: 'paragraph',

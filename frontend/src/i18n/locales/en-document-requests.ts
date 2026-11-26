@@ -135,6 +135,7 @@ export const documentRequests = {
   validation: {
     checklistRequired: 'Select a checklist.',
     dueDatePast: 'The due date cannot be in the past.',
+    emailRequired: 'Enter the recipient email.',
     emailInvalid: 'Enter a valid email address.',
     emailMax: 'The email can be at most 255 characters long.',
     noteRequired: 'Enter the reason for the rejection.',
