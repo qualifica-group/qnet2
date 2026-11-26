@@ -153,6 +153,7 @@
     <shared_types>
       <!-- AiConversation (come 0347; `active_turn` compare solo nel dettaglio) -->
       { "id": int, "title": string, "last_message_at": iso8601|null, "created_at": iso8601,
+        "propose_new_conversation": bool,  <!-- true dopo `memory.max_summaries` riassunti: la chat propone di aprirne una nuova (D-5) -->
         "messages": AiMessage[]?, "active_turn": AiTurn|null? }
       <!-- AiMessage: invariato rispetto a 0347 (mentions: [{module, id, label}], attachments, model, token) -->
       <!-- AiTurnStatus -->
@@ -169,7 +170,8 @@
         "created_at": iso8601, "updated_at": iso8601, "finished_at": iso8601|null }
       <!-- AiTurnStep: etichetta breve gia' tradotta nella lingua del turno (it|en) -->
       { "index": int, "tool": "search_operations"|"list_records"|"run_read_code"|"prepare_write",
-        "label": string, "state": "running"|"done"|"failed" }
+        "label": string, "state": "running"|"done"|"failed",
+        "operation": string|null }  <!-- cosa chiedeva la chiamata (dominio, operazione, ricerca), max 80 caratteri: nei turni successivi sostituisce il risultato (D-5) -->
       <!-- AiPreview: contenuto del connettore, mai testo del modello (D-19) -->
       { "id": string,                        <!-- `preview_id` del connettore, 24 caratteri esadecimali -->
         "confirmable": bool,                 <!-- `confermabile` del connettore; false: la conferma e' rifiutata (409 `not_confirmable`) -->

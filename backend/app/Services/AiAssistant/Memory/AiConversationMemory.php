@@ -55,8 +55,8 @@ TEXT;
         // Step 2: fixed prefix, then summary, then messages
         $messages = [...$this->prefix($input), ...$entries];
 
-        // Step 3: budget against the threshold
-        $estimated = $this->estimateTokens($messages);
+        // Step 3: budget against the threshold; tools sent apart still take room in the window
+        $estimated = $this->estimateTokens($messages) + ($input->toolsInMessages ? 0 : $this->estimateTokens([new AiMemoryEntry('system', $this->toolsBlock($input->tools))]));
         $threshold = (int) floor($input->contextWindow * (int) config('ai-assistant.memory.summary_threshold_percent') / 100);
         $old = $this->entriesOlderThanRecentTurns($entries);
 
@@ -66,8 +66,14 @@ TEXT;
             thresholdTokens: $threshold,
             needsSummary: $estimated > $threshold && $old !== [],
             entriesToSummarize: $old,
-            proposeNewConversation: $input->summaryCount >= (int) config('ai-assistant.memory.max_summaries'),
+            proposeNewConversation: $this->proposesNewConversation($input->summaryCount),
         );
+    }
+
+    /** True once a conversation has been summarised the configured number of times. */
+    public function proposesNewConversation(int $summaryCount): bool
+    {
+        return $summaryCount >= (int) config('ai-assistant.memory.max_summaries');
     }
 
     /** The saved messages of this conversation not yet covered by its summary, oldest first. */
@@ -144,8 +150,10 @@ TEXT;
         $prefix = [
             new AiMemoryEntry('system', $input->core),
             new AiMemoryEntry('system', $input->instructions),
-            new AiMemoryEntry('system', $this->toolsBlock($input->tools)),
         ];
+        if ($input->toolsInMessages) {
+            $prefix[] = new AiMemoryEntry('system', $this->toolsBlock($input->tools));
+        }
         if (filled($input->summary)) {
             $prefix[] = new AiMemoryEntry('system', self::SUMMARY_HEADER.$input->summary);
         }
@@ -232,13 +240,14 @@ TEXT;
         ));
     }
 
+    /** A past message as plain text: a mention is only a marker with the type and the identifier. */
     private function savedText(AiMessage $message): string
     {
         $lines = [$message->content];
         foreach ($message->mentions ?? [] as $mention) {
-            $lines[] = "<record module=\"{$mention['module']}\" id=\"{$mention['id']}\"/>";
+            $lines[] = "[menzione: {$mention['module']} #{$mention['id']}]";
         }
 
-        return implode("\n\n", $lines);
+        return implode("\n", $lines);
     }
 }

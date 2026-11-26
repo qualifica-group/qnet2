@@ -50,7 +50,6 @@ return [
     'timeout_seconds' => (int) env('AI_ASSISTANT_TIMEOUT_SECONDS', 120),
     'connect_timeout_seconds' => (int) env('AI_ASSISTANT_CONNECT_TIMEOUT_SECONDS', 10),
 
-    'history_window' => (int) env('AI_ASSISTANT_HISTORY_WINDOW', 20),
     'max_message_chars' => (int) env('AI_ASSISTANT_MAX_MESSAGE_CHARS', 8000),
     'guide_max_chars' => (int) env('AI_ASSISTANT_GUIDE_MAX_CHARS', 40000),
     'max_mentions' => (int) env('AI_ASSISTANT_MAX_MENTIONS', 5),
@@ -77,6 +76,8 @@ return [
         'max_summaries' => (int) env('AI_ASSISTANT_MAX_SUMMARIES', 3),
         'summary_max_words' => (int) env('AI_ASSISTANT_SUMMARY_MAX_WORDS', 300),
         'bytes_per_token' => (float) env('AI_ASSISTANT_BYTES_PER_TOKEN', 2.0),
+        // Window used when OpenRouter does not list the model or the list is unreachable: small on purpose.
+        'fallback_context_tokens' => (int) env('AI_ASSISTANT_FALLBACK_CONTEXT_TOKENS', 32000),
     ],
 
     /*

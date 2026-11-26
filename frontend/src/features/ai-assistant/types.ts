@@ -37,6 +37,8 @@ export interface AiConversationDetail extends AiConversation {
   messages: AiMessage[]
   /** The turn that is not final yet, so a reloaded page resumes the polling (0433). */
   active_turn?: AiTurn | null
+  /** True once the conversation was summarized the configured number of times: the chat offers a new one (D-5). */
+  propose_new_conversation?: boolean
 }
 
 export interface AiMessageMention {
@@ -145,6 +147,22 @@ export type AiTurnErrorCode =
   | 'limit_total'
   | 'internal'
 
+export type AiPreviewState = 'open' | 'confirmed' | 'cancelled' | 'expired' | 'rejected' | 'uncertain' | 'stale'
+
+export type AiPreviewOutcome = 'succeeded' | 'rejected' | 'uncertain' | 'expired' | 'cancelled' | 'stale'
+
+export interface AiPreview {
+  /** The only thing sent back by confirm and cancel. */
+  id: string
+  /** False when the connector lacks required data: the preview can be read but not confirmed. */
+  confirmable: boolean
+  /** Markdown from the connector (record, fields before and after, effects), never model text. */
+  content: string
+  expires_at: string
+  state: AiPreviewState
+  outcome: AiPreviewOutcome | null
+}
+
 export interface AiTurn {
   id: number
   conversation_id: number
@@ -154,8 +172,8 @@ export interface AiTurn {
   assistant_text: string
   assistant_message: AiMessage | null
   steps: AiTurnStep[]
-  /** The preview card belongs to ticket 05; here the field is carried, never read. */
-  preview: unknown
+  /** The open preview, or the last one of the turn (0433). Connector content, never model text. */
+  preview: AiPreview | null
   queue_position: number | null
   error_code: AiTurnErrorCode | null
   error_message: string | null

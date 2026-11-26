@@ -41,7 +41,7 @@ final class AiTurnRunner
         private readonly AssistantLinkService $links,
         private readonly ConnectorClient $connector,
         private readonly MeteredModelCall $model,
-        private readonly AgentMessageBuilder $messages,
+        private readonly AgentTurnMemory $memory,
         private readonly AiAssistantSettingsService $settings,
         private readonly AiTurnSuspension $suspension,
     ) {}
@@ -106,7 +106,7 @@ final class AiTurnRunner
 
         // Step 4: the tools and the first messages
         $tools = $this->connector->tools($credential);
-        $messages = $this->suspension->resume($run) ?? $this->messages->build($run->turn, $settings->instructions);
+        $messages = $this->suspension->resume($run) ?? $this->memory->messages($run, $settings, $tools);
 
         // Step 5: model rounds until a text answer
         while (true) {
@@ -213,7 +213,7 @@ final class AiTurnRunner
             return self::INVALID_ARGUMENTS_RESULT;
         }
 
-        $index = $this->openStep($run, $call['name']);
+        $index = $this->openStep($run, $call['name'], AssistantTools::operation($arguments));
 
         try {
             $result = $this->connector->call($credential, $call['name'], $arguments);
@@ -314,7 +314,7 @@ final class AiTurnRunner
         return $message;
     }
 
-    private function openStep(AgentRun $run, string $tool): int
+    private function openStep(AgentRun $run, string $tool, ?string $operation): int
     {
         $index = count($run->steps);
         $run->steps[] = [
@@ -322,6 +322,7 @@ final class AiTurnRunner
             'tool' => $tool,
             'label' => AssistantTools::label($tool, $run->turn->locale),
             'state' => 'running',
+            'operation' => $operation,
         ];
         $this->save($run, ['steps' => $run->steps]);
 

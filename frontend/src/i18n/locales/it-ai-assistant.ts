@@ -6,6 +6,9 @@ export const aiAssistant = {
   loadFailed: 'Impossibile caricare l\'assistente AI.',
   loading: 'Caricamento...',
   newConversation: 'Nuova conversazione',
+  longConversation:
+    "Questa conversazione è diventata lunga e l'assistente ha riassunto la parte precedente: potrebbe dimenticare qualche dettaglio. Una conversazione nuova riparte pulita e risponde in modo più preciso.",
+  startNewConversation: 'Apri una nuova conversazione',
   history: 'Cronologia',
   backToChat: 'Torna alla chat',
   openFullPage: 'Apri a pagina intera',
@@ -65,6 +68,18 @@ export const aiAssistant = {
       limit_person: 'Hai raggiunto il tuo limite mensile di spesa dell\'assistente.',
       limit_total: 'È stato raggiunto il limite mensile di spesa dell\'assistente per l\'azienda.',
       internal: 'Qualcosa è andato storto. Riprova più tardi.',
+    },
+  },
+  preview: {
+    label: 'Modifica da confermare',
+    notConfirmable: 'Mancano dati obbligatori: questa modifica non si può confermare. Annulla e riprova con i dati mancanti.',
+    expiresIn: 'Scade tra {{time}}',
+    expired: 'Scaduta: non è stato scritto nulla.',
+    confirm: 'Conferma',
+    cancel: 'Annulla',
+    errors: {
+      closed: 'Questa modifica non è più in attesa di conferma: non è stato scritto nulla.',
+      generic: 'Non è stato possibile completare l\'operazione. Riprova.',
     },
   },
   composer: {

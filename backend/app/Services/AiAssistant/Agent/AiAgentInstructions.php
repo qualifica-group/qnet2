@@ -64,6 +64,21 @@ TEXT;
      */
     public static function system(string $additional = ''): string
     {
-        return trim($additional) === '' ? self::CORE : self::CORE."\n\n# Additional instructions\n".trim($additional);
+        $block = self::additionalBlock($additional);
+
+        return $block === '' ? self::CORE : self::CORE."\n\n".$block;
+    }
+
+    public static function core(): string
+    {
+        return self::CORE;
+    }
+
+    /**
+     * The administrator's block that follows the core, empty when there is none.
+     */
+    public static function additionalBlock(string $additional): string
+    {
+        return trim($additional) === '' ? '' : "# Additional instructions\n".trim($additional);
     }
 }
