@@ -118,6 +118,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'long-conversations',
+      title: 'Long conversations',
+      blocks: [
+        {
+          type: 'list',
+          items: [
+            'When a conversation grows long, the assistant **summarizes its earlier part** and keeps the latest messages in full. You do not have to do anything.',
+            'Data the assistant read earlier is **not kept**: if it needs a figure again it reads it again, so the answer reflects what QNet shows now.',
+            'After a few summaries the chat shows a notice with **Start a new conversation**. A new conversation starts clean and answers more precisely.',
+            'Nothing passes from one conversation to another: the assistant does not remember what you said in the others. You can open a new conversation at any time with **New conversation**.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'accuracy',
       title: 'Answers can be wrong',
       blocks: [

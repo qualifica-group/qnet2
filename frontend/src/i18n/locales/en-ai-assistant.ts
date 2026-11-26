@@ -6,6 +6,9 @@ export const aiAssistant = {
   loadFailed: 'Unable to load the AI assistant.',
   loading: 'Loading...',
   newConversation: 'New conversation',
+  longConversation:
+    'This conversation has become long and the assistant has summarized its earlier part, so it may forget details. A new conversation starts clean and gives more precise answers.',
+  startNewConversation: 'Start a new conversation',
   history: 'History',
   backToChat: 'Back to chat',
   openFullPage: 'Open full page',

@@ -37,6 +37,8 @@ export interface AiConversationDetail extends AiConversation {
   messages: AiMessage[]
   /** The turn that is not final yet, so a reloaded page resumes the polling (0433). */
   active_turn?: AiTurn | null
+  /** True once the conversation was summarized the configured number of times: the chat offers a new one (D-5). */
+  propose_new_conversation?: boolean
 }
 
 export interface AiMessageMention {

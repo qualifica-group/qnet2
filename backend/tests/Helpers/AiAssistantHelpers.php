@@ -176,7 +176,7 @@ if (! function_exists('aiapi_fake_agent')) {
      * @param  list<string>  $modelBodies
      * @param  list<string>  $toolResults
      */
-    function aiapi_fake_agent(array $modelBodies, array $toolResults = [], int $modelStatus = 200, int $connectorStatus = 200, bool $withConfirm = false): void
+    function aiapi_fake_agent(array $modelBodies, array $toolResults = [], int $modelStatus = 200, int $connectorStatus = 200, bool $withConfirm = false, ?int $contextLength = 200000): void
     {
         $model = Http::sequence();
         foreach ($modelBodies as $body) {
@@ -191,6 +191,13 @@ if (! function_exists('aiapi_fake_agent')) {
         Http::fake([
             '*/endpoints/zdr' => Http::response(['data' => array_map(fn (string $id): array => ['model_id' => $id, 'tag' => 'fast', 'safety_retention' => false], AIAPI_MODEL_IDS)]),
             '*/models/*/endpoints' => Http::response(['data' => ['endpoints' => [$endpoint]]]),
+            // The model list the memory reads the context window from.
+            'openrouter.test/api/v1/models*' => Http::response(['data' => $contextLength === null ? [] : array_map(fn (string $id): array => [
+                'id' => $id, 'name' => $id, 'context_length' => $contextLength,
+                'supported_parameters' => ['tools'],
+                'architecture' => ['input_modalities' => ['text'], 'output_modalities' => ['text']],
+                'pricing' => ['prompt' => '0.000001', 'completion' => '0.000002'],
+            ], AIAPI_MODEL_IDS)]),
             'openrouter.test/api/v1/chat/completions' => $model,
             'connector.test/*' => function (Request $request) use ($toolResults, $connectorStatus, $withConfirm, &$calls) {
                 if ($connectorStatus !== 200) {

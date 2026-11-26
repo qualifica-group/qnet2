@@ -118,6 +118,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'long-conversations',
+      title: 'Conversazioni lunghe',
+      blocks: [
+        {
+          type: 'list',
+          items: [
+            'Quando una conversazione si allunga, l\'assistente **riassume la parte precedente** e tiene per intero gli ultimi messaggi. Non devi fare nulla.',
+            'I dati che l\'assistente ha letto prima **non vengono conservati**: se gli serve di nuovo un valore lo rilegge, così la risposta riflette quello che QNet mostra adesso.',
+            'Dopo alcuni riassunti la chat mostra un avviso con **Apri una nuova conversazione**. Una conversazione nuova riparte pulita e risponde in modo più preciso.',
+            'Nulla passa da una conversazione all\'altra: l\'assistente non ricorda quanto hai detto nelle altre. Puoi aprirne una nuova quando vuoi con **Nuova conversazione**.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'accuracy',
       title: 'Le risposte possono essere sbagliate',
       blocks: [

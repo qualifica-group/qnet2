@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { AiComposer } from '@/features/ai-assistant/components/ai-composer'
 import { AiEmptyState } from '@/features/ai-assistant/components/ai-empty-state'
 import { AiMessageList } from '@/features/ai-assistant/components/ai-message-list'
+import { AiNewConversationProposal } from '@/features/ai-assistant/components/ai-new-conversation-proposal'
 import { AiNotConfigured } from '@/features/ai-assistant/components/ai-not-configured'
 import { useAiAssistantConfig } from '@/features/ai-assistant/hooks/use-ai-assistant-config'
 import { useAiComposer } from '@/features/ai-assistant/hooks/use-ai-composer'
@@ -114,6 +115,9 @@ function AiChatBody({
         </div>
       ) : (
         <AiMessageList messages={messages} turn={shownTurn} />
+      )}
+      {conversationQuery.data?.propose_new_conversation === true && (
+        <AiNewConversationProposal onStart={() => onConversationChange(null)} />
       )}
       <AiComposer composer={composer} allowedModules={config.mention_modules} />
     </div>
