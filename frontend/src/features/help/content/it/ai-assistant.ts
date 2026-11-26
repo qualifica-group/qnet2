@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'ai-assistant',
   title: 'Assistente AI',
   summary:
-    'Un assistente a cui fare domande su QNet: conosce la guida della pagina in cui sei, può leggere i record che menzioni con @ e i file che alleghi.',
+    'Un assistente a cui fare domande su QNet: conosce la guida della pagina in cui sei, può leggere i record che menzioni con @.',
   sections: [
     {
       id: 'overview',
@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'L\'assistente AI risponde in una chat: dopo l\'invio la richiesta entra in coda, poi l\'assistente lavora e la risposta compare man mano che la prepara. Puoi chiedergli come si usa una pagina, di riassumere un record, di preparare una bozza di email o di spiegare un documento allegato.',
+          text: 'L\'assistente AI risponde in una chat: dopo l\'invio la richiesta entra in coda, poi l\'assistente lavora e la risposta compare man mano che la prepara. Puoi chiedergli come si usa una pagina, di riassumere un record, o di preparare una bozza di email.',
         },
         {
           type: 'note',
@@ -48,7 +48,7 @@ const guide: HelpGuide = {
           items: [
             'Scrivi nel campo in basso. **Invio** manda il messaggio, **Maiusc+Invio** va a capo.',
             'Sotto il tuo messaggio compare lo stato: **In coda** finché non parte, poi i passi che l\'assistente sta facendo (per esempio «Leggo le commesse») e il testo della risposta man mano che si forma. Mentre lavora non puoi inviare un altro messaggio, ma puoi già scrivere il prossimo: resta nel campo.',
-            'Se l\'invio viene rifiutato, il testo, i file e le menzioni restano nel campo: puoi riprovare senza riscrivere nulla. Se invece è l\'assistente a fermarsi (errore, troppi passaggi, tempo scaduto, limite di spesa), il tuo messaggio resta salvato e sotto compare il motivo.',
+            'Se l\'invio viene rifiutato, il testo e le menzioni restano nel campo: puoi riprovare senza riscrivere nulla. Se invece è l\'assistente a fermarsi (errore, troppi passaggi, tempo scaduto, limite di spesa), il tuo messaggio resta salvato e sotto compare il motivo.',
           ],
         },
         {
@@ -85,11 +85,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con la graffetta puoi allegare PDF e immagini (PNG, JPG, WEBP). I limiti (numero di file e dimensione massima) vengono mostrati se li superi, prima dell\'invio. Anche i file, come le menzioni, vengono inviati all\'assistente solo nel messaggio in cui li aggiungi. I tipi accettati dipendono dal modello configurato: con un modello di solo testo la graffetta non compare affatto e il server rifiuta nuovi allegati.',
+          text: 'Gli allegati compaiono solo se il modello configurato dall\'amministratore li accetta. Oggi il modello è di solo testo: nel campo non c\'è la graffetta e il server rifiuta nuovi allegati. Se l\'amministratore passerà a un modello che li accetta, comparirà la graffetta per allegare PDF e immagini (PNG, JPG, WEBP), con i limiti di numero e dimensione mostrati prima dell\'invio.',
         },
         {
           type: 'tip',
-          text: 'Gli allegati dei tuoi messaggi restano scaricabili dalla conversazione cliccando sul loro nome, anche se il modello in uso è poi diventato di solo testo.',
+          text: 'Gli allegati già inviati restano scaricabili dalla conversazione cliccando sul loro nome, anche se il modello in uso è poi diventato di solo testo.',
         },
       ],
     },
@@ -108,6 +108,8 @@ const guide: HelpGuide = {
             'La scheda è valida per **10 minuti**: il tempo rimasto è sempre visibile e, scaduto, non si può più confermare. In quel caso non è stato scritto nulla e puoi ripetere la richiesta.',
             'Se alla scheda mancano dati obbligatori, **Conferma** resta disattivato e una riga lo spiega: puoi solo annullare e ripetere la richiesta con i dati mancanti.',
             'Se chiedi più modifiche, le schede arrivano una alla volta: confermane o annullane una per continuare con la successiva.',
+            'Se il record è cambiato dopo la scheda, la modifica non viene scritta: l\'assistente te lo dice e puoi ripetere la richiesta.',
+            'Se dopo **Conferma** l\'esito è incerto (per esempio la risposta non è arrivata), QNet non ripete la scrittura da solo: l\'assistente rilegge il record per verificare se la modifica è stata applicata e ti dice l\'esito nella conversazione.',
           ],
         },
         {
@@ -122,7 +124,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'L\'assistente usa il modello di intelligenza artificiale scelto dall\'amministratore: un servizio esterno a QNet (OpenAI, Anthropic, OpenRouter) oppure un modello installato sui server dell\'azienda. Con un servizio esterno, a ogni messaggio vengono inviati fuori dall\'azienda: il testo che scrivi, la guida della pagina, gli ultimi messaggi della conversazione, i file allegati e il tipo e l\'identificativo dei record menzionati. Se non sai quale modello è in uso, non allegare ciò che non può uscire dall\'azienda.',
+          text: 'L\'assistente usa il modello di intelligenza artificiale scelto dall\'amministratore: un servizio esterno a QNet (OpenRouter, che inoltra la richiesta al fornitore del modello scelto). A ogni messaggio vengono inviati fuori dall\'azienda: il testo che scrivi, la guida della pagina, gli ultimi messaggi della conversazione e il tipo e l\'identificativo dei record menzionati; con un modello che accetta allegati, anche i file allegati. Anche i dati di QNet che l\'assistente legge per rispondere (per esempio le commesse aperte) fanno parte della conversazione e vengono inviati allo stesso modo. Non scrivere nella chat ciò che non può uscire dall\'azienda.',
         },
       ],
     },
