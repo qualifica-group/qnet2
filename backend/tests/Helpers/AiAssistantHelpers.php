@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AiConversation;
+use App\Models\AiTurn;
 use App\Models\User;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
@@ -22,6 +23,7 @@ const AIAPI_OPENROUTER_URL = 'https://openrouter.test/api/v1';
 const AIAPI_CONNECTOR_URL = 'http://connector.test';
 const AIAPI_CONNECTOR_SECRET = 'fake-assistant-secret-0123456789abcdef';
 const AIAPI_OPENROUTER_KEY = 'sk-or-fake-key';
+const AIAPI_PREVIEW_ID = 'a81f00112233445566778899';
 const AIAPI_MODEL_IDS = ['deepseek/deepseek-v4-flash-0731', 'vendor/chosen-model'];
 
 if (! function_exists('aiapi_user')) {
@@ -172,11 +174,13 @@ if (! function_exists('aiapi_fake_agent')) {
     /**
      * Fakes OpenRouter (one body per model round, in order) and the connector (tools/list and the
      * body of each tools/call, in order). A connector status other than 200 fails every call.
+     * `POST /assistant/confirm` answers the bodies of `$confirmResults` in order, with `$confirmStatus`.
      *
      * @param  list<string>  $modelBodies
      * @param  list<string>  $toolResults
+     * @param  list<string>  $confirmResults
      */
-    function aiapi_fake_agent(array $modelBodies, array $toolResults = [], int $modelStatus = 200, int $connectorStatus = 200, bool $withConfirm = false): void
+    function aiapi_fake_agent(array $modelBodies, array $toolResults = [], int $modelStatus = 200, int $connectorStatus = 200, bool $withConfirm = false, array $confirmResults = [], int $confirmStatus = 200): void
     {
         $model = Http::sequence();
         foreach ($modelBodies as $body) {
@@ -184,6 +188,7 @@ if (! function_exists('aiapi_fake_agent')) {
         }
 
         $calls = 0;
+        $confirms = 0;
 
         // The price ceiling the reservation is priced with: one endpoint with tools, $1 / $2 per million tokens.
         $endpoint = ['tag' => 'fast', 'supported_parameters' => ['tools'], 'pricing' => ['prompt' => '0.000001', 'completion' => '0.000002', 'request' => '0']];
@@ -192,7 +197,11 @@ if (! function_exists('aiapi_fake_agent')) {
             '*/endpoints/zdr' => Http::response(['data' => array_map(fn (string $id): array => ['model_id' => $id, 'tag' => 'fast', 'safety_retention' => false], AIAPI_MODEL_IDS)]),
             '*/models/*/endpoints' => Http::response(['data' => ['endpoints' => [$endpoint]]]),
             'openrouter.test/api/v1/chat/completions' => $model,
-            'connector.test/*' => function (Request $request) use ($toolResults, $connectorStatus, $withConfirm, &$calls) {
+            'connector.test/*' => function (Request $request) use ($toolResults, $connectorStatus, $withConfirm, $confirmResults, $confirmStatus, &$calls, &$confirms) {
+                if (str_ends_with($request->url(), '/assistant/confirm')) {
+                    return Http::response($confirmResults[$confirms++] ?? '{"connettore":{"esito":"riuscita"},"dati":{"testo":"done","codice_http":200,"risposta":{}}}', $confirmStatus, ['Content-Type' => 'application/json']);
+                }
+
                 if ($connectorStatus !== 200) {
                     return Http::response('', $connectorStatus);
                 }
@@ -209,6 +218,79 @@ if (! function_exists('aiapi_fake_agent')) {
                 return Http::response($body, 200, ['Content-Type' => 'text/event-stream']);
             },
         ]);
+    }
+}
+
+if (! function_exists('aiapi_preview_result')) {
+    /**
+     * The `prepare_write` result of the connector: the envelope with the three fields of `dati`.
+     */
+    function aiapi_preview_result(string $id = 'a81f00112233445566778899', string $content = "### Anteprima\n\n**Nuova ora**: crea un'ora.", bool $confirmable = true): string
+    {
+        return json_encode(['connettore' => ['esito' => 'riuscita'], 'dati' => ['preview_id' => $id, 'confermabile' => $confirmable, 'anteprima' => $content]]);
+    }
+}
+
+if (! function_exists('aiapi_waiting_turn')) {
+    /**
+     * Sends a message whose first model round prepares a write and runs the turn up to the wait
+     * for the confirmation. The model rounds after the first are the ones of `$modelRounds` (default:
+     * a text answer), the confirmation answers are `$confirmResults`. The expiry job must be faked by the caller.
+     *
+     * @param  list<string>  $modelRounds  bodies AFTER the first round
+     * @param  list<string>  $confirmResults
+     * @return array{0: AiTurn, 1: User, 2: AiConversation}
+     */
+    function aiapi_waiting_turn(?User $user = null, string $previewResult = '', array $modelRounds = [], array $confirmResults = [], int $confirmStatus = 200): array
+    {
+        $user ??= aiapi_user();
+        aiapi_fake_agent(
+            [aiapi_tool_body('prepare_write', ['{"operation_id":"POST /api/time-entries","body":{}}']), ...($modelRounds ?: [aiapi_text_body(['Done.'])])],
+            [$previewResult ?: aiapi_preview_result(AIAPI_PREVIEW_ID)],
+            confirmResults: $confirmResults,
+            confirmStatus: $confirmStatus,
+        );
+
+        aiapi_send($user, $conversation = aiapi_conversation($user))->assertStatus(202);
+
+        return [AiTurn::query()->latest('id')->firstOrFail(), $user, $conversation];
+    }
+}
+
+if (! function_exists('aiapi_turn_url')) {
+    function aiapi_turn_url(AiTurn $turn, string $suffix = ''): string
+    {
+        return "/api/ai-assistant/conversations/{$turn->ai_conversation_id}/turns/{$turn->id}{$suffix}";
+    }
+}
+
+if (! function_exists('aiapi_turn_state')) {
+    /**
+     * GET of a turn as a user with a fresh token and no guard left over from a previous request.
+     */
+    function aiapi_turn_state(AiTurn $turn, ?User $user = null): TestResponse
+    {
+        app('auth')->forgetGuards();
+        $user ??= $turn->conversation->user;
+
+        return test()->withHeader('Authorization', 'Bearer '.$user->createToken('read')->plainTextToken)->getJson(aiapi_turn_url($turn));
+    }
+}
+
+if (! function_exists('aiapi_decide')) {
+    /**
+     * POST of `confirm` or `cancel` on a turn, as the given user (default: the owner) with a fresh token.
+     *
+     * @param  array<string, mixed>|null  $body  default: the id of the open preview of the turn
+     */
+    function aiapi_decide(AiTurn $turn, string $action, ?User $user = null, ?array $body = null, ?string $url = null): TestResponse
+    {
+        app('auth')->forgetGuards();
+        $user ??= $turn->conversation->user;
+        $body ??= ['preview_id' => $turn->fresh()->preview['id'] ?? 'none'];
+
+        return test()->withHeader('Authorization', 'Bearer '.$user->createToken('decide')->plainTextToken)
+            ->postJson($url ?? aiapi_turn_url($turn, "/{$action}"), $body);
     }
 }
 

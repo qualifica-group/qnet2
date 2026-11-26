@@ -23,6 +23,8 @@ final class ConnectorClient
 {
     private const string MCP_PATH = '/assistant/mcp';
 
+    private const string CONFIRM_PATH = '/assistant/confirm';
+
     private const string TOOLS_CACHE_KEY = 'ai-assistant.connector-tools';
 
     private const int TOOLS_CACHE_SECONDS = 300;
@@ -96,6 +98,37 @@ final class ConnectorClient
         return is_string($text)
             ? ['text' => $text, 'is_error' => (bool) ($result['isError'] ?? false)]
             : ['text' => self::REJECTED_RESULT, 'is_error' => true];
+    }
+
+    /**
+     * Confirms a write preview through the confirmation route of the connector (never through a tool):
+     * the body is the identifier only. One attempt, no retry: a lost or late answer is not repeated
+     * (the connector would answer that the preview is used). The answer is the envelope of `confirm_write`.
+     *
+     * @return array{text: string, envelope: array<string, mixed>}
+     *
+     * @throws ConnectorUnavailableException
+     * @throws ConnectorLinkRejectedException
+     */
+    public function confirm(string $credential, string $previewId): array
+    {
+        try {
+            $response = $this->request($credential)->withBody(json_encode(['preview_id' => $previewId], JSON_THROW_ON_ERROR), 'application/json')->post(self::confirmUrl());
+        } catch (ConnectionException) {
+            $this->unavailable('connection');
+        }
+
+        if ($response->status() === 401) {
+            throw new ConnectorLinkRejectedException;
+        }
+
+        $envelope = $response->successful() ? json_decode($response->body(), true) : null;
+
+        if (! is_array($envelope) || ! is_array($envelope['connettore'] ?? null)) {
+            $this->unavailable('confirm_answer', ['status' => $response->status()]);
+        }
+
+        return ['text' => trim($response->body()), 'envelope' => $envelope];
     }
 
     /**
@@ -175,6 +208,11 @@ final class ConnectorClient
     private static function url(): string
     {
         return rtrim((string) config('ai-assistant.connector.url'), '/').self::MCP_PATH;
+    }
+
+    private static function confirmUrl(): string
+    {
+        return rtrim((string) config('ai-assistant.connector.url'), '/').self::CONFIRM_PATH;
     }
 
     /**

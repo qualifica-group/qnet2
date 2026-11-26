@@ -171,14 +171,15 @@
       { "index": int, "tool": "search_operations"|"list_records"|"run_read_code"|"prepare_write",
         "label": string, "state": "running"|"done"|"failed" }
       <!-- AiPreview: contenuto del connettore, mai testo del modello (D-19) -->
-      { "id": string,                        <!-- identificativo dell'anteprima del connettore -->
-        "operation": string,                 <!-- identificativo dell'operazione dell'elenco chiuso -->
-        "record": { "type": string, "id": int|string|null, "label": string|null },
-        "changes": [ { "field": string, "label": string, "before": mixed, "after": mixed } ],
-        "effects": string[],
-        "expires_at": iso8601,
+      { "id": string,                        <!-- `preview_id` del connettore, 24 caratteri esadecimali -->
+        "confirmable": bool,                 <!-- `confermabile` del connettore; false: la conferma e' rifiutata (409 `not_confirmable`) -->
+        "content": string,                   <!-- Markdown `anteprima` del connettore, salvato com'e': record, campi prima e dopo, effetti -->
+        "expires_at": iso8601,               <!-- calcolata da QNET2, sempre prima della scadenza del connettore -->
         "state": "open"|"confirmed"|"cancelled"|"expired"|"rejected"|"uncertain"|"stale",
         "outcome": AiPreviewOutcome|null }
+      <!-- RIALLINEATO (ticket 05): sostituisce la forma con operation/record/changes/effects (vedi open_points).
+           `state` dopo il clic segue la risposta del connettore: confirmed (riuscita), rejected, uncertain, stale
+           (record_cambiato), expired; `outcome` resta null finche' il turno non riprende con quell'esito. -->
       <!-- AiPreviewOutcome: esito della scrittura dopo il clic -->
       "succeeded"|"rejected"|"uncertain"|"expired"|"cancelled"|"stale"
       <!-- AiTurnErrorCode (testi fissi nella tabella `fixed_texts`) -->
@@ -268,7 +269,8 @@
       <errors>
         401; 403 conversazione altrui; 404 anteprima non del turno ("Preview not found.");
         409 anteprima non piu' aperta, `data.reason` = `expired` | `already_used` | `not_open`
-        ("This preview is no longer open."); 422 forma di `preview_id`;
+        ("This preview is no longer open."); 409 `data.reason` = `not_confirmable` con `preview.confirmable` falso
+        ("This preview cannot be confirmed.", il `cancel` resta possibile); 422 forma di `preview_id`;
         503 connettore non raggiungibile ("The assistant could not reach its tools. Try again later."): l'anteprima resta
         `open` finche' non scade; esito incerto della conferma: nessuna ripetizione automatica, il turno riprende con
         esito `uncertain` dopo la lettura di verifica del connettore.
@@ -375,6 +377,7 @@
     <text route="messages">Attachments are not available with the current model.</text>
     <text route="confirm|cancel">Preview not found.</text>
     <text route="confirm|cancel">This preview is no longer open.</text>
+    <text route="confirm">This preview cannot be confirmed.</text>
     <text route="preview-expired">The preview expired before it was confirmed. Nothing was written.</text>
     <text route="preview-cancelled">You cancelled the preview. Nothing was written.</text>
     <text route="preview-stale">The record changed after the preview. Nothing was written.</text>
@@ -469,7 +472,8 @@
 
   <open_points>
     <item>D-20 (stato `cancelled` e assenza della rotta di arresto) e' una mia derivazione dal testo, non una frase del committente.</item>
-    <item>Forma esatta del contenuto dell'anteprima del connettore (`changes`, `effects`, `record`): normalizzata qui da `spec.md` ("operazione, record, campi prima e dopo, effetti, scadenza"), da riallineare alla busta reale del connettore nel ticket M-5.</item>
+    <item>RIALLINEATO (ticket 05, decisione del lead, 26/11/2026): il connettore NON restituisce una struttura. Il risultato di `prepare_write` porta in `dati` solo `preview_id` (24 caratteri esadecimali), `confermabile` (bool) e `anteprima` (testo Markdown gia' sanificato dal connettore, con record, campi prima e dopo ed effetti); la scadenza compare solo nel testo. `AiPreview` diventa quindi `{ id, confirmable, content, expires_at, state, outcome }`, senza `operation`, `record`, `changes`, `effects`. `expires_at` lo calcola QNET2: istante in cui parte la chiamata `prepare_write` piu' `preview_ttl_seconds` (600, come il connettore) meno `preview_margin_seconds` (5), cosi' QNET2 scade sempre prima del connettore; il lavoro ritardato della scadenza usa lo stesso istante.</item>
+    <item>Il connettore NON rifiuta una seconda `prepare_write` dello stesso collegamento: sostituisce l'anteprima aperta (`anteprima_sostituita`). La regola «una sola anteprima aperta per collegamento» la impone QNET2: se un altro turno della stessa sessione aspetta una conferma, `prepare_write` non parte e il modello riceve il risultato fisso `anteprima_in_attesa` (testo «Another preview is already waiting for your confirmation.»).</item>
     <item>Percorsi e intestazioni dell'ingresso del connettore: congelati (vedi `internal_contract`). Il metodo che apre il collegamento e' `AssistantLinkService::credentialFor(User, PersonalAccessToken): string` (ticket 03).</item>
     <item>Valore del limite `api-client` del client del connettore sotto carico condiviso: da controllare prima dell'uso con tutti gli utenti.</item>
   </open_points>

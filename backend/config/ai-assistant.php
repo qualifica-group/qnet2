@@ -102,6 +102,11 @@ return [
         // A turn left queued or running longer than the longest job plus this margin is closed as failed.
         'stale_margin_seconds' => (int) env('AI_ASSISTANT_AGENT_STALE_MARGIN_SECONDS', 120),
 
+        // Life of a write preview: the one of the connector (10 minutes) minus a margin, so QNET2 always
+        // expires first (the stricter side) and the delayed job of the expiry fires at that instant.
+        'preview_ttl_seconds' => (int) env('AI_ASSISTANT_PREVIEW_TTL_SECONDS', 600),
+        'preview_margin_seconds' => (int) env('AI_ASSISTANT_PREVIEW_MARGIN_SECONDS', 5),
+
         // How often the browser reads the turn state, reported by GET /config.
         'poll_interval_ms' => (int) env('AI_ASSISTANT_AGENT_POLL_INTERVAL_MS', 1500),
     ],

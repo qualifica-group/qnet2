@@ -143,7 +143,7 @@ it('AC-005: a tool name outside the allowed list is discarded and never reaches 
         ->and($turn->fresh()->steps)->toBeNull()
         ->and(end($messages)['role'])->toBe('tool')
         ->and(end($messages)['content'])->toContain('richiesta_non_valida');
-})->with(['confirm_write', 'something_else', 'prepare_write']);
+})->with(['confirm_write', 'something_else']); // REQUIREMENT CHANGED (ticket 05): `prepare_write` entered the allowed list.
 
 it('publishes only the allowed tools to the model, in a fixed order, even if the connector lists more', function () {
     aiapi_fake_agent([aiapi_text_body()], withConfirm: true);
@@ -151,7 +151,8 @@ it('publishes only the allowed tools to the model, in a fixed order, even if the
     turn_send();
 
     $names = array_map(fn (array $tool): string => $tool['function']['name'], aiapi_sent('chat/completions')[0]['tools']);
-    expect($names)->toBe(['search_operations', 'list_records', 'run_read_code']);
+    // REQUIREMENT CHANGED (ticket 05): `prepare_write` is the fourth allowed tool; `confirm_write` never is.
+    expect($names)->toBe(['search_operations', 'list_records', 'run_read_code', 'prepare_write']);
 });
 
 it('arguments that are not a JSON object go back to the model as an error, with no connector call', function () {

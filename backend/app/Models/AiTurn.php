@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'ai_conversation_id', 'user_message_id', 'assistant_message_id', 'personal_access_token_id', 'status',
-    'locale', 'page_guide_text', 'assistant_text', 'steps', 'usage', 'error_code', 'started_at', 'finished_at',
+    'locale', 'page_guide_text', 'assistant_text', 'steps', 'preview', 'resume_state', 'usage', 'error_code', 'started_at', 'finished_at',
 ])]
 class AiTurn extends BaseModel
 {
@@ -36,6 +36,8 @@ class AiTurn extends BaseModel
             'status' => AiTurnStatus::class,
             'error_code' => AiTurnErrorCode::class,
             'steps' => 'array',
+            'preview' => 'array',
+            'resume_state' => 'array',
             'usage' => 'array',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
