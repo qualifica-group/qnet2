@@ -8,7 +8,8 @@ use Spatie\Permission\PermissionRegistrar;
  * Everyone has the AI assistant (spec 0433, decision Q19): every role that
  * exists today receives `ai-assistant.use`. Taking it away from a role later
  * still removes the assistant for its members. A fresh installation (no
- * permission yet) gets the permission created here; permissions:sync finds it.
+ * permission yet) is left to permissions:sync (navigation config) and to the
+ * seeders, like the other permission migrations.
  */
 return new class extends Migration
 {
@@ -18,14 +19,11 @@ return new class extends Migration
 
     public function up(): void
     {
-        // Step 1: the permission, unless permissions:sync already created it.
-        $permissionId = DB::table('permissions')->where('name', self::PERMISSION)->where('guard_name', self::GUARD)->value('id')
-            ?? DB::table('permissions')->insertGetId([
-                'name' => self::PERMISSION,
-                'guard_name' => self::GUARD,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        // Step 1: the permission that permissions:sync created; none on a fresh installation.
+        $permissionId = DB::table('permissions')->where('name', self::PERMISSION)->where('guard_name', self::GUARD)->value('id');
+        if ($permissionId === null) {
+            return;
+        }
 
         // Step 2: every existing role of the guard.
         DB::table('roles')->where('guard_name', self::GUARD)->pluck('id')

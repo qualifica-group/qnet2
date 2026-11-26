@@ -1,56 +1,14 @@
 <?php
 
 use App\Models\AiAssistantSetting;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
-
-const AIS_FAKE_KEY = 'sk-or-fake-secret-key-0000';
-
-function ais_super_admin(): User
-{
-    Role::query()->firstOrCreate(['name' => 'super-admin']);
-    $user = User::factory()->create(['name' => 'Ada Admin']);
-    $user->assignRole('super-admin');
-
-    return $user;
-}
-
-/** An OpenRouter /models body: tools+text only are kept; one has images, one lacks tools, one outputs images. */
-function ais_models_body(): array
-{
-    $model = fn (string $id, array $in, array $out, array $params) => [
-        'id' => $id,
-        'name' => 'Name of '.$id,
-        'context_length' => 131072,
-        'architecture' => ['input_modalities' => $in, 'output_modalities' => $out],
-        'pricing' => ['prompt' => '0.00000014', 'completion' => '0.00000028', 'input_cache_read' => '0.000000014'],
-        'supported_parameters' => $params,
-    ];
-
-    return ['data' => [
-        $model('deepseek/deepseek-v4-flash-0731', ['text'], ['text'], ['tools', 'max_tokens']),
-        $model('acme/text-pro', ['text'], ['text'], ['tools']),
-        $model('acme/vision', ['text', 'image'], ['text'], ['tools']),
-        $model('acme/no-tools', ['text'], ['text'], ['max_tokens']),
-        $model('acme/image-out', ['text'], ['text', 'image'], ['tools']),
-    ]];
-}
-
-function ais_fake_openrouter(mixed $models = null): void
-{
-    Cache::flush();
-    config()->set('ai-assistant.openrouter.base_url', 'https://openrouter.test/api/v1');
-    config()->set('ai-assistant.openrouter.api_key', AIS_FAKE_KEY);
-    Http::fake(['openrouter.test/api/v1/*' => $models ?? Http::response(ais_models_body())]);
-}
 
 it('AC-002: answers 403 to every non super-admin, even with every permission, and 401 anonymous', function () {
     $this->getJson('/api/ai-assistant/settings')->assertUnauthorized();

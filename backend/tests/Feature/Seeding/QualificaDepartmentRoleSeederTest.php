@@ -114,8 +114,9 @@ it('assigns only department roles from the roster', function () {
 it('gives the add-on role only what the questionnaire grants to that one person', function () {
     $this->seed(Seeder::class);
 
+    // REQUIREMENT CHANGED (spec 0433): every role holds ai-assistant.use.
     expect(Role::findByName(Department::SAFETY_HEAD)->permissions->pluck('name')->sort()->values()->all())->toBe([
-        'commission-accruals.export', 'commission-accruals.view', 'commission-accruals.viewAny',
+        'ai-assistant.use', 'commission-accruals.export', 'commission-accruals.view', 'commission-accruals.viewAny',
         'commission-settlements.export', 'commission-settlements.view', 'commission-settlements.viewAny',
         'work-orders.export', 'work-orders.import',
     ])->and(Role::findByName(Department::senior(Department::SAFETY))->hasPermissionTo('commission-settlements.viewAny'))->toBeFalse();

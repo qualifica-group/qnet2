@@ -159,8 +159,10 @@ it('D-2: without viewCosts the AI mention and the document layout leave the cost
     $quote = costsPermissionQuote();
     $actor = costsPermissionBlindActor(['view']);
 
-    $context = app(AiMentionResolver::class)->resolve($actor, 'quotes', $quote->id)->context;
-    expect($context)->toContain('revenue_net')->not->toContain('cost_net')->not->toContain('margin_net');
+    // REQUIREMENT CHANGED (spec 0433, ticket 07): the AI mention gives the model only type and id, never the record
+    // content; the model reads the quote through the connector with the person's permissions, costs included.
+    $mention = app(AiMentionResolver::class)->resolve($actor, 'quotes', $quote->id);
+    expect(array_keys(get_object_vars($mention)))->toBe(['module', 'id', 'label']);
 
     $subject = QuoteRenderSubject::for($quote);
     $subject->prepare();
@@ -187,8 +189,9 @@ it('AC-006: with viewCosts everything stays as today', function () {
     $row = $this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items.0');
     expect($row['cost_net'])->toBe('400.00')->and($row['margin_net'])->toBe('600.00');
 
-    $context = app(AiMentionResolver::class)->resolve($actor, 'quotes', $quote->id)->context;
-    expect($context)->toContain('cost_net')->toContain('margin_net');
+    // REQUIREMENT CHANGED (spec 0433, ticket 07): the mention carries no content, with or without viewCosts.
+    $mention = app(AiMentionResolver::class)->resolve($actor, 'quotes', $quote->id);
+    expect(array_keys(get_object_vars($mention)))->toBe(['module', 'id', 'label']);
 
     $subject = QuoteRenderSubject::for($quote);
     $subject->prepare();

@@ -25,24 +25,41 @@ function aiGrantCanUse(User $user): bool
     return test()->getJson('/api/ai-assistant/config')->status() === 200;
 }
 
-it('spec 0433: the migration gives ai-assistant.use to every existing role, creating the permission if missing', function () {
+/** The permission as permissions:sync creates it from the navigation config. */
+function aiGrantSyncedPermission(): Permission
+{
+    return Permission::findOrCreate('ai-assistant.use', 'web');
+}
+
+it('spec 0433: the migration gives ai-assistant.use to every existing role', function () {
     $roles = collect(['support', 'sales'])->map(fn (string $name) => Role::create(['name' => $name]));
     $member = User::factory()->create()->assignRole('support');
-
-    Permission::query()->where('name', 'ai-assistant.use')->delete();
+    $permissionId = aiGrantSyncedPermission()->id;
 
     aiGrantMigration()->up();
     aiGrantMigration()->up(); // idempotent
 
-    $permissionId = Permission::query()->where('name', 'ai-assistant.use')->sole()->id;
     expect(DB::table('role_has_permissions')->where('permission_id', $permissionId)->pluck('role_id')->sort()->values()->all())
         ->toBe($roles->pluck('id')->sort()->values()->all())
         ->and(aiGrantCanUse($member))->toBeTrue();
 });
 
+// REQUIREMENT CHANGED (merge with staging): like the other permission migrations, a fresh installation is left to
+// permissions:sync and the seeders; creating the permission here put it in every test database.
+it('spec 0433: on a fresh installation the migration creates nothing', function () {
+    Role::create(['name' => 'support']);
+    Permission::query()->where('name', 'ai-assistant.use')->delete();
+
+    aiGrantMigration()->up();
+
+    expect(Permission::query()->where('name', 'ai-assistant.use')->exists())->toBeFalse()
+        ->and(DB::table('role_has_permissions')->count())->toBe(0);
+});
+
 it('spec 0433: taking the permission away from a role takes the assistant away; a role without it is refused', function () {
     Role::create(['name' => 'support']);
     $member = User::factory()->create()->assignRole('support');
+    aiGrantSyncedPermission();
     aiGrantMigration()->up();
     expect(aiGrantCanUse($member))->toBeTrue();
 
@@ -52,6 +69,7 @@ it('spec 0433: taking the permission away from a role takes the assistant away; 
 });
 
 it('spec 0433: a role created later with the permission selected has the assistant', function () {
+    aiGrantSyncedPermission();
     aiGrantMigration()->up();
     $role = Role::create(['name' => 'newcomers']);
     $role->givePermissionTo('ai-assistant.use');
@@ -62,6 +80,7 @@ it('spec 0433: a role created later with the permission selected has the assista
 
 it('spec 0433: the migration rollback runs without revoking anything', function () {
     Role::create(['name' => 'support']);
+    aiGrantSyncedPermission();
     aiGrantMigration()->up();
 
     aiGrantMigration()->down();

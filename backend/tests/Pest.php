@@ -101,6 +101,7 @@ require_once __DIR__.'/Helpers/PersonalDataHelpers.php';
 require_once __DIR__.'/Helpers/OfferProjectionHelpers.php';
 require_once __DIR__.'/Helpers/CompetenceVisibilityHelpers.php';
 require_once __DIR__.'/Helpers/AiAssistantHelpers.php';
+require_once __DIR__.'/Helpers/AiAssistantSettingsHelpers.php';
 require_once __DIR__.'/Helpers/ChartOfAccountsHelpers.php';
 require_once __DIR__.'/Helpers/RevenueClassificationHelpers.php';
 require_once __DIR__.'/Helpers/DilAssociationDateHelpers.php';

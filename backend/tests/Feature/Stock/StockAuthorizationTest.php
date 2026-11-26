@@ -37,7 +37,8 @@ it('0307 AC-015: the keeper role holds only stock.*, admin receives them, the HR
     $this->seed(QualificaRoleSeeder::class);
 
     $keeper = Role::findByName(StockKeeperRoleCatalogue::ROLE);
-    expect($keeper->permissions->pluck('name')->sort()->values()->all())->toBe(['stock.manage', 'stock.viewAny'])
+    // REQUIREMENT CHANGED (spec 0433): every role holds ai-assistant.use.
+    expect($keeper->permissions->pluck('name')->sort()->values()->all())->toBe(['ai-assistant.use', 'stock.manage', 'stock.viewAny'])
         // REQUIREMENT CHANGED (spec 0314): only the Lead row every seeded role carries.
         ->and($keeper->fieldPermissions()->pluck('field')->all())->toBe(['lead_id'])
         ->and(Role::findByName(OperatorRoleCatalogue::ADMIN_ROLE)->hasPermissionTo('stock.manage'))->toBeTrue()
