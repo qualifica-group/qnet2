@@ -60,6 +60,8 @@ if (! function_exists('aiapi_configure')) {
         // REQUIREMENT CHANGED (D-16): both surfaces are off by default and the API answers 404 without them.
         config()->set('ai-assistant.floating_enabled', true);
         config()->set('ai-assistant.page_enabled', true);
+        // REQUIREMENT CHANGED (spec 0433): the model is text-only by default; the attachment tests need one that takes files.
+        config()->set('ai-assistant.model_accepts_attachments', true);
         config()->set('ai-assistant.openrouter', ['base_url' => AIAPI_OPENROUTER_URL, 'api_key' => AIAPI_OPENROUTER_KEY, 'site_url' => null, 'app_name' => null]);
         config()->set('ai-assistant.connector.url', AIAPI_CONNECTOR_URL);
         config()->set('ai-assistant.connector.host', 'connector.public.test');

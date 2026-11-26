@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'L\'assistente non va a cercare dati da solo: vede soltanto ciò che gli scrivi, i record che menzioni con @, i file che alleghi e la guida in-app della pagina in cui ti trovi.',
+          text: 'L\'assistente non va a cercare dati da solo: vede soltanto ciò che gli scrivi, il tipo e l\'identificativo dei record che menzioni con @, i file che alleghi e la guida in-app della pagina in cui ti trovi.',
         },
       ],
     },
@@ -75,7 +75,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'I dati del record vengono inviati all\'assistente solo nel messaggio in cui lo menzioni. Nei messaggi successivi della stessa conversazione resta soltanto il riferimento: se serve di nuovo il contenuto, menzionalo ancora. Puoi menzionare solo record che puoi aprire; per un record che non puoi vedere l\'invio viene rifiutato.',
+          text: 'All\'assistente arrivano solo il tipo di record e il suo identificativo, non i suoi dati: il contenuto lo legge l\'assistente stesso, con i tuoi permessi e il mascheramento dei dati riservati. Nella chat la menzione resta come l\'hai scritta. Puoi menzionare solo record che puoi aprire; per un record che non puoi vedere l\'invio viene rifiutato.',
         },
       ],
     },
@@ -85,11 +85,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con la graffetta puoi allegare PDF e immagini (PNG, JPG, WEBP). I limiti (numero di file e dimensione massima) vengono mostrati se li superi, prima dell\'invio. Anche i file, come le menzioni, vengono inviati all\'assistente solo nel messaggio in cui li aggiungi. I tipi accettati dipendono dal modello configurato: con alcuni modelli, ad esempio quelli installati in locale, i PDF non sono accettati oppure la graffetta non compare affatto.',
+          text: 'Con la graffetta puoi allegare PDF e immagini (PNG, JPG, WEBP). I limiti (numero di file e dimensione massima) vengono mostrati se li superi, prima dell\'invio. Anche i file, come le menzioni, vengono inviati all\'assistente solo nel messaggio in cui li aggiungi. I tipi accettati dipendono dal modello configurato: con un modello di solo testo la graffetta non compare affatto e il server rifiuta nuovi allegati.',
         },
         {
           type: 'tip',
-          text: 'Gli allegati dei tuoi messaggi restano scaricabili dalla conversazione cliccando sul loro nome.',
+          text: 'Gli allegati dei tuoi messaggi restano scaricabili dalla conversazione cliccando sul loro nome, anche se il modello in uso è poi diventato di solo testo.',
         },
       ],
     },
@@ -99,7 +99,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'L\'assistente usa il modello di intelligenza artificiale scelto dall\'amministratore: un servizio esterno a QNet (OpenAI, Anthropic, OpenRouter) oppure un modello installato sui server dell\'azienda. Con un servizio esterno, a ogni messaggio vengono inviati fuori dall\'azienda: il testo che scrivi, la guida della pagina, gli ultimi messaggi della conversazione, i file allegati e i dati dei record menzionati (inclusi dati personali di utenti e referenti, se li menzioni). Se non sai quale modello è in uso, non menzionare né allegare ciò che non può uscire dall\'azienda.',
+          text: 'L\'assistente usa il modello di intelligenza artificiale scelto dall\'amministratore: un servizio esterno a QNet (OpenAI, Anthropic, OpenRouter) oppure un modello installato sui server dell\'azienda. Con un servizio esterno, a ogni messaggio vengono inviati fuori dall\'azienda: il testo che scrivi, la guida della pagina, gli ultimi messaggi della conversazione, i file allegati e il tipo e l\'identificativo dei record menzionati. Se non sai quale modello è in uso, non allegare ciò che non può uscire dall\'azienda.',
         },
       ],
     },

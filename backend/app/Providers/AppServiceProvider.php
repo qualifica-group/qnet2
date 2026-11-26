@@ -16,6 +16,7 @@ use App\Models\AbsenceRequest;
 use App\Models\AbsenceType;
 use App\Models\Address;
 use App\Models\AgentFiscalProfile;
+use App\Models\AiAssistantSetting;
 use App\Models\AiMessage;
 use App\Models\ArchivioSmartSetting;
 use App\Models\Attachment;
@@ -425,6 +426,8 @@ class AppServiceProvider extends ServiceProvider
             'document_checklist' => DocumentChecklist::class,
             'document_checklist_category' => DocumentChecklistCategory::class,
             'archivio_smart_setting' => ArchivioSmartSetting::class,
+            // Spec 0433: activity-log subject of the assistant settings.
+            'ai_assistant_setting' => AiAssistantSetting::class,
             // Spec 0428: activity-log subject of the document requests.
             'document_request' => DocumentRequest::class,
             'outbound_email' => OutboundEmail::class,

@@ -54,7 +54,9 @@ return [
     'max_message_chars' => (int) env('AI_ASSISTANT_MAX_MESSAGE_CHARS', 8000),
     'guide_max_chars' => (int) env('AI_ASSISTANT_GUIDE_MAX_CHARS', 40000),
     'max_mentions' => (int) env('AI_ASSISTANT_MAX_MENTIONS', 5),
-    'mention_max_chars' => (int) env('AI_ASSISTANT_MENTION_MAX_CHARS', 8000),
+
+    // Initial value of the "model accepts attachments" criterion (spec 0433): text-only until the model settings exist.
+    'model_accepts_attachments' => (bool) env('AI_ASSISTANT_MODEL_ACCEPTS_ATTACHMENTS', false),
 
     'max_files' => (int) env('AI_ASSISTANT_MAX_FILES', 4),
     'max_file_size_kb' => (int) env('AI_ASSISTANT_MAX_FILE_SIZE_KB', 10240),
@@ -71,23 +73,14 @@ return [
     |--------------------------------------------------------------------------
     |
     | The turn runs in a queued job on the `ai-assistant` queue, one attempt.
-    | Model and routing are the initial values read here and nowhere else; the
-    | settings page (ticket 08) replaces this source. The OpenRouter key and
-    | base URL are the ones of the `openrouter` section above. The job timeout
-    | is derived from these values and must stay under the queue `retry_after`.
+    | Model, routing and additional instructions come from the settings row
+    | (`settings` below, AiAssistantSettingsService::effective()). The OpenRouter
+    | key and base URL are the ones of the `openrouter` section above. The job
+    | timeout is derived from these values and must stay under the queue `retry_after`.
     |
     */
 
     'agent' => [
-        'model' => env('AI_ASSISTANT_AGENT_MODEL', 'deepseek/deepseek-v4-flash-0731'),
-
-        'routing' => [
-            'zdr' => (bool) env('AI_ASSISTANT_AGENT_ZDR', true),
-            'data_collection' => env('AI_ASSISTANT_AGENT_DATA_COLLECTION') === 'allow' ? 'allow' : 'deny',
-            'require_parameters' => (bool) env('AI_ASSISTANT_AGENT_REQUIRE_PARAMETERS', true),
-            'sort' => env('AI_ASSISTANT_AGENT_SORT', 'throughput'),
-        ],
-
         // Caps per turn: a cap reached closes the turn with a fixed text.
         'max_model_calls' => (int) env('AI_ASSISTANT_AGENT_MAX_MODEL_CALLS', 8),
         'max_tool_calls' => (int) env('AI_ASSISTANT_AGENT_MAX_TOOL_CALLS', 12),
@@ -120,6 +113,29 @@ return [
         'protocol_version' => '2025-06-18',
         'timeout_seconds' => (int) env('AI_ASSISTANT_CONNECTOR_TIMEOUT_SECONDS', 90),
         'connect_timeout_seconds' => (int) env('AI_ASSISTANT_CONNECTOR_CONNECT_TIMEOUT_SECONDS', 5),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Super-admin settings (spec 0433)
+    |--------------------------------------------------------------------------
+    |
+    | Initial values of the single settings row (model, routing) and the limits
+    | of the settings page. The OpenRouter key stays in .env above.
+    |
+    */
+
+    'settings' => [
+        'default_model' => env('AI_ASSISTANT_DEFAULT_MODEL', 'deepseek/deepseek-v4-flash-0731'),
+        'default_routing' => [
+            'zdr' => true,
+            'data_collection' => 'deny',
+            'require_parameters' => true,
+            'sort' => 'throughput',
+        ],
+        'instructions_max_chars' => (int) env('AI_ASSISTANT_INSTRUCTIONS_MAX_CHARS', 8000),
+        'models_cache_seconds' => (int) env('AI_ASSISTANT_MODELS_CACHE_SECONDS', 300),
+        'catalog_timeout_seconds' => (int) env('AI_ASSISTANT_CATALOG_TIMEOUT_SECONDS', 10),
     ],
 
 ];

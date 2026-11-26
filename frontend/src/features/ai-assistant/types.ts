@@ -68,6 +68,8 @@ export interface AiAssistantLimits {
   max_mentions: number
   max_files: number
   max_file_size_kb: number
+  /** False for a text-only model: the composer offers no attachment (spec 0433). */
+  accepts_attachments: boolean
   accepted_mimes: string[]
 }
 

@@ -338,7 +338,8 @@
     "The assistant stopped: this request needed too many steps.": "L'assistente si è fermato: la richiesta richiedeva troppi passaggi.",
     "The assistant stopped: this request took too long.": "L'assistente si è fermato: la richiesta ha richiesto troppo tempo.",
     "The model returned an error. Try again.": "Il modello ha restituito un errore. Riprova.",
-    "The AI assistant has been switched off.": "L'assistente AI è stato spento.",
+    "The AI assistant is switched off.": "L'assistente AI è spento.",
+    "The AI assistant has been switched off.":"L'assistente AI è stato spento.",
     "You have reached your monthly assistant spending limit.": "Hai raggiunto il tuo limite di spesa mensile dell'assistente.",
     "The company monthly assistant spending limit has been reached.": "È stato raggiunto il limite di spesa mensile dell'assistente per l'azienda.",
     "Something went wrong. Try again later.": "Qualcosa è andato storto. Riprova più tardi.",
@@ -346,5 +347,8 @@
     "The AI assistant is not configured.": "L'assistente AI non è configurato.",
     "Looking for the right operation": "Cerco l'operazione giusta",
     "Reading the records": "Leggo i record",
-    "Reading and processing the data": "Leggo ed elaboro i dati"
+    "Reading and processing the data": "Leggo ed elaboro i dati",
+    "The assistant model accepts text only: attachments are not allowed.": "Il modello dell'assistente accetta solo testo: gli allegati non sono ammessi.",
+    "The selected model is not available.": "Il modello selezionato non è disponibile.",
+    "The model list is not available. Try again later.": "L'elenco dei modelli non è disponibile. Riprova più tardi."
 }

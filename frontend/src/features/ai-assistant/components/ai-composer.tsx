@@ -35,8 +35,8 @@ export function AiComposer({ composer, allowedModules }: Props) {
     onRemoveToken: removeToken,
   })
   const contentField = form.register('content')
-  // A local model may accept no attachments at all (spec 0347 D-15): then the button is not offered.
-  const canAttach = limits.max_files > 0 && limits.accepted_mimes.length > 0
+  // A text-only or local model may accept no attachments at all (spec 0347 D-15, spec 0433): then the button is not offered.
+  const canAttach = limits.accepts_attachments && limits.max_files > 0 && limits.accepted_mimes.length > 0
   const moduleStageOpen = picker.stage.kind === 'module'
 
   const dismissPicker = () => {

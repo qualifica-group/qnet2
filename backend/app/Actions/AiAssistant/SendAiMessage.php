@@ -13,12 +13,14 @@ use App\Models\AiTurn;
 use App\Models\Attachment;
 use App\Models\User;
 use App\Services\AiAssistant\Agent\AiAssistantNotConfiguredException;
+use App\Services\AiAssistant\Agent\AiAssistantSwitchedOffException;
 use App\Services\AiAssistant\Agent\AiTurnAlreadyActiveException;
 use App\Services\AiAssistant\Agent\ConnectorClient;
 use App\Services\AiAssistant\Agent\OpenRouterAgentClient;
 use App\Services\AiAssistant\Mentions\AiMentionNotFoundException;
 use App\Services\AiAssistant\Mentions\AiMentionResolver;
 use App\Services\AiAssistant\Mentions\ResolvedAiMention;
+use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -38,9 +40,13 @@ final class SendAiMessage
 
     public const int TITLE_MAX_CHARS = 60;
 
-    public function __construct(private readonly AiMentionResolver $mentionResolver) {}
+    public function __construct(
+        private readonly AiMentionResolver $mentionResolver,
+        private readonly AiAssistantSettingsService $settings,
+    ) {}
 
     /**
+     * @throws AiAssistantSwitchedOffException
      * @throws AiAssistantNotConfiguredException
      * @throws AiTurnAlreadyActiveException
      * @throws ValidationException unknown mentioned record (mentions.N.id)
@@ -48,7 +54,11 @@ final class SendAiMessage
      */
     public function handle(User $user, ?PersonalAccessToken $session, AiConversation $conversation, SendAiMessageData $data): AiTurn
     {
-        // Step 1: the assistant must be configured, before any write
+        // Step 1: the assistant must be on and configured, before any write
+        if (! $this->settings->effective()->enabled) {
+            throw new AiAssistantSwitchedOffException;
+        }
+
         if (! OpenRouterAgentClient::isConfigured() || ! ConnectorClient::isConfigured()) {
             throw new AiAssistantNotConfiguredException;
         }

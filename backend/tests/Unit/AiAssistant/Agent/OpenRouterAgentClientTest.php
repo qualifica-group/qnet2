@@ -3,6 +3,7 @@
 use App\Enums\AiTurnErrorCode;
 use App\Services\AiAssistant\Agent\AgentModelException;
 use App\Services\AiAssistant\Agent\OpenRouterAgentClient;
+use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -15,11 +16,16 @@ beforeEach(function () {
     aiapi_configure(openLinks: false);
 });
 
+function agent_client_settings(): AiEffectiveSettings
+{
+    return new AiEffectiveSettings(true, 'vendor/model-y', '', ['zdr' => true, 'data_collection' => 'deny', 'require_parameters' => true, 'sort' => 'throughput'], null, null);
+}
+
 function agent_client_call(string $body, int $status = 200, array $tools = [], ?callable $onText = null)
 {
     Http::fake(['openrouter.test/*' => Http::response($body, $status, ['Content-Type' => 'text/event-stream'])]);
 
-    return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], $tools, 7, $onText);
+    return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], $tools, 7, agent_client_settings(), $onText);
 }
 
 it('streams the text, reports each fragment and reads usage with cost, cache and reasoning tokens', function () {
@@ -47,7 +53,7 @@ it('sends the routing, session id, tools and the key, and nothing else about the
 
         return $request->url() === AIAPI_OPENROUTER_URL.'/chat/completions'
             && $request->hasHeader('Authorization', 'Bearer '.AIAPI_OPENROUTER_KEY)
-            && $payload['model'] === 'deepseek/deepseek-v4-flash-0731'
+            && $payload['model'] === 'vendor/model-y'
             && $payload['stream'] === true
             && $payload['session_id'] === '7'
             && $payload['provider'] === ['zdr' => true, 'data_collection' => 'deny', 'require_parameters' => true, 'sort' => 'throughput']
@@ -124,7 +130,7 @@ it('fails with model_unavailable on an HTTP error and on a connection error', fu
     foreach ([fn () => agent_client_call('boom', 500), function () {
         Http::fake(fn () => throw new ConnectionException('cURL error 28: timed out SECRET'));
 
-        return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], [], 1);
+        return app(OpenRouterAgentClient::class)->complete([['role' => 'user', 'content' => 'hi']], [], 1, agent_client_settings());
     }] as $attempt) {
         try {
             $attempt();
@@ -135,7 +141,7 @@ it('fails with model_unavailable on an HTTP error and on a connection error', fu
     }
 });
 
-it('is configured only with a key and a model', function () {
+it('is configured only with a key', function () {
     expect(OpenRouterAgentClient::isConfigured())->toBeTrue();
 
     config()->set('ai-assistant.openrouter.api_key', null);

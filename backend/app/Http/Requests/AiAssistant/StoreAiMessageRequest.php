@@ -4,6 +4,7 @@ namespace App\Http\Requests\AiAssistant;
 
 use App\Actions\AiAssistant\SendAiMessageData;
 use App\Models\AiConversation;
+use App\Services\AiAssistant\AiModelCapabilities;
 use App\Services\AiAssistant\Mentions\AiMentionRegistry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
@@ -34,7 +35,8 @@ class StoreAiMessageRequest extends FormRequest
      */
     public function rules(): array
     {
-        $mimes = (array) config('ai-assistant.accepted_mimes');
+        // A text-only model (or no accepted type) takes no attachment at all.
+        $mimes = app(AiModelCapabilities::class)->acceptsAttachments() ? (array) config('ai-assistant.accepted_mimes') : [];
 
         return [
             'content' => ['required', 'string', 'max:'.(int) config('ai-assistant.max_message_chars')],
@@ -54,6 +56,14 @@ class StoreAiMessageRequest extends FormRequest
             'page_guide_text' => ['nullable', 'string', 'max:'.(int) config('ai-assistant.guide_max_chars')],
             'locale' => ['required', Rule::in(self::LOCALES)],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ['files.prohibited' => __('The assistant model accepts text only: attachments are not allowed.')];
     }
 
     public function toData(): SendAiMessageData

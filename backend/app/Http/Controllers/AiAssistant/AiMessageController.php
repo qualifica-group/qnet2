@@ -10,6 +10,7 @@ use App\Http\Resources\AiAssistant\AiMessageResource;
 use App\Http\Resources\AiAssistant\AiTurnResource;
 use App\Models\AiConversation;
 use App\Services\AiAssistant\Agent\AiAssistantNotConfiguredException;
+use App\Services\AiAssistant\Agent\AiAssistantSwitchedOffException;
 use App\Services\AiAssistant\Agent\AiTurnAlreadyActiveException;
 use Illuminate\Http\JsonResponse;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -40,6 +41,8 @@ class AiMessageController extends BaseApiController
                 'user_message' => (new AiMessageResource($turn->userMessage()->with('attachments')->firstOrFail()))->resolve($request),
                 'turn' => (new AiTurnResource($turn->fresh(['assistantMessage'])))->resolve($request),
             ], 'Accepted', HttpStatusEnum::ACCEPTED);
+        } catch (AiAssistantSwitchedOffException) {
+            return $this->fail(__('The AI assistant is switched off.'), Response::HTTP_SERVICE_UNAVAILABLE, null, ['reason' => 'switched_off']);
         } catch (AiAssistantNotConfiguredException) {
             return $this->fail(__('The AI assistant is not configured.'), Response::HTTP_SERVICE_UNAVAILABLE, null, ['reason' => 'not_configured']);
         } catch (AiTurnAlreadyActiveException) {

@@ -3,8 +3,11 @@
 use App\Enums\AiTurnErrorCode;
 use App\Enums\AiTurnStatus;
 use App\Jobs\AiAssistant\RunAiTurn;
+use App\Models\AiAssistantSetting;
 use App\Models\AiMessage;
 use App\Models\AiTurn;
+use App\Services\AiAssistant\Agent\AiTurnRunner;
+use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -329,6 +332,46 @@ it('the prompt: one byte-identical system message across requests, routing and s
         ->and($two['provider']['sort'])->toBe('throughput');
 });
 
+it('the turn reads model, routing and additional instructions from the settings, after the fixed core', function () {
+    aiapi_fake_agent([aiapi_text_body()]);
+    AiAssistantSetting::query()->delete();
+    AiAssistantSetting::query()->create([
+        'enabled' => true, 'model_id' => 'vendor/chosen-model', 'instructions' => 'ADMIN RULE: be formal.',
+        'routing_zdr' => false, 'routing_data_collection' => 'allow', 'routing_require_parameters' => false, 'routing_sort' => 'price',
+    ]);
+
+    [, $turn] = turn_send();
+
+    $sent = aiapi_sent('openrouter.test')[0];
+    $system = $sent['messages'][0]['content'];
+    expect($sent['model'])->toBe('vendor/chosen-model')
+        ->and($sent['provider'])->toBe(['zdr' => false, 'data_collection' => 'allow', 'require_parameters' => false, 'sort' => 'price'])
+        ->and(strpos($system, '# Role'))->toBe(0)
+        ->and(strpos($system, '# Additional instructions'))->toBeGreaterThan(strpos($system, '# Criteria of success'))
+        ->and($system)->toEndWith("# Additional instructions\nADMIN RULE: be formal.");
+});
+
+it('a switched-off assistant: start answers 503 switched_off with no row, a queued turn closes failed without any call', function () {
+    Queue::fake();
+    $user = aiapi_user();
+    $conversation = aiapi_conversation($user);
+    aiapi_send($user, $conversation)->assertStatus(202);
+    $turn = AiTurn::query()->sole();
+
+    app(AiAssistantSettingsService::class)->current()->update(['enabled' => false]);
+    Http::fake();
+
+    aiapi_send($user, aiapi_conversation($user))->assertStatus(503)
+        ->assertJsonPath('data.reason', 'switched_off')
+        ->assertJsonPath('message', 'The AI assistant is switched off.');
+    app(AiTurnRunner::class)->run($turn->id);
+
+    expect(AiTurn::query()->count())->toBe(1)
+        ->and($turn->fresh()->status)->toBe(AiTurnStatus::Failed)
+        ->and($turn->fresh()->error_code)->toBe(AiTurnErrorCode::SwitchedOff);
+    Http::assertNothingSent();
+});
+
 it('a mention reaches the model only as a type and an identifier', function () {
     aiapi_fake_agent([aiapi_text_body()]);
     $user = aiapi_super_admin();
@@ -337,7 +380,7 @@ it('a mention reaches the model only as a type and an identifier', function () {
     aiapi_send($user, aiapi_conversation($user), ['content' => 'Summarize @Acme', 'mentions' => [['module' => 'companies', 'id' => $company->id]]])->assertStatus(202);
 
     $user_text = aiapi_sent('openrouter.test')[0]['messages'][1]['content'];
-    expect($user_text)->toContain("<mentioned_record type=\"companies\" id=\"{$company->id}\"/>")
+    expect($user_text)->toContain("<record module=\"companies\" id=\"{$company->id}\"/>")
         ->and($user_text)->not->toContain('Acme Spa')->not->toContain('01234567890')
         ->and(AiMessage::query()->where('role', 'user')->sole()->mentions)->toBe([['module' => 'companies', 'id' => $company->id, 'label' => 'Acme Spa']]);
 });

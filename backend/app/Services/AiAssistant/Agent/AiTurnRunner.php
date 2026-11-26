@@ -13,6 +13,8 @@ use App\Services\McpLinks\AssistantLinkService;
 use App\Services\McpLinks\AssistantSessionInvalidException;
 use App\Services\McpLinks\FirstAccessPendingException;
 use App\Services\McpLinks\McpLinkRejectedException;
+use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
+use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -37,6 +39,7 @@ final class AiTurnRunner
         private readonly ConnectorClient $connector,
         private readonly OpenRouterAgentClient $model,
         private readonly AgentMessageBuilder $messages,
+        private readonly AiAssistantSettingsService $settings,
     ) {}
 
     public function run(int $turnId): void
@@ -80,7 +83,14 @@ final class AiTurnRunner
 
     private function execute(AgentRun $run): void
     {
-        // Step 2: the credential of the person's link, opened from the session the message came from
+        // Step 2: model, routing and instructions in force; a switched-off assistant makes no call
+        $settings = $this->settings->effective();
+
+        if (! $settings->enabled) {
+            throw new AgentTurnLimitException(AiTurnErrorCode::SwitchedOff);
+        }
+
+        // Step 3: the credential of the person's link, opened from the session the message came from
         $session = $run->turn->personal_access_token_id === null
             ? null
             : PersonalAccessToken::query()->find($run->turn->personal_access_token_id);
@@ -88,27 +98,27 @@ final class AiTurnRunner
             ? throw new AssistantSessionInvalidException
             : $this->links->credentialFor($run->turn->conversation->user, $session);
 
-        // Step 3: the tools and the first messages
+        // Step 4: the tools and the first messages
         $tools = $this->connector->tools($credential);
-        $messages = $this->messages->build($run->turn);
+        $messages = $this->messages->build($run->turn, $settings->instructions);
 
-        // Step 4: model rounds until a text answer
+        // Step 5: model rounds until a text answer
         while (true) {
             $this->assertCanCallModel($run);
 
-            $result = $this->modelRound($run, $messages, $tools);
+            $result = $this->modelRound($run, $settings, $messages, $tools);
 
             if ($run->aborted) {
                 return;
             }
 
             if ($result->toolCalls === []) {
-                $this->complete($run, $result);
+                $this->complete($run, $settings, $result);
 
                 return;
             }
 
-            // Step 5: tool calls; the assistant message goes back with its reasoning blocks unchanged
+            // Step 6: tool calls; the assistant message goes back with its reasoning blocks unchanged
             $messages[] = $this->assistantMessage($result);
 
             foreach ($result->toolCalls as $call) {
@@ -131,7 +141,7 @@ final class AiTurnRunner
      * @param  list<array<string, mixed>>  $messages
      * @param  list<array<string, mixed>>  $tools
      */
-    private function modelRound(AgentRun $run, array $messages, array $tools): AgentModelResult
+    private function modelRound(AgentRun $run, AiEffectiveSettings $settings, array $messages, array $tools): AgentModelResult
     {
         $run->modelCalls++;
         $run->text = '';
@@ -140,6 +150,7 @@ final class AiTurnRunner
             $messages,
             $tools,
             $run->turn->ai_conversation_id,
+            $settings,
             fn (string $fragment) => $this->streamText($run, $fragment),
         );
 
@@ -205,7 +216,7 @@ final class AiTurnRunner
         return $result['text'];
     }
 
-    private function complete(AgentRun $run, AgentModelResult $result): void
+    private function complete(AgentRun $run, AiEffectiveSettings $settings, AgentModelResult $result): void
     {
         $text = trim($result->text);
 
@@ -216,7 +227,7 @@ final class AiTurnRunner
         $turn = $run->turn;
 
         // One transaction: the turn leaves `running` only together with its stored answer.
-        DB::transaction(function () use ($run, $turn, $text): void {
+        DB::transaction(function () use ($run, $settings, $turn, $text): void {
             $closed = AiTurn::query()->whereKey($turn->id)->where('status', AiTurnStatus::Running)->update([
                 'status' => AiTurnStatus::Completed,
                 'assistant_text' => $text,
@@ -232,7 +243,7 @@ final class AiTurnRunner
             $message = $turn->conversation->messages()->create([
                 'role' => AiMessageRole::Assistant,
                 'content' => $text,
-                'model' => $run->model ?? OpenRouterAgentClient::model(),
+                'model' => $run->model ?? $settings->modelId,
                 'input_tokens' => $run->usage['input_tokens'],
                 'output_tokens' => $run->usage['output_tokens'],
             ]);

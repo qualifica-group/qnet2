@@ -123,6 +123,20 @@ describe('RoleForm — a replica of the detail (spec 0230 D-4)', () => {
     await waitFor(() => expect(onSuccess).toHaveBeenCalled())
   })
 
+  it('pre-selects the assistant permission on a bare create (spec 0433)', async () => {
+    createRole.mockResolvedValue(createdRole())
+
+    render(<RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    fireEvent.click(await findPencilOf('Name'))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Support' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+    await waitFor(() => expect(createRole).toHaveBeenCalled())
+    expect(createRole).toHaveBeenCalledWith(expect.objectContaining({ permissions: ['ai-assistant.use'] }))
+  })
+
   it('Cancel leaves the form without calling the API', async () => {
     const onCancel = vi.fn()
     render(<RoleForm onSuccess={vi.fn()} onCancel={onCancel} />, { wrapper: wrapper() })

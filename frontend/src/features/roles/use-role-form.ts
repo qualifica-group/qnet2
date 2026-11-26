@@ -17,6 +17,9 @@ import { buildCreatePayload } from '@/features/roles/role-form-payload'
 import type { RoleDetail, RoleDetailWithPermissions } from '@/features/roles/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 
+/** Permissions pre-selected on a bare role create: every role has the assistant (spec 0433). */
+export const DEFAULT_NEW_ROLE_PERMISSIONS: readonly string[] = ['ai-assistant.use']
+
 /** Server-side field names mapped onto the form for 422 handling. */
 const SERVER_ERROR_FIELDS = ['name', 'permissions', 'users', 'field_permissions'] as const
 
@@ -99,7 +102,7 @@ export function useRoleFormState(mode: RoleFormMode) {
     }
     return {
       name: '',
-      permissions: [],
+      permissions: [...DEFAULT_NEW_ROLE_PERMISSIONS],
       users: [],
       field_permissions: [],
       custom_fields: customFields.defaultValues,

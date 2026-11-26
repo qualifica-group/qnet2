@@ -16,7 +16,7 @@ const guide: HelpGuide = {
       id: 'create-role',
       title: 'Creating a role',
       blocks: [
-        { type: 'steps', items: ['Open **Configuration › System › Roles**.', 'Click **New role**: the new role\'s record opens, with the same sections as a saved role.', 'In **Role details** the **Name** and **Members** rows are closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.', 'The **Permissions** section is already open: choose what the role can do. If the module has custom fields, they appear in a separate section (**Other fields**).', 'Click **Save**. If you leave before, QNet asks you to confirm: the role has not been created yet.'] },
+        { type: 'steps', items: ['Open **Configuration › System › Roles**.', 'Click **New role**: the new role\'s record opens, with the same sections as a saved role.', 'In **Role details** the **Name** and **Members** rows are closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.', 'The **Permissions** section is already open and the **AI assistant** is already selected (every role has it; clear it to exclude it): choose what the role can do. If the module has custom fields, they appear in a separate section (**Other fields**).', 'Click **Save**. If you leave before, QNet asks you to confirm: the role has not been created yet.'] },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],

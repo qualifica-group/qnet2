@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AiAssistant\Agent;
 
 use App\Enums\AiTurnErrorCode;
+use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,20 +14,15 @@ use Throwable;
 
 /**
  * Streaming chat completion with tool calls on OpenRouter (spec 0433, D-13). Model and
- * routing come from `ai-assistant.agent`, the key from `ai-assistant.openrouter`; they are
- * read here and nowhere else. HTTP status is not enough on OpenRouter: an error can arrive
+ * routing are the effective settings the caller passes, the key comes from
+ * `ai-assistant.openrouter`. HTTP status is not enough on OpenRouter: an error can arrive
  * in the middle of a 200 stream, so every chunk is checked for `error` and `finish_reason`.
  */
 final class OpenRouterAgentClient
 {
     public static function isConfigured(): bool
     {
-        return filled(config('ai-assistant.openrouter.api_key')) && filled(config('ai-assistant.agent.model'));
-    }
-
-    public static function model(): ?string
-    {
-        return config('ai-assistant.agent.model') ?: null;
+        return filled(config('ai-assistant.openrouter.api_key'));
     }
 
     /**
@@ -36,7 +32,7 @@ final class OpenRouterAgentClient
      *
      * @throws AgentModelException
      */
-    public function complete(array $messages, array $tools, int $conversationId, ?callable $onText = null): AgentModelResult
+    public function complete(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, ?callable $onText = null): AgentModelResult
     {
         try {
             $response = Http::withHeaders($this->headers())
@@ -44,7 +40,7 @@ final class OpenRouterAgentClient
                 ->timeout((int) config('ai-assistant.timeout_seconds'))
                 ->connectTimeout((int) config('ai-assistant.connect_timeout_seconds'))
                 ->acceptJson()
-                ->post($this->url(), $this->payload($messages, $tools, $conversationId));
+                ->post($this->url(), $this->payload($messages, $tools, $conversationId, $settings));
 
             if (! $response->successful()) {
                 $this->fail(AiTurnErrorCode::ModelUnavailable, 'http_status', ['status' => $response->status()]);
@@ -214,22 +210,15 @@ final class OpenRouterAgentClient
      * @param  list<array<string, mixed>>  $tools
      * @return array<string, mixed>
      */
-    private function payload(array $messages, array $tools, int $conversationId): array
+    private function payload(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings): array
     {
-        $routing = (array) config('ai-assistant.agent.routing');
-
         $payload = [
-            'model' => config('ai-assistant.agent.model'),
+            'model' => $settings->modelId,
             'stream' => true,
             'max_tokens' => (int) config('ai-assistant.agent.max_output_tokens'),
             'messages' => $messages,
             'session_id' => (string) $conversationId,
-            'provider' => [
-                'zdr' => (bool) $routing['zdr'],
-                'data_collection' => $routing['data_collection'],
-                'require_parameters' => (bool) $routing['require_parameters'],
-                'sort' => $routing['sort'],
-            ],
+            'provider' => $settings->routing,
         ];
 
         if ($tools !== []) {
