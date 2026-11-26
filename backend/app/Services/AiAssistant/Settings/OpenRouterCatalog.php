@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AiAssistant\Settings;
 
+use App\Services\AiAssistant\Costs\AiMoney;
+use App\Services\AiAssistant\Costs\AiPriceCeiling;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
@@ -86,6 +88,42 @@ class OpenRouterCatalog
 
             return $providers;
         });
+    }
+
+    /**
+     * The dearest price, field by field, among the endpoints of a model that support tools (and,
+     * with $zdrOnly, retain no prompt): the ceiling the cost reservation and `provider.max_price`
+     * use (spec 0433, D-7). Dollars per token and per request, not per million.
+     *
+     * @throws OpenRouterCatalogUnavailableException when OpenRouter lists no usable endpoint
+     */
+    public function priceCeiling(string $modelId, bool $zdrOnly): AiPriceCeiling
+    {
+        $prices = $this->cached('ceiling:'.$modelId.':'.(int) $zdrOnly, function () use ($modelId, $zdrOnly): array {
+            $zdrTags = $zdrOnly ? $this->zdrTags($modelId) : null;
+            $ceiling = ['prompt' => null, 'completion' => null, 'request' => '0'];
+
+            foreach ($this->get('/models/'.$modelId.'/endpoints')['data']['endpoints'] ?? [] as $endpoint) {
+                $pricing = is_array($endpoint) ? ($endpoint['pricing'] ?? null) : null;
+                if (! is_array($pricing) || ! is_numeric($pricing['prompt'] ?? null) || ! is_numeric($pricing['completion'] ?? null)
+                    || ! in_array(self::TOOLS_PARAMETER, $endpoint['supported_parameters'] ?? [], true)
+                    || ($zdrTags !== null && ! in_array($endpoint['tag'] ?? null, $zdrTags, true))) {
+                    continue;
+                }
+                foreach (['prompt', 'completion', 'request'] as $field) {
+                    $price = AiMoney::from($pricing[$field] ?? 0);
+                    $ceiling[$field] = $ceiling[$field] === null ? $price : AiMoney::max($ceiling[$field], $price);
+                }
+            }
+
+            if ($ceiling['prompt'] === null) {
+                throw new OpenRouterCatalogUnavailableException;
+            }
+
+            return $ceiling;
+        });
+
+        return new AiPriceCeiling($prices['prompt'], $prices['completion'], $prices['request']);
     }
 
     /**

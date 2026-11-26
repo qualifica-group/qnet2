@@ -113,4 +113,21 @@ return [
         'catalog_timeout_seconds' => (int) env('AI_ASSISTANT_CATALOG_TIMEOUT_SECONDS', 10),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Costs and spending caps (spec 0433, D-7)
+    |--------------------------------------------------------------------------
+    |
+    | input_margin_tokens: fixed allowance for the tokens of the chat format, added to the UTF-8
+    | bytes of the request when the cost of a call is reserved (a token is never shorter than one
+    | byte). reservation_ttl_minutes: an open reservation older than this is dropped, so a crashed
+    | worker cannot hold the cap forever.
+    |
+    */
+
+    'costs' => [
+        'input_margin_tokens' => (int) env('AI_ASSISTANT_COST_INPUT_MARGIN_TOKENS', 1000),
+        'reservation_ttl_minutes' => (int) env('AI_ASSISTANT_COST_RESERVATION_TTL_MINUTES', 30),
+    ],
+
 ];

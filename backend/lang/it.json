@@ -334,5 +334,7 @@
     "The assistant model accepts text only: attachments are not allowed.": "Il modello dell'assistente accetta solo testo: gli allegati non sono ammessi.",
     "The product \":product\" does not belong to any parent product category of the request: add its product category to the product lines, or remove the row.": "Il prodotto \":product\" non appartiene a nessuna categoria madre della richiesta: aggiungi la sua categoria alle linee di prodotto oppure togli la riga.",
     "The selected model is not available.": "Il modello selezionato non è disponibile.",
-    "The model list is not available. Try again later.": "L'elenco dei modelli non è disponibile. Riprova più tardi."
+    "The model list is not available. Try again later.": "L'elenco dei modelli non è disponibile. Riprova più tardi.",
+    "You have reached your monthly assistant spending limit.": "Hai raggiunto il limite di spesa mensile dell'assistente.",
+    "The company monthly assistant spending limit has been reached.": "È stato raggiunto il limite di spesa mensile aziendale dell'assistente."
 }
