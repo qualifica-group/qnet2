@@ -58,6 +58,23 @@ it('refuses to send the secret and the credential over plain http to a host that
         && ! str_contains(json_encode($context), 'example.com'));
 })->with(['http://connector.example.com:3000', 'http://10.0.0.5:3000', 'http://127.0.0.1.evil.test']);
 
+it('applies the same rules to the confirmation route: no redirect, no plain http outside loopback', function () {
+    $options = [];
+    Http::fake(['connector.test/*' => function ($request, array $requestOptions) use (&$options) {
+        $options[] = $requestOptions['allow_redirects'] ?? null;
+
+        return Http::response('', 302, ['Location' => 'http://evil.test/steal']);
+    }]);
+
+    expect(fn () => app(ConnectorClient::class)->confirm('credential', 'preview-1'))->toThrow(ConnectorUnavailableException::class)
+        ->and($options)->toBe([false]);
+
+    config()->set('ai-assistant.connector.url', 'http://connector.example.com:3000');
+
+    expect(fn () => app(ConnectorClient::class)->confirm('credential', 'preview-1'))->toThrow(ConnectorUnavailableException::class)
+        ->and($options)->toHaveCount(1);
+});
+
 it('sends to loopback over http and to any host over https', function (string $url) {
     Http::fake(['*' => Http::response(aiapi_connector_tools(), 200, ['Content-Type' => 'text/event-stream'])]);
     config()->set('ai-assistant.connector.url', $url);

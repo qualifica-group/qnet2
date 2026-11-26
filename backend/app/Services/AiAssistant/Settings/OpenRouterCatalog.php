@@ -77,6 +77,22 @@ class OpenRouterCatalog
         return in_array($modelId, $ids, true);
     }
 
+    /**
+     * Context window of a model in tokens, or null when OpenRouter does not list it or gives no size.
+     *
+     * @throws OpenRouterCatalogUnavailableException
+     */
+    public function contextWindow(string $modelId): ?int
+    {
+        foreach ($this->models() as $model) {
+            if ($model['id'] === $modelId) {
+                return $model['context_length'] > 0 ? $model['context_length'] : null;
+            }
+        }
+
+        return null;
+    }
+
     public function has(string $modelId): bool
     {
         return in_array($modelId, array_column($this->models(), 'id'), true);

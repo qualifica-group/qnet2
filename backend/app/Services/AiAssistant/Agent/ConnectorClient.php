@@ -25,6 +25,8 @@ final class ConnectorClient
 
     private const array LOOPBACK_HOSTS = ['127.0.0.1', '::1', 'localhost'];
 
+    private const string CONFIRM_PATH = '/assistant/confirm';
+
     private const string TOOLS_CACHE_KEY = 'ai-assistant.connector-tools';
 
     private const int TOOLS_CACHE_SECONDS = 300;
@@ -101,14 +103,43 @@ final class ConnectorClient
     }
 
     /**
+     * Confirms a write preview through the confirmation route of the connector (never through a tool):
+     * the body is the identifier only. One attempt, no retry: a lost or late answer is not repeated
+     * (the connector would answer that the preview is used). The answer is the envelope of `confirm_write`.
+     *
+     * @return array{text: string, envelope: array<string, mixed>}
+     *
+     * @throws ConnectorUnavailableException
+     * @throws ConnectorLinkRejectedException
+     */
+    public function confirm(string $credential, string $previewId): array
+    {
+        try {
+            $response = $this->request($credential)->withBody(json_encode(['preview_id' => $previewId], JSON_THROW_ON_ERROR), 'application/json')->post(self::confirmUrl());
+        } catch (ConnectionException) {
+            $this->unavailable('connection');
+        }
+
+        if ($response->status() === 401) {
+            throw new ConnectorLinkRejectedException;
+        }
+
+        $envelope = $response->successful() ? json_decode($response->body(), true) : null;
+
+        if (! is_array($envelope) || ! is_array($envelope['connettore'] ?? null)) {
+            $this->unavailable('confirm_answer', ['status' => $response->status()]);
+        }
+
+        return ['text' => trim($response->body()), 'envelope' => $envelope];
+    }
+
+    /**
      * @param  array<string, mixed>  $params
      * @return array<string, mixed> the JSON-RPC `result`; a JSON-RPC `error` of tools/call becomes a fixed rejected result
      */
     private function rpc(string $credential, string $method, array $params): array
     {
         $body = json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => (object) $params], JSON_THROW_ON_ERROR);
-
-        $this->assertSafeTransport();
 
         try {
             $response = $this->request($credential)->withBody($body, 'application/json')->post(self::url());
@@ -159,6 +190,8 @@ final class ConnectorClient
 
     private function request(string $credential): PendingRequest
     {
+        $this->assertSafeTransport();
+
         $headers = [
             'Accept' => 'application/json, text/event-stream',
             'MCP-Protocol-Version' => (string) config('ai-assistant.connector.protocol_version'),
@@ -195,6 +228,11 @@ final class ConnectorClient
     private static function url(): string
     {
         return rtrim((string) config('ai-assistant.connector.url'), '/').self::MCP_PATH;
+    }
+
+    private static function confirmUrl(): string
+    {
+        return rtrim((string) config('ai-assistant.connector.url'), '/').self::CONFIRM_PATH;
     }
 
     /**

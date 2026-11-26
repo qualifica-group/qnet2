@@ -143,7 +143,7 @@ it('AC-005: a tool name outside the allowed list is discarded and never reaches 
         ->and($turn->fresh()->steps)->toBeNull()
         ->and(end($messages)['role'])->toBe('tool')
         ->and(end($messages)['content'])->toContain('richiesta_non_valida');
-})->with(['confirm_write', 'something_else', 'prepare_write']);
+})->with(['confirm_write', 'something_else']); // REQUIREMENT CHANGED (ticket 05): `prepare_write` entered the allowed list.
 
 it('publishes only the allowed tools to the model, in a fixed order, even if the connector lists more', function () {
     aiapi_fake_agent([aiapi_text_body()], withConfirm: true);
@@ -151,7 +151,8 @@ it('publishes only the allowed tools to the model, in a fixed order, even if the
     turn_send();
 
     $names = array_map(fn (array $tool): string => $tool['function']['name'], aiapi_sent('chat/completions')[0]['tools']);
-    expect($names)->toBe(['search_operations', 'list_records', 'run_read_code']);
+    // REQUIREMENT CHANGED (ticket 05): `prepare_write` is the fourth allowed tool; `confirm_write` never is.
+    expect($names)->toBe(['search_operations', 'list_records', 'run_read_code', 'prepare_write']);
 });
 
 it('arguments that are not a JSON object go back to the model as an error, with no connector call', function () {
@@ -305,7 +306,6 @@ it('AC-007/D-18: a duplicate job does nothing once the turn left queued', functi
 });
 
 it('the prompt: one byte-identical system message across requests, routing and session id of the conversation', function () {
-    config()->set('ai-assistant.history_window', 2);
     aiapi_fake_agent([aiapi_text_body(['a']), aiapi_text_body(['b'])]);
     $user = aiapi_user();
     $conversation = aiapi_conversation($user);
@@ -369,8 +369,9 @@ it('a switched-off assistant: start answers 503 switched_off with no row, a queu
     Http::assertNothingSent();
 });
 
-it('AC-007: the model gets the last history_window messages and then the current one', function () {
-    config()->set('ai-assistant.history_window', 20);
+// REQUIREMENT CHANGED (spec 0433, D-5): no fixed window of messages. The history is bounded by the
+// token budget of the model (summary beyond the threshold, see AiTurnMemoryTest), so all 25 go.
+it('AC-007: the model gets the whole history inside the budget and then the current message', function () {
     aiapi_fake_agent([aiapi_text_body()]);
     $user = aiapi_user();
     $conversation = aiapi_conversation($user);
@@ -382,11 +383,11 @@ it('AC-007: the model gets the last history_window messages and then the current
     aiapi_send($user, $conversation, ['content' => 'the 26th'])->assertStatus(202);
 
     $messages = aiapi_sent('chat/completions')[0]['messages'];
-    expect($messages)->toHaveCount(22)
-        ->and($messages[1]['content'])->toBe('m6')
-        ->and($messages[20]['content'])->toBe('m25')
-        ->and($messages[21]['role'])->toBe('user')
-        ->and($messages[21]['content'])->toContain('the 26th');
+    expect($messages)->toHaveCount(27)
+        ->and($messages[1]['content'])->toBe('m1')
+        ->and($messages[25]['content'])->toBe('m25')
+        ->and($messages[26]['role'])->toBe('user')
+        ->and($messages[26]['content'])->toContain('the 26th');
 });
 
 it('AC-008: a guide longer than guide_max_chars is rejected with 422 and nothing is written', function () {

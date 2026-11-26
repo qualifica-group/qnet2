@@ -50,7 +50,6 @@ return [
     'timeout_seconds' => (int) env('AI_ASSISTANT_TIMEOUT_SECONDS', 120),
     'connect_timeout_seconds' => (int) env('AI_ASSISTANT_CONNECT_TIMEOUT_SECONDS', 10),
 
-    'history_window' => (int) env('AI_ASSISTANT_HISTORY_WINDOW', 20),
     'max_message_chars' => (int) env('AI_ASSISTANT_MAX_MESSAGE_CHARS', 8000),
     'guide_max_chars' => (int) env('AI_ASSISTANT_GUIDE_MAX_CHARS', 40000),
     'max_mentions' => (int) env('AI_ASSISTANT_MAX_MENTIONS', 5),
@@ -77,6 +76,8 @@ return [
         'max_summaries' => (int) env('AI_ASSISTANT_MAX_SUMMARIES', 3),
         'summary_max_words' => (int) env('AI_ASSISTANT_SUMMARY_MAX_WORDS', 300),
         'bytes_per_token' => (float) env('AI_ASSISTANT_BYTES_PER_TOKEN', 2.0),
+        // Window used when OpenRouter does not list the model or the list is unreachable: small on purpose.
+        'fallback_context_tokens' => (int) env('AI_ASSISTANT_FALLBACK_CONTEXT_TOKENS', 32000),
     ],
 
     /*
@@ -107,6 +108,11 @@ return [
 
         // A turn left queued or running longer than the longest job plus this margin is closed as failed.
         'stale_margin_seconds' => (int) env('AI_ASSISTANT_AGENT_STALE_MARGIN_SECONDS', 120),
+
+        // Life of a write preview: the one of the connector (10 minutes) minus a margin, so QNET2 always
+        // expires first (the stricter side) and the delayed job of the expiry fires at that instant.
+        'preview_ttl_seconds' => (int) env('AI_ASSISTANT_PREVIEW_TTL_SECONDS', 600),
+        'preview_margin_seconds' => (int) env('AI_ASSISTANT_PREVIEW_MARGIN_SECONDS', 5),
 
         // How often the browser reads the turn state, reported by GET /config.
         'poll_interval_ms' => (int) env('AI_ASSISTANT_AGENT_POLL_INTERVAL_MS', 1500),
