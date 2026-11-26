@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assistente AI, lingua e formato delle risposte (spec 0433, Istruzioni) - VERDE, COMMITTATO NEL RAMO `assistente/lingua-e-formato`
+
+- Richiesta del committente (26/11/2026): tabelle `|---|--|` non buone, italiano da migliorare. Nucleo (`AiAgentInstructions`): sezione Format riscritta (lingua della persona, italiano corretto con accenti, niente calchi/gergo/chiusure vuote; frase iniziale con conteggio e totale se parziale; tabella GFM solo con 3+ elementi e 2+ attributi, max 6 colonne, intestazioni leggibili, numeri a destra `|---:|`; 1-2 elementi elenco puntato; mai tabelle vuote), Examples con casi buono/cattivo (elenco, un elemento, nessun risultato, anteprima con «Conferma»), Results to avoid e Criteria aggiornati. Nucleo da 4497 a 5699 caratteri, nessun valore variabile.
+- `AiDefaultInstructions::TEXT` (sette parti): Formato allineato (3+ elementi e 2+ attributi tabella, 1-2 elenco) e una riga sulla lingua; 2759 -> 2923 caratteri.
+- Rischio: le istruzioni aggiuntive gia' salvate nella riga delle impostazioni NON si aggiornano da sole (il valore iniziale vale solo senza riga); il super-admin deve ripristinare il testo dalla pagina o aggiornare la riga. Il vecchio testo dice «Per più di tre voci elenco o tabella»: non contraddice il nucleo in modo grave ma e' meno preciso.
+- Test: `tests/Unit/AiAssistant/Agent/AiAgentInstructionsTest.php` (REQUIREMENT CHANGED con citazione). Pest AiAssistant: 301 passati.
+
 ## Assistente AI, correzioni della revisione di sicurezza del turno (spec 0433) - VERDE, COMMITTATO NEL RAMO `assistente/sicurezza-turno`
 
 - Rete in uscita: `ConnectorClient::request` (tools, call, confirm) e `OpenRouterAgentClient` usano `withoutRedirecting()`: una 3xx non si segue e chiude con l'errore fisso. Il connettore con schema `http` e host non loopback (`127.0.0.1`, `::1`, `localhost`) non riceve ne' segreto ne' credenziale: `connector_unavailable`, log `reason=insecure_url`. REQUIREMENT CHANGED: `AIAPI_CONNECTOR_URL` dei test e' ora `https://connector.test`.
