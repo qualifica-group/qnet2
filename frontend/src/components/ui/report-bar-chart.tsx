@@ -15,6 +15,8 @@ export interface ReportBarChartProps {
   formatValue?: (value: number) => string
   /** Discreet placeholder shown when `points` is empty. Pass a translated string. */
   emptyLabel?: string
+  /** Fractional ticks on the value axis; off by default because most series are counts. */
+  allowDecimals?: boolean
   className?: string
 }
 
@@ -27,7 +29,7 @@ export interface ReportBarChartProps {
 const ReportBarChartImpl = React.lazy(() => import("@/components/ui/report-bar-chart-impl"))
 
 /** Horizontal bar chart (lazy), for series whose labels are category/person names. Composes `Card`. */
-function ReportBarChart({ title, points, formatValue, emptyLabel = "—", className }: ReportBarChartProps) {
+function ReportBarChart({ title, points, formatValue, emptyLabel = "—", allowDecimals = false, className }: ReportBarChartProps) {
   return (
     <Card className={cn("gap-2 py-3", className)}>
       <CardContent className="flex flex-col gap-2 px-3">
@@ -36,7 +38,7 @@ function ReportBarChart({ title, points, formatValue, emptyLabel = "—", classN
           <p className="text-xs text-muted-foreground">{emptyLabel}</p>
         ) : (
           <React.Suspense fallback={<Skeleton className="h-48 w-full sm:h-64" />}>
-            <ReportBarChartImpl title={title} points={points} formatValue={formatValue} />
+            <ReportBarChartImpl title={title} points={points} formatValue={formatValue} allowDecimals={allowDecimals} />
           </React.Suspense>
         )}
       </CardContent>

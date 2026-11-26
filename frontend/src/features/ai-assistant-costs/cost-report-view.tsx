@@ -47,6 +47,7 @@ export function CostReportView({ report }: { report: AiCostReport }) {
           points={report.by_function.map((row) => ({ label: row.name ?? t('tables.noFunction'), value: Number(row.cost_usd) }))}
           formatValue={formatUsdNumber}
           emptyLabel={t('charts.empty')}
+          allowDecimals
         />
       </div>
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">

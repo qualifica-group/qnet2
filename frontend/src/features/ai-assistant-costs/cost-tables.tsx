@@ -31,33 +31,33 @@ function CostTable({ title, nameHeader, rows, note }: CostTableProps) {
         {rows.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t('tables.empty')}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[22rem] text-left text-xs">
+          <div className="max-w-full overflow-x-auto rounded-md border border-border">
+            <table className={`w-full text-left text-xs ${hasTokens ? 'min-w-[30rem]' : ''}`}>
               <thead className="text-muted-foreground">
                 <tr>
-                  <th scope="col" className="py-1 pr-2 font-medium">{nameHeader}</th>
-                  <th scope="col" className="py-1 pr-2 text-right font-medium">{t('tables.requests')}</th>
+                  <th scope="col" className="px-2 py-1 font-medium">{nameHeader}</th>
+                  <th scope="col" className="px-2 py-1 text-right font-medium">{t('tables.requests')}</th>
                   {hasTokens ? (
                     <>
-                      <th scope="col" className="py-1 pr-2 text-right font-medium">{t('tables.inputTokens')}</th>
-                      <th scope="col" className="py-1 pr-2 text-right font-medium">{t('tables.outputTokens')}</th>
+                      <th scope="col" className="px-2 py-1 text-right font-medium">{t('tables.inputTokens')}</th>
+                      <th scope="col" className="px-2 py-1 text-right font-medium">{t('tables.outputTokens')}</th>
                     </>
                   ) : null}
-                  <th scope="col" className="py-1 text-right font-medium">{t('tables.cost')}</th>
+                  <th scope="col" className="px-2 py-1 text-right font-medium">{t('tables.cost')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.key} className="border-t border-border tabular-nums">
-                    <th scope="row" className="max-w-[16rem] truncate py-1 pr-2 font-medium">{row.name}</th>
-                    <td className="py-1 pr-2 text-right">{formatCount(row.requests)}</td>
+                    <th scope="row" className="max-w-[16rem] truncate px-2 py-1 font-medium">{row.name}</th>
+                    <td className="px-2 py-1 text-right">{formatCount(row.requests)}</td>
                     {hasTokens ? (
                       <>
-                        <td className="py-1 pr-2 text-right">{formatCount(row.inputTokens ?? 0)}</td>
-                        <td className="py-1 pr-2 text-right">{formatCount(row.outputTokens ?? 0)}</td>
+                        <td className="px-2 py-1 text-right">{formatCount(row.inputTokens ?? 0)}</td>
+                        <td className="px-2 py-1 text-right">{formatCount(row.outputTokens ?? 0)}</td>
                       </>
                     ) : null}
-                    <td className="py-1 text-right font-medium">{formatUsd(row.cost)}</td>
+                    <td className="px-2 py-1 text-right font-medium">{formatUsd(row.cost)}</td>
                   </tr>
                 ))}
               </tbody>

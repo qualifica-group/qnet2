@@ -37,6 +37,45 @@ describe('AiMarkdown', () => {
     expect(container.querySelector('pre')?.textContent).toBe('<i>y</i>')
   })
 
+  it('renders a GFM table with header, rows and inline formatting in cells', () => {
+    const { container } = render(
+      <AiMarkdown content={'Anteprima:\n\n| Campo | Valore |\n|---|:---:|\n| Nome | **Rossi** |\n| Note | `x` |\n\nFine'} />,
+    )
+
+    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Campo', 'Valore'])
+    expect(screen.getAllByRole('row')).toHaveLength(3)
+    expect(screen.getByText('Rossi').tagName).toBe('STRONG')
+    expect(container.querySelector('table')?.parentElement).toHaveClass('overflow-x-auto')
+    expect(screen.getByText('Fine').tagName).toBe('P')
+  })
+
+  it('pads or trims rows to the header width', () => {
+    render(<AiMarkdown content={'| A | B |\n| - | - |\n| 1 |\n| 1 | 2 | 3 |'} />)
+
+    expect(screen.getAllByRole('row').map((row) => row.querySelectorAll('th,td').length)).toEqual([2, 2, 2])
+  })
+
+  it('keeps text with pipes that is not a table as text', () => {
+    const noSeparator = parseMarkdown('| a | b |\n| c | d |')
+    const mismatched = parseMarkdown('| a | b |\n|---|')
+    const inProse = parseMarkdown('scegli a | b\n---')
+
+    for (const blocks of [noSeparator, mismatched, inProse]) {
+      expect(blocks.every((block) => block.type !== 'table')).toBe(true)
+    }
+  })
+
+  it('never turns table cells into HTML or links', () => {
+    const { container } = render(
+      <AiMarkdown content={'| Campo | Valore |\n|---|---|\n| <img src=x onerror=alert(1)> | [x](javascript:alert(1)) |'} />,
+    )
+
+    expect(container.querySelector('img')).toBeNull()
+    expect(container.querySelector('a')).toBeNull()
+    expect(container.querySelector('td')?.textContent).toBe('<img src=x onerror=alert(1)>')
+    expect(container.querySelectorAll('td')[1].textContent).toBe('[x](javascript:alert(1))')
+  })
+
   it('leaves unbalanced markers as text', () => {
     const blocks = parseMarkdown('un **grassetto mai chiuso')
     expect(blocks).toEqual([{ type: 'paragraph', children: [{ type: 'text', value: 'un **grassetto mai chiuso' }] }])

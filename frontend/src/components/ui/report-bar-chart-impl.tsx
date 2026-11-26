@@ -30,6 +30,7 @@ interface ReportBarChartImplProps {
   title: string
   points: ReportBarChartPoint[]
   formatValue?: (value: number) => string
+  allowDecimals: boolean
 }
 
 function defaultFormatValue(value: number): string {
@@ -45,7 +46,8 @@ export default function ReportBarChartImpl({
   title,
   points,
   formatValue = defaultFormatValue,
-}: ReportBarChartImplProps) {
+  allowDecimals,
+}:ReportBarChartImplProps) {
   return (
     <figure className="m-0 flex flex-col">
       {/* The chart itself is decorative for assistive tech: the data is exposed as text below. */}
@@ -58,7 +60,7 @@ export default function ReportBarChartImpl({
               tick={AXIS_TICK}
               tickLine={false}
               axisLine={false}
-              allowDecimals={false}
+              allowDecimals={allowDecimals}
               tickFormatter={(value: number) => formatValue(value)}
             />
             <YAxis

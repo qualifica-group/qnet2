@@ -44,6 +44,33 @@ function renderBlock(block: BlockNode, index: number): ReactNode {
           <code>{block.value}</code>
         </pre>
       )
+    case 'table':
+      return (
+        <div key={index} className="max-w-full overflow-x-auto rounded-md border border-border">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-muted/40">
+              <tr>
+                {block.header.map((cell, cellIndex) => (
+                  <th key={cellIndex} scope="col" className="px-2 py-1 font-medium">
+                    {renderInline(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-t border-border">
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="px-2 py-1 align-top">
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
     case 'list': {
       const Tag = block.ordered ? 'ol' : 'ul'
       return (

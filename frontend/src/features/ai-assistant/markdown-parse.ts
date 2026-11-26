@@ -17,6 +17,7 @@ export type BlockNode =
   | { type: 'list'; ordered: boolean; items: InlineNode[][] }
   | { type: 'quote'; children: InlineNode[] }
   | { type: 'code'; value: string }
+  | { type: 'table'; header: InlineNode[][]; rows: InlineNode[][][] }
 
 const INLINE_PATTERN = /`([^`\n]+)`|\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*/
 const FENCE = /^```/
@@ -24,6 +25,7 @@ const HEADING = /^#{1,6}\s+(.*)$/
 const BULLET = /^\s*[-*+]\s+(.*)$/
 const NUMBERED = /^\s*\d+[.)]\s+(.*)$/
 const QUOTE = /^>\s?(.*)$/
+const TABLE_SEPARATOR_CELL = /^:?-+:?$/
 
 export function parseInline(text: string): InlineNode[] {
   const nodes: InlineNode[] = []
@@ -81,6 +83,15 @@ export function parseMarkdown(source: string): BlockNode[] {
     } else if (HEADING.test(line)) {
       blocks.push({ type: 'heading', children: parseInline(HEADING.exec(line)![1]) })
       index += 1
+    } else if (isTableStart(lines, index)) {
+      const header = splitRow(line).map(parseInline)
+      const rows: InlineNode[][][] = []
+      index += 2
+      while (index < lines.length && lines[index].includes('|') && lines[index].trim() !== '') {
+        rows.push(fitRow(splitRow(lines[index]), header.length).map(parseInline))
+        index += 1
+      }
+      blocks.push({ type: 'table', header, rows })
     } else if (BULLET.test(line) || NUMBERED.test(line)) {
       const ordered = NUMBERED.test(line) && !BULLET.test(line)
       const pattern = ordered ? NUMBERED : BULLET
@@ -99,7 +110,7 @@ export function parseMarkdown(source: string): BlockNode[] {
       blocks.push({ type: 'quote', children: parseLines(quoted) })
     } else {
       const paragraph: string[] = []
-      while (index < lines.length && lines[index].trim() !== '' && !isBlockStart(lines[index])) {
+      while (index < lines.length && lines[index].trim() !== '' && !isBlockStart(lines[index]) && !isTableStart(lines, index)) {
         paragraph.push(lines[index])
         index += 1
       }
@@ -108,6 +119,27 @@ export function parseMarkdown(source: string): BlockNode[] {
   }
 
   return blocks
+}
+
+/** Cells of one pipe-delimited row: outer pipes dropped, an escaped pipe kept as a literal one. */
+function splitRow(line: string): string[] {
+  const body = line.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '')
+  return body.split(/(?<!\\)\|/).map((cell) => cell.replace(/\\\|/g, '|').trim())
+}
+
+function fitRow(cells: string[], width: number): string[] {
+  return Array.from({ length: width }, (_, column) => cells[column] ?? '')
+}
+
+/** A header line followed by a `---` separator row with the same number of cells (simple GFM table). */
+function isTableStart(lines: string[], index: number): boolean {
+  const separator = lines[index + 1]
+  if (separator === undefined || !lines[index].includes('|') || !separator.includes('|')) {
+    return false
+  }
+  const header = splitRow(lines[index])
+  const dashes = splitRow(separator)
+  return dashes.length === header.length && dashes.every((cell) => TABLE_SEPARATOR_CELL.test(cell))
 }
 
 function isBlockStart(line: string): boolean {
