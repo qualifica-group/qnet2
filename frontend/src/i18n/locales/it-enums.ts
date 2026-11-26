@@ -82,6 +82,7 @@ export const enums = {
   purchase_invoice_type: {
     proforma: 'Proforma',
     invoice: 'Fattura',
+    payslip: 'Cedolino',
   },
   // Provvigioni agenti (spec 0212): mandato ENASARCO, tipo movimento, ruolo/tipo destinatario, stato.
   enasarco_mandate_type: {

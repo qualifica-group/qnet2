@@ -16,7 +16,8 @@ it('AC-016: the cost-types grid exposes the contract columns, lines_count and ab
 
     $used = $rows->firstWhere('id', $line->cost_type_id);
 
-    expect($rows)->toHaveCount(5)
+    // REQUIREMENT CHANGED (spec 0431, D-6): 5 seeded types (incl. "Retribuzioni al personale") + the factory one.
+    expect($rows)->toHaveCount(6)
         ->and(array_keys($used))->toEqualCanonicalizing(['id', 'name', 'description', 'nature', 'color', 'sort_order', 'is_active', 'lines_count', 'abilities', 'actions', 'editable'])
         ->and($used['lines_count'])->toBe(1)
         ->and($used['abilities'])->toBe(['update' => true, 'delete' => false])

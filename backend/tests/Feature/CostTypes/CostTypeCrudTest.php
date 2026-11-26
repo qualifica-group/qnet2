@@ -7,9 +7,10 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
-it('AC-016: the migration seeds Collaboratori, Fitti, Utenze and Altro, active and ordered', function () {
+// REQUIREMENT CHANGED (spec 0431, D-6): the payslip cost type "Retribuzioni al personale" is seeded last.
+it('AC-016: the migrations seed Collaboratori, Fitti, Utenze, Altro and Retribuzioni al personale, active and ordered', function () {
     expect(CostType::query()->orderBy('sort_order')->pluck('name')->all())
-        ->toBe(['Collaboratori', 'Fitti', 'Utenze', 'Altro'])
+        ->toBe(['Collaboratori', 'Fitti', 'Utenze', 'Altro', 'Retribuzioni al personale'])
         ->and(CostType::query()->where('is_active', false)->count())->toBe(0);
 });
 

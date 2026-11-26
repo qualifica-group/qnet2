@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next'
 import { todayIsoDate } from '@/features/work-order-costs/work-order-costs-schema'
 import type { CreateDocumentRequestPayload, UpdateDocumentRequestPayload } from '@/features/document-requests/types'
 
-/** Spec 0428: `message` max 2000, `recipient_email` email max 255, `due_date` today or later. */
+/** Spec 0428: `message` max 2000, `recipient_email` mandatory email max 255 (AC-021), `due_date` today or later. */
 export const REQUEST_MESSAGE_MAX_LENGTH = 2000
 export const REQUEST_EMAIL_MAX_LENGTH = 255
 
@@ -15,6 +15,8 @@ function buildBaseSchema(t: TFunction) {
       .refine((value) => value === '' || value >= todayIsoDate(), t('documentRequests.validation.dueDatePast')),
     recipient_email: z
       .string()
+      .trim()
+      .min(1, t('documentRequests.validation.emailRequired'))
       .max(REQUEST_EMAIL_MAX_LENGTH, t('documentRequests.validation.emailMax'))
       .refine((value) => value === '' || z.email().safeParse(value).success, t('documentRequests.validation.emailInvalid')),
     message: z.string().max(REQUEST_MESSAGE_MAX_LENGTH, t('documentRequests.validation.messageMax')),
@@ -40,7 +42,7 @@ export type DocumentRequestFormValues = z.infer<ReturnType<typeof buildBaseSchem
 export function toUpdateDocumentRequestPayload(values: DocumentRequestFormValues): UpdateDocumentRequestPayload {
   return {
     due_date: values.due_date === '' ? null : values.due_date,
-    recipient_email: values.recipient_email.trim() === '' ? null : values.recipient_email.trim(),
+    recipient_email: values.recipient_email.trim(),
     message: values.message.trim() === '' ? null : values.message,
     send: values.send,
   }

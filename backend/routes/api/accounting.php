@@ -14,3 +14,4 @@ require __DIR__.'/agent-commissions.php';
 require __DIR__.'/invoice-tags.php';
 require __DIR__.'/revenue-types.php';
 require __DIR__.'/chart-of-accounts.php';
+require __DIR__.'/payroll-costs.php';

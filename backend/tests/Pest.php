@@ -69,6 +69,8 @@ require_once __DIR__.'/Helpers/ProjectWorkOrderHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderMultiQuoteHelpers.php';
 require_once __DIR__.'/Helpers/StatsHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderWorkflowHelpers.php';
+require_once __DIR__.'/Helpers/PayrollCostHelpers.php';
+require_once __DIR__.'/Helpers/PayslipHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderStatusAdvanceHelpers.php';
 require_once __DIR__.'/Helpers/EmailTemplateHelpers.php';
 require_once __DIR__.'/Helpers/DocumentBundleHelpers.php';

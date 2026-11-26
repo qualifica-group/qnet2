@@ -203,6 +203,7 @@ export const permissions = {
     'commission-accruals': 'Maturato provvigioni',
     'commission-settlements': 'Estratti provvigioni',
     'enasarco-parameters': 'Parametri ENASARCO',
+    'payroll-costs': 'Costi del personale',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

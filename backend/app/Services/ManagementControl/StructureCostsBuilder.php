@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\ManagementControl;
 
 use App\DataObjects\ManagementControl\StructureCostsFilters;
+use App\Enums\PurchaseInvoiceType;
 use App\Models\CostType;
 use App\Services\Purchasing\CommittedOrderLineQuery;
 use Illuminate\Database\Query\Builder;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  * commessa, by cost type and by company / company site / operational site.
  * Committed = order lines without commessa on invoiceable orders, net of what
  * documents bill; invoiced = document lines without commessa, leaving out the
- * invoices of commission statements (D-9, already in the commessa margins).
+ * invoices of commission statements (D-9, already in the commessa margins) and
+ * the payslips (spec 0431, D-5: the staff cost is the payroll cost, spec 0430).
  * A constant number of aggregate queries; amounts are integer cents summed,
  * numbers with two decimals out.
  */
@@ -67,7 +69,8 @@ final class StructureCostsBuilder
         $query = DB::table('purchase_invoice_lines')
             ->join('purchase_invoices', 'purchase_invoices.id', '=', 'purchase_invoice_lines.purchase_invoice_id')
             ->whereNull('purchase_invoice_lines.work_order_id')
-            ->whereNotIn('purchase_invoices.id', $statementInvoices);
+            ->whereNotIn('purchase_invoices.id', $statementInvoices)
+            ->where('purchase_invoices.document_type', '!=', PurchaseInvoiceType::Payslip->value);
 
         return $this->filtered($query, 'purchase_invoices', 'document_date', $filters);
     }

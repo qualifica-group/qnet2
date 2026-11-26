@@ -53,7 +53,8 @@ it('AC-009: exposes the contract columns, filters and actions', function () {
         'total_amount', 'payable_amount', 'paid_amount', 'residual_amount', 'payment_status',
     ])
         ->and($columns['document_type']['filterType'])->toBe('set')
-        ->and($columns['document_type']['options'])->toBe(['proforma', 'invoice'])
+        // REQUIREMENT CHANGED (spec 0431): the payslip type joins the filter options.
+        ->and($columns['document_type']['options'])->toBe(['proforma', 'invoice', 'payslip'])
         ->and($columns['supplier']['filterType'])->toBe('set')
         ->and($columns['company']['filterType'])->toBe('set')
         ->and($columns['purchase_orders']['sortable'])->toBeFalse()

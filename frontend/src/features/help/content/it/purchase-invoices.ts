@@ -28,6 +28,7 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'L’elenco ha **una riga per documento**: tipo, numero del fornitore, data, fornitore, società, ODA collegati, **totale**, **pagato**, **residuo** e **stato del pagamento**. Espandi la riga del documento per vedere **Righe**, **Scadenze** e **ODA collegati** (con il permesso sugli ODA, ognuno è un link all’ordine) senza aprire la scheda. Nelle **Scadenze**, con il permesso di pagamento, ogni rata ha **Registra pagamento** oppure **Annulla pagamento**. Come in ogni elenco puoi ordinare, cercare, filtrare, salvare viste ed esportare.',
         },
+        { type: 'paragraph', text: 'Sopra l’elenco le schede **Tutte**, **Proforma**, **Fatture** e **Cedolini** filtrano per tipo di documento; all’apertura è selezionata **Fatture**.' },
         {
           type: 'table',
           headers: ['Azione', 'Cosa fa'],
@@ -168,6 +169,38 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'payslips',
+      title: 'Cedolini e import dei netti',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Il **cedolino** è un documento di tipo **Cedolino**: rappresenta il **netto in busta paga** di una persona per un mese e si paga come gli altri documenti (una sola scadenza, pagamento singolo o massivo, riconciliazione bancaria). Non ha numero e nasce solo dall’import dei netti: non si crea a mano.',
+        },
+        {
+          type: 'warning',
+          text: 'Il cedolino **non è un costo** nel controllo di gestione: il costo del personale viene dai **Costi del personale** (file costi del consulente). Il cedolino compare invece in scadenzario, esposizione, cash flow e saldi dei conti.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Nell’elenco premi **Importa netti** (serve il permesso di importazione e quello di creazione).',
+            'Scegli il **file dei netti** del consulente del lavoro (csv, txt o xlsx) e indica la **Data di pagamento**: sarà la scadenza di tutti i cedolini del file. Un file contiene un solo mese.',
+            'Leggi l’**anteprima**: mese, righe, persone, società, **totale netti**, cedolini creati e aggiornati, fornitori creati e collegati.',
+            'Gli **errori** (riga e colonna) bloccano l’importazione: correggi il file e caricalo di nuovo. Gli **avvisi** non bloccano, ma vanno letti (es. netto senza riga di costo per quella persona e mese).',
+            'Premi **Conferma importazione**: l’import è **tutto o niente** e l’elenco si aggiorna.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Ogni persona è riconosciuta dal **codice fiscale** e ha un’anagrafica **fornitore** (collegata, trovata dal codice fiscale o creata dall’import).',
+            'Caricare di nuovo lo stesso file **aggiorna** i cedolini non ancora pagati (netto, scadenza); se uno è già **pagato**, anche in parte, la sua riga è un errore e il file non si importa.',
+            'Nella scheda di un cedolino si modificano **solo le note**; si può eliminare se non ha pagamenti.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'permissions',
       title: 'Permessi',
       blocks: [
@@ -180,6 +213,7 @@ const guide: HelpGuide = {
             ['Modificare la scheda e le righe', 'Modifica fatture passive'],
             ['**Elimina**', 'Eliminazione fatture passive'],
             ['Cambiare o svuotare numero e data di una fattura', 'Correggi/annulla registrazione'],
+            ['**Importa netti** (serve anche la creazione)', 'Importazione fatture passive'],
             ['**Esporta**, **Attività**', 'Esportazione e visualizzazione attività'],
           ],
         },

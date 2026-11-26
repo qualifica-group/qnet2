@@ -121,11 +121,19 @@ class DocumentRequestService
             $this->refuse(__('archivio_smart.request_not_cancellable'));
         }
 
+        if ($request->neverReachedArchivioSmart()) {
+            return $this->cancelLocally($request);
+        }
+
         return $this->request($request, DocumentRequestOperation::Cancel);
     }
 
     public function refresh(DocumentRequest $request): DocumentRequest
     {
+        if ($request->neverReachedArchivioSmart()) {
+            $this->refuse(__('archivio_smart.request_never_delivered'));
+        }
+
         return $this->request($request, DocumentRequestOperation::Refresh);
     }
 
@@ -216,6 +224,22 @@ class DocumentRequestService
             'note' => $note,
             'reviewer_name' => $reviewer->name,
         ]);
+    }
+
+    /**
+     * ArchivioSmart does not know the request: cancelling it is a local decision, with no call to make.
+     */
+    private function cancelLocally(DocumentRequest $request): DocumentRequest
+    {
+        $request->forceFill([
+            'status' => DocumentRequestStatus::Cancelled,
+            'cancelled_at' => now(),
+            'delivery_status' => DocumentRequestDeliveryStatus::Delivered,
+            'pending_operation' => null,
+            'delivery_error' => null,
+        ])->save();
+
+        return $request;
     }
 
     private function assertOpen(DocumentRequest $request): void

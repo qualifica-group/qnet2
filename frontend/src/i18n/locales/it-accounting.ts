@@ -14,6 +14,7 @@ import { invoices, invoiceTags } from './it-invoices'
 import { compensations } from './it-compensations'
 import { ledger } from './it-ledger'
 import { managementControl } from './it-management-control'
+import { payrollCosts } from './it-payroll-costs'
 import { paymentMethods } from './it-payment-methods'
 import { proformaRequests } from './it-proforma-requests'
 import { purchaseInvoiceInstallments } from './it-purchase-invoice-installments'
@@ -34,6 +35,7 @@ export const accounting = {
   treasuryTypes,
   proformaRequests,
   paymentMethods,
+  payrollCosts,
   invoices,
   invoiceTags,
   invoiceInstallments,

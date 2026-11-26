@@ -17,10 +17,10 @@ function leafEntries(tree: I18nTree, prefix = ''): [string, string][] {
 }
 
 describe('workspaces manual (spec 0317 AC-020)', () => {
-  // REQUIREMENT CHANGED (spec 0322): the "work-order-workflows" guide makes 99; REQUIREMENT CHANGED (spec 0334): "support-topics" makes 100; REQUIREMENT CHANGED (spec 0347): "ai-assistant" makes 101; REQUIREMENT CHANGED (spec 0348): "request-imports" makes 102; REQUIREMENT CHANGED (spec 0348, chart of accounts): "chart-of-accounts" makes 103; REQUIREMENT CHANGED (spec 0359): "project-work-orders" makes 104; REQUIREMENT CHANGED (spec 0360): "treasury-movements" and "account-statements" make 106; REQUIREMENT CHANGED (spec 0362): "treasury-overview" makes 107; REQUIREMENT CHANGED (spec 0365): "agent-sales-report" makes 108; REQUIREMENT CHANGED (spec 0403): "document-checklists" makes 109; REQUIREMENT CHANGED (spec 0404 quote system statuses, merged with 0403): "quote-system-statuses" makes 110; REQUIREMENT CHANGED (spec 0410): "document-checklist-categories" makes 111; REQUIREMENT CHANGED (spec 0422 of main, merge): "formalab" makes 112; REQUIREMENT CHANGED (spec 0433): "ai-assistant-settings" and "ai-assistant-costs" make 114.
-  it('registers the "workspaces" guide: 114 keys in total', () => {
+  // REQUIREMENT CHANGED (spec 0322): the "work-order-workflows" guide makes 99; REQUIREMENT CHANGED (spec 0334): "support-topics" makes 100; REQUIREMENT CHANGED (spec 0347): "ai-assistant" makes 101; REQUIREMENT CHANGED (spec 0348): "request-imports" makes 102; REQUIREMENT CHANGED (spec 0348, chart of accounts): "chart-of-accounts" makes 103; REQUIREMENT CHANGED (spec 0359): "project-work-orders" makes 104; REQUIREMENT CHANGED (spec 0360): "treasury-movements" and "account-statements" make 106; REQUIREMENT CHANGED (spec 0362): "treasury-overview" makes 107; REQUIREMENT CHANGED (spec 0365): "agent-sales-report" makes 108; REQUIREMENT CHANGED (spec 0403): "document-checklists" makes 109; REQUIREMENT CHANGED (spec 0404 quote system statuses, merged with 0403): "quote-system-statuses" makes 110; REQUIREMENT CHANGED (spec 0410): "document-checklist-categories" makes 111; REQUIREMENT CHANGED (spec 0422 of main, merge): "formalab" makes 112; REQUIREMENT CHANGED (spec 0430): "management-control-payroll-costs" makes 113; REQUIREMENT CHANGED (spec 0433, merge with staging): "ai-assistant-settings" and "ai-assistant-costs" make 115.
+  it('registers the "workspaces" guide: 115 keys in total', () => {
     expect(HELP_GUIDE_KEYS).toContain('workspaces')
-    expect(HELP_GUIDE_KEYS).toHaveLength(114)
+    expect(HELP_GUIDE_KEYS).toHaveLength(115)
   })
 
   it('has the guide in IT and EN with the same section ids', () => {

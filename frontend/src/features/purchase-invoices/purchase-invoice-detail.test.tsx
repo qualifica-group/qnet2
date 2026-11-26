@@ -93,6 +93,16 @@ describe('PurchaseInvoiceDetailView (spec 0250 AC-013)', () => {
     expect(await screen.findByRole('heading', { name: 'Invoice FT-77' })).toBeInTheDocument()
   })
 
+  it('shows a payslip with no edit action except the notes (spec 0431 D-7)', async () => {
+    renderDetail(makePurchaseInvoiceView({ document_type: 'payslip', document_number: null }))
+
+    expect(await screen.findByRole('heading', { name: 'Payslip' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Document date' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Edit Supplier number/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Edit Payment method/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Notes' })).toBeInTheDocument()
+  })
+
   // Spec 0263 (REQUIREMENT CHANGED): no "Edit lines" button, the lines are edited in place.
   it('renders the delete button from permissions.actions and wires its callback', async () => {
     renderDetail(makePurchaseInvoiceView({ document_number: 'FT-1' }))

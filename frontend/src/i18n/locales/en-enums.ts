@@ -83,6 +83,7 @@ export const enums = {
   purchase_invoice_type: {
     proforma: 'Proforma',
     invoice: 'Invoice',
+    payslip: 'Payslip',
   },
   // Agent commissions (spec 0212): ENASARCO mandate, ledger movement type, recipient role/kind, ledger status.
   enasarco_mandate_type: {

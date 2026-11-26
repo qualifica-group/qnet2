@@ -19,7 +19,7 @@ import { PurchaseInvoiceInstallmentsSection } from '@/features/purchase-invoices
 import { PurchaseInvoiceLinesRecord } from '@/features/purchase-invoices/purchase-invoice-lines-record'
 import { PurchaseInvoiceRecordTotals } from '@/features/purchase-invoices/purchase-invoice-record-totals'
 import { PurchaseInvoiceRecordSections } from '@/features/purchase-invoices/purchase-invoice-record-sections'
-import { lockedForSettlement } from '@/features/purchase-invoices/purchase-invoice-settlement-lock'
+import { lockedForPayslip, lockedForSettlement } from '@/features/purchase-invoices/purchase-invoice-settlement-lock'
 import { PurchaseInvoiceSettlementBadge } from '@/features/purchase-invoices/purchase-invoice-settlement-badge'
 import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
 import { usePurchaseInvoice } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
@@ -29,6 +29,7 @@ import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers
 const TYPE_COLORS: Record<(typeof PURCHASE_INVOICE_TYPES)[number], string> = {
   proforma: BADGE_COLOR_CLASSES.blue,
   invoice: BADGE_COLOR_CLASSES.green,
+  payslip: BADGE_COLOR_CLASSES.slate,
 }
 
 export interface PurchaseInvoiceDetailCallbacks {
@@ -68,11 +69,13 @@ function PurchaseInvoiceDetailBody({
           <RecordCardHeader
             media={<DetailMonogram name={invoice.supplier.name} icon={<FileText />} />}
             title={
-              invoice.document_number
-                ? t('purchaseInvoiceViews.detail.title', {
-                    number: invoice.document_number,
-                  })
-                : t('purchaseInvoiceViews.detail.titleProforma')
+              invoice.document_type === 'payslip'
+                ? t('purchaseInvoiceViews.detail.titlePayslip')
+                : invoice.document_number
+                  ? t('purchaseInvoiceViews.detail.title', {
+                      number: invoice.document_number,
+                    })
+                  : t('purchaseInvoiceViews.detail.titleProforma')
             }
             subtitle={invoice.supplier.label}
             actions={<PurchaseInvoiceHeaderActions invoice={invoice} onDelete={onDelete} />}
@@ -145,5 +148,5 @@ export function PurchaseInvoiceDetailView({ invoiceId, ...callbacks }: PurchaseI
   if (!data) {
     return <DetailLoading />
   }
-  return <PurchaseInvoiceDetailBody invoice={lockedForSettlement(data)} {...callbacks} />
+  return <PurchaseInvoiceDetailBody invoice={lockedForPayslip(lockedForSettlement(data))} {...callbacks} />
 }

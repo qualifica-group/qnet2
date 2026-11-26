@@ -21,6 +21,7 @@ const STATUS_COLORS: Record<PurchaseInstallmentStatus, string> = {
 const TYPE_COLORS: Record<PurchaseInvoiceType, string> = {
   proforma: BADGE_COLOR_CLASSES.blue,
   invoice: BADGE_COLOR_CLASSES.green,
+  payslip: BADGE_COLOR_CLASSES.slate,
 }
 
 function isOneOf<T extends string>(options: readonly T[], value: unknown): value is T {

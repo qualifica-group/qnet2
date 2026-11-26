@@ -68,6 +68,16 @@ class PurchaseInvoice extends BaseModel
     }
 
     /**
+     * Payroll detail when the document is a payslip (spec 0431, D-2).
+     *
+     * @return HasOne<Payslip, $this>
+     */
+    public function payslip(): HasOne
+    {
+        return $this->hasOne(Payslip::class);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function casts(): array

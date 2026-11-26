@@ -17,7 +17,7 @@ import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/
 import { PurchaseInvoiceEditorRelationField } from '@/features/purchase-invoices/purchase-invoice-editor-relation-field'
 import type { EditorSource } from '@/features/purchase-invoices/purchase-invoice-editor-source'
 import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
-import { PURCHASE_INVOICE_TYPES } from '@/features/purchase-invoices/types'
+import { WRITABLE_PURCHASE_INVOICE_TYPES } from '@/features/purchase-invoices/types'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { WORK_ORDERS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 
@@ -67,7 +67,7 @@ export function PurchaseInvoiceEditorHeaderSection({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {PURCHASE_INVOICE_TYPES.map((type) => (
+                  {WRITABLE_PURCHASE_INVOICE_TYPES.map((type) => (
                     <SelectItem key={type} value={type}>
                       {t(`purchaseInvoices.types.${type}`)}
                     </SelectItem>

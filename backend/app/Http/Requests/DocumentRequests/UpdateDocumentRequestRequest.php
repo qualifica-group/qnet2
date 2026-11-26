@@ -12,6 +12,13 @@ use App\Models\DocumentRequest;
  */
 class UpdateDocumentRequestRequest extends SaveDocumentRequestRequest
 {
+    public function authorize(): bool
+    {
+        $documentRequest = $this->route('documentRequest');
+
+        return $documentRequest instanceof DocumentRequest && $this->user()->can('update', $documentRequest);
+    }
+
     /**
      * @return array<int, string>
      */

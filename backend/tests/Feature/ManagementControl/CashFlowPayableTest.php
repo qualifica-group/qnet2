@@ -2,6 +2,7 @@
 
 use App\Enums\PurchaseOrderStatus;
 use App\Models\PaymentMethod;
+use App\Models\VatRate;
 use App\Services\Invoices\InstallmentScheduleCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,4 +49,19 @@ it('AC-004: the committed lines land in the month of the first due date of the o
         ->and($endOfMonthMonth)->toBe($calculator->calculate($today, $endOfMonth, '100.00', '0.00', '100.00')[0]['due_date']->format('Y-m'))
         ->and($data['backlog']['committed'])->toEqual(400)
         ->and(array_column($data['months'], 'committed', 'month'))->toEqual($expected);
+});
+
+it('AC-004 / D-15: the committed lines count VAT included at the line rate, on the residual too', function () {
+    $standard = VatRate::factory()->create(['rate' => '22.00']);
+    $today = CarbonImmutable::today()->toDateString();
+
+    mcOrderLine(null, '100.00', order: ['order_date' => $today], line: ['vat_rate_id' => $standard->id]);
+    mcOrderLine(null, '50.00', order: ['order_date' => $today]);
+    $partial = mcOrderLine(null, '10.01', order: ['order_date' => $today], line: ['quantity' => '3.000', 'vat_rate_id' => $standard->id]);
+    mcPayableLine(null, '20.02', $partial, '2.000');
+
+    $data = mcGet('cash-flow')->assertOk()->json('data');
+
+    // 100 + 22 VAT, 50 without rate, residual 10.01 + 2.20 VAT
+    expect($data['months'][0]['committed'])->toEqual(184.21);
 });

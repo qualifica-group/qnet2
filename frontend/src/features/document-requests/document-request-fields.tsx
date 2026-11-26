@@ -33,9 +33,9 @@ export function DocumentRequestFields() {
           name="recipient_email"
           render={({ field }) => (
             <FormItem className="gap-1">
-              <FormLabel>{t('documentRequests.form.recipientEmail')}</FormLabel>
+              <FormLabel required>{t('documentRequests.form.recipientEmail')}</FormLabel>
               <FormControl>
-                <Input {...field} type="email" autoComplete="off" />
+                <Input {...field} type="email" autoComplete="off" aria-required="true" />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -139,7 +139,7 @@ class PurchaseInvoiceWriteRequest extends FormRequest
         }
 
         return [
-            'document_type' => ['required', Rule::in(PurchaseInvoiceType::values())],
+            'document_type' => ['required', Rule::in([PurchaseInvoiceType::Proforma->value, PurchaseInvoiceType::Invoice->value])],
             'document_number' => ['required_if:document_type,'.PurchaseInvoiceType::Invoice->value, 'nullable', 'string', 'max:'.self::NUMBER_MAX_LENGTH],
         ];
     }
