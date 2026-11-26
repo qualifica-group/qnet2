@@ -44,7 +44,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The **Search** box finds requests by the client's first name, last name, tax code, VAT number, or primary phone or email. It starts from the third character and matches words that **begin** with what you type: \"ros\" finds Rossi, \"ssi\" does not. With several words (for example \"mario rossi\") all of them must match. One- and two-letter words are ignored. With very generic terms the list may be incomplete: add a word to narrow it down.",
+          text: "The **Search** box finds requests by the client's first name, last name, tax code, VAT number, or primary phone or email. First name, last name, tax code and VAT number also find the requests where that person is linked in a registry-type flexible field (for example **Anagrafica Utente** of Orientamento specialistico), even when the request's client is someone else. It starts from the third character and matches words that **begin** with what you type: \"ros\" finds Rossi, \"ssi\" does not. With several words (for example \"mario rossi\") all of them must match. One- and two-letter words are ignored. With very generic terms the list may be incomplete: add a word to narrow it down.",
         },
         {
           type: 'paragraph',
