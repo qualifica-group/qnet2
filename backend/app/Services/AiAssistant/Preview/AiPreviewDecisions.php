@@ -11,33 +11,37 @@ use App\Enums\AiTurnStatus;
 use App\Jobs\AiAssistant\RunAiTurn;
 use App\Models\AiTurn;
 use App\Models\AssistantLink;
+use App\Services\AiAssistant\Agent\AiTurnLink;
 use App\Services\AiAssistant\Agent\ConnectorClient;
-use App\Services\AiAssistant\Agent\ConnectorLinkRejectedException;
+use App\Services\AiAssistant\Agent\ConnectorOutcomeUnknownException;
 use App\Services\AiAssistant\Agent\ConnectorUnavailableException;
-use App\Services\McpLinks\AssistantLinkService;
-use App\Services\McpLinks\AssistantSessionInvalidException;
-use App\Services\McpLinks\FirstAccessPendingException;
-use App\Services\McpLinks\McpLinkRejectedException;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
-use Laravel\Sanctum\PersonalAccessToken;
+use Throwable;
 
 /**
  * What ends the wait of a turn for its preview (spec 0433, D-3, D-17, D-18): the click on Confirm
  * or Cancel, the clock, or the fall of the link. Each one moves the turn from `awaiting_confirmation`
  * to `queued` (or closes it) with ONE guarded update, so only the first of two competing causes wins;
  * the connector is called only after the preview has been checked, and never more than once.
+ *
+ * A confirmation whose answer is lost after it was sent is `uncertain`, not "try again": the turn goes
+ * on with that outcome and nothing is sent twice. A mark on the saved state, written before the call,
+ * keeps that true even if the worker dies in the middle of it.
  */
 final class AiPreviewDecisions
 {
+    /** Key of the mark, in the saved state of the turn, that a confirmation is in flight. */
+    private const string CONFIRMING = 'confirming';
+
     public function __construct(
-        private readonly AssistantLinkService $links,
+        private readonly AiTurnLink $link,
         private readonly ConnectorClient $connector,
     ) {}
 
     /**
      * @throws AiPreviewDecisionException
-     * @throws ConnectorUnavailableException the preview stays open
+     * @throws ConnectorUnavailableException the connector did not act: the preview stays open
      */
     public function confirm(AiTurn $turn, string $previewId): AiTurn
     {
@@ -53,8 +57,8 @@ final class AiPreviewDecisions
             $current = $turn->fresh();
             $preview = $this->assertOpen($current, $previewId);
 
-            $answer = $this->confirmWithConnector($current);
-            $this->release($current, $preview, AiPreviewOutcome::fromEnvelope($answer['envelope']), $answer['text']);
+            [$outcome, $result] = $this->confirmWithConnector($current);
+            $this->release($current, $preview, $outcome, $result);
 
             return $current->fresh();
         });
@@ -100,7 +104,7 @@ final class AiPreviewDecisions
             }
 
             if (! $this->closeIfLinkLost($turn)) {
-                $this->release($turn, $preview, AiPreviewOutcome::Expired, AiPreviewResults::expired($turn->locale));
+                $this->releaseUnanswered($turn, $preview);
             }
         } finally {
             $lock->release();
@@ -117,9 +121,7 @@ final class AiPreviewDecisions
             return false;
         }
 
-        $session = $turn->personal_access_token_id === null ? null : PersonalAccessToken::query()->find($turn->personal_access_token_id);
-
-        if (AssistantLink::tokenIsUsable($session)) {
+        if (AssistantLink::tokenIsUsable($this->link->session($turn))) {
             return false;
         }
 
@@ -150,7 +152,7 @@ final class AiPreviewDecisions
         }
 
         if ($preview->isPast()) {
-            $this->release($turn, $preview, AiPreviewOutcome::Expired, AiPreviewResults::expired($turn->locale));
+            $this->releaseUnanswered($turn, $preview);
 
             throw new AiPreviewDecisionException(AiPreviewDecisionException::EXPIRED);
         }
@@ -168,21 +170,36 @@ final class AiPreviewDecisions
     }
 
     /**
-     * @return array{text: string, envelope: array<string, mixed>}
+     * The connector confirms once. Its answer is the outcome; a lost answer is `uncertain`; a refusal
+     * before it acted is thrown, and the preview stays open.
+     *
+     * @return array{0: AiPreviewOutcome, 1: string} the outcome and the result handed to the model
      *
      * @throws AiPreviewDecisionException the link of the person fell
+     * @throws ConnectorUnavailableException
      */
     private function confirmWithConnector(AiTurn $turn): array
     {
-        $session = PersonalAccessToken::query()->find($turn->personal_access_token_id);
+        // A worker died with the call in flight: the write may exist, so the connector is not called again.
+        if ($turn->resume_state[self::CONFIRMING] ?? false) {
+            return $this->uncertain($turn);
+        }
 
         try {
-            $credential = $session === null
-                ? throw new AssistantSessionInvalidException
-                : $this->links->credentialFor($turn->conversation->user, $session);
+            $credential = $this->link->credential($turn);
+            $this->markConfirming($turn, true);
+            $answer = $this->connector->confirm($credential, (string) $turn->preview['id']);
 
-            return $this->connector->confirm($credential, (string) $turn->preview['id']);
-        } catch (ConnectorLinkRejectedException|AssistantSessionInvalidException|McpLinkRejectedException|FirstAccessPendingException) {
+            return [AiPreviewOutcome::fromEnvelope($answer['envelope']), $answer['text']];
+        } catch (ConnectorOutcomeUnknownException) {
+            return $this->uncertain($turn);
+        } catch (Throwable $exception) {
+            $this->markConfirming($turn, false);
+
+            if (! AiTurnLink::isLost($exception)) {
+                throw $exception;
+            }
+
             $this->closeLinkLost($turn);
 
             throw new AiPreviewDecisionException(AiPreviewDecisionException::EXPIRED);
@@ -190,12 +207,48 @@ final class AiPreviewDecisions
     }
 
     /**
+     * @return array{0: AiPreviewOutcome, 1: string}
+     */
+    private function uncertain(AiTurn $turn): array
+    {
+        return [AiPreviewOutcome::Uncertain, AiPreviewResults::uncertain($turn->locale)];
+    }
+
+    private function markConfirming(AiTurn $turn, bool $on): void
+    {
+        $state = $turn->resume_state ?? [];
+
+        if ($on) {
+            $state[self::CONFIRMING] = true;
+        } else {
+            unset($state[self::CONFIRMING]);
+        }
+
+        AiTurn::query()->whereKey($turn->id)->where('status', AiTurnStatus::AwaitingConfirmation)->update(['resume_state' => json_encode($state)]);
+    }
+
+    /**
+     * No click gave the preview an answer (the clock, a late click): expired, unless a confirmation
+     * was in flight that nobody saw the end of, which is uncertain.
+     */
+    private function releaseUnanswered(AiTurn $turn, AiPreview $preview): void
+    {
+        [$outcome, $result] = ($turn->resume_state[self::CONFIRMING] ?? false)
+            ? $this->uncertain($turn)
+            : [AiPreviewOutcome::Expired, AiPreviewResults::expired($turn->locale)];
+
+        $this->release($turn, $preview, $outcome, $result);
+    }
+
+    /**
      * Hands the preview its result: the turn is queued again and the resume job is pushed, but only
-     * if the turn still waits for this very preview.
+     * if the turn still waits for this very preview. The outcome is saved on the preview now, so the
+     * card shows it even if the turn can not resume.
      */
     private function release(AiTurn $turn, AiPreview $preview, AiPreviewOutcome $outcome, string $result): void
     {
         $state = $turn->resume_state ?? [];
+        unset($state[self::CONFIRMING]);
         $state['pending'] = ['outcome' => $outcome->value, 'result' => $result];
 
         $released = AiTurn::query()->whereKey($turn->id)
@@ -204,7 +257,7 @@ final class AiPreviewDecisions
             ->where('preview->state', AiPreviewState::Open->value)
             ->update([
                 'status' => AiTurnStatus::Queued,
-                'preview' => json_encode($preview->settled($outcome)->toArray()),
+                'preview' => json_encode($preview->settled($outcome)->withOutcome($outcome)->toArray()),
                 'resume_state' => json_encode($state),
             ]);
 

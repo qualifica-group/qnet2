@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\AiAssistant;
 
 use App\Enums\HttpStatusEnum;
@@ -48,14 +50,26 @@ class AiPreviewController extends BaseApiController
 
             return $this->ok(new AiTurnResource($decided->load('assistantMessage')), 'Accepted', HttpStatusEnum::ACCEPTED);
         } catch (AiPreviewDecisionException $exception) {
-            return $exception->reason === AiPreviewDecisionException::NOT_FOUND
-                ? $this->fail(__('Preview not found.'), Response::HTTP_NOT_FOUND)
-                : $this->fail(__($exception->reason === AiPreviewDecisionException::NOT_CONFIRMABLE ? 'This preview cannot be confirmed.' : 'This preview is no longer open.'), HttpStatusEnum::CONFLICT->value, null, ['reason' => $exception->reason]);
+            return $this->refusal($exception);
         } catch (ConnectorUnavailableException|AssistantClientNotConfiguredException) {
-            // The preview stays open: nothing was confirmed that we know of, and nothing is repeated.
+            // The connector did not act (nothing was sent, or it refused before acting): the preview stays open.
+            // A confirmation whose answer was lost never gets here: it is `uncertain` and the turn goes on.
             return $this->fail(__('The assistant could not reach its tools. Try again later.'), Response::HTTP_SERVICE_UNAVAILABLE);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, $action, ['conversation' => $conversation->id, 'turn' => $turn->id]);
         }
+    }
+
+    private function refusal(AiPreviewDecisionException $exception): JsonResponse
+    {
+        if ($exception->reason === AiPreviewDecisionException::NOT_FOUND) {
+            return $this->fail(__('Preview not found.'), Response::HTTP_NOT_FOUND);
+        }
+
+        $message = $exception->reason === AiPreviewDecisionException::NOT_CONFIRMABLE
+            ? 'This preview cannot be confirmed.'
+            : 'This preview is no longer open.';
+
+        return $this->fail(__($message), HttpStatusEnum::CONFLICT->value, null, ['reason' => $exception->reason]);
     }
 }

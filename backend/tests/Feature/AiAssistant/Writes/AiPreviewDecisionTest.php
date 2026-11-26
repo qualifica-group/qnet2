@@ -62,7 +62,8 @@ it('confirm answers 202 with the turn queued and the preview confirmed while the
     $response = aiapi_decide($turn, 'confirm')->assertStatus(202)
         ->assertJsonPath('data.status', 'queued')
         ->assertJsonPath('data.preview.state', 'confirmed')
-        ->assertJsonPath('data.preview.outcome', null);
+        // REQUIREMENT CHANGED (review of the turn): the outcome of the connector is saved at the answer, not when the turn resumes.
+        ->assertJsonPath('data.preview.outcome', 'succeeded');
 
     Queue::assertPushedOn('ai-assistant', RunAiTurn::class, fn (RunAiTurn $job): bool => $job->turnId === $turn->id);
     expect($response->json('data.queue_position'))->toBe(1);

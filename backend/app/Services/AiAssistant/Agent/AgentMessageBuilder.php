@@ -110,7 +110,7 @@ final class AgentMessageBuilder
             $entries[] = $entry;
 
             foreach ($steps[$entry->id] ?? [] as $step) {
-                $entries[] = new AiMemoryEntry('tool', '', $step['tool'], $step['operation'] ?? null, $entry->id);
+                $entries[] = new AiMemoryEntry('tool', '', $step['tool'], AssistantTools::historyOperation($step['operation'] ?? null), $entry->id);
             }
         }
 
