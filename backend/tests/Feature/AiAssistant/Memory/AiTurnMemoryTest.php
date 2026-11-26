@@ -71,7 +71,9 @@ it('D-5: the prefix (core, additional instructions, tools) is byte-identical bet
 it('D-5: tool results of earlier turns are replaced by one line with tool and operation, those of the current turn stay whole', function () {
     $rows = '{"connettore":{"esito":"riuscita"},"dati":[{"code":"COM-1","note":"ROW-DATA-OF-TURN-ONE"}]}';
     aiapi_fake_agent([
-        aiapi_tool_body('list_records', ['{"domain":"work-orders"}']), aiapi_text_body(['turn one done']),
+        // REQUIREMENT CHANGED (review of the turn): the history names only an operation identifier of the closed list
+        // (`METHOD /path`); a free argument written by the model (`domain`, `query`) never returns to the prompt.
+        aiapi_tool_body('list_records', ['{"operation_id":"GET /api/work-orders","domain":"INJECTED-DOMAIN"}']), aiapi_text_body(['turn one done']),
         aiapi_tool_body('search_operations', ['{"query":"quotes"}'], 'call_2'), aiapi_text_body(['turn two done']),
     ], [$rows, '{"connettore":{"esito":"riuscita"},"dati":"RESULT-OF-TURN-TWO"}']);
     $user = aiapi_user();
@@ -85,8 +87,8 @@ it('D-5: tool results of earlier turns are replaced by one line with tool and op
     expect(tm_bytes($requests[1]['messages']))->toContain('ROW-DATA-OF-TURN-ONE');
     $turnTwoFirst = tm_bytes($requests[2]['messages']);
     expect($turnTwoFirst)->not->toContain('ROW-DATA-OF-TURN-ONE')
-        ->and($turnTwoFirst)->toContain('Earlier tool result omitted: tool=list_records operation=work-orders')
-        ->and($turnTwoFirst)->not->toContain('"role":"tool"');
+        ->and($turnTwoFirst)->toContain('Earlier tool result omitted: tool=list_records operation=GET /api/work-orders')
+        ->and($turnTwoFirst)->not->toContain('INJECTED-DOMAIN')->and($turnTwoFirst)->not->toContain('"role":"tool"');
     // Turn two, second round: its own result is whole, the old one is still a line.
     $turnTwoSecond = tm_bytes($requests[3]['messages']);
     expect($turnTwoSecond)->toContain('RESULT-OF-TURN-TWO')->not->toContain('ROW-DATA-OF-TURN-ONE')

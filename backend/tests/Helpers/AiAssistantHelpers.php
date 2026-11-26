@@ -174,13 +174,14 @@ if (! function_exists('aiapi_fake_agent')) {
     /**
      * Fakes OpenRouter (one body per model round, in order) and the connector (tools/list and the
      * body of each tools/call, in order). A connector status other than 200 fails every call.
-     * `POST /assistant/confirm` answers the bodies of `$confirmResults` in order, with `$confirmStatus`.
+     * `POST /assistant/confirm` answers the bodies of `$confirmResults` in order, with `$confirmStatus`;
+     * `$confirmResponder` (request => response, or throws) replaces both, to model a lost answer.
      *
      * @param  list<string>  $modelBodies
      * @param  list<string>  $toolResults
      * @param  list<string>  $confirmResults
      */
-    function aiapi_fake_agent(array $modelBodies, array $toolResults = [], int $modelStatus = 200, int $connectorStatus = 200, bool $withConfirm = false, ?int $contextLength = 200000, array $confirmResults = [], int $confirmStatus = 200): void
+    function aiapi_fake_agent(array $modelBodies, array $toolResults = [], int $modelStatus = 200, int $connectorStatus = 200, bool $withConfirm = false, ?int $contextLength = 200000, array $confirmResults = [], int $confirmStatus = 200, ?Closure $confirmResponder = null): void
     {
         $model = Http::sequence();
         foreach ($modelBodies as $body) {
@@ -204,8 +205,12 @@ if (! function_exists('aiapi_fake_agent')) {
                 'pricing' => ['prompt' => '0.000001', 'completion' => '0.000002'],
             ], AIAPI_MODEL_IDS)]),
             'openrouter.test/api/v1/chat/completions' => $model,
-            'connector.test/*' => function (Request $request) use ($toolResults, $connectorStatus, $withConfirm, $confirmResults, $confirmStatus, &$calls, &$confirms) {
+            'connector.test/*' => function (Request $request) use ($toolResults, $connectorStatus, $withConfirm, $confirmResults, $confirmStatus, $confirmResponder, &$calls, &$confirms) {
                 if (str_ends_with($request->url(), '/assistant/confirm')) {
+                    if ($confirmResponder !== null) {
+                        return $confirmResponder($request);
+                    }
+
                     return Http::response($confirmResults[$confirms++] ?? '{"connettore":{"esito":"riuscita"},"dati":{"testo":"done","codice_http":200,"risposta":{}}}', $confirmStatus, ['Content-Type' => 'application/json']);
                 }
 
@@ -248,7 +253,7 @@ if (! function_exists('aiapi_waiting_turn')) {
      * @param  list<string>  $confirmResults
      * @return array{0: AiTurn, 1: User, 2: AiConversation}
      */
-    function aiapi_waiting_turn(?User $user = null, string $previewResult = '', array $modelRounds = [], array $confirmResults = [], int $confirmStatus = 200): array
+    function aiapi_waiting_turn(?User $user = null, string $previewResult = '', array $modelRounds = [], array $confirmResults = [], int $confirmStatus = 200, ?Closure $confirmResponder = null): array
     {
         $user ??= aiapi_user();
         aiapi_fake_agent(
@@ -256,6 +261,7 @@ if (! function_exists('aiapi_waiting_turn')) {
             [$previewResult ?: aiapi_preview_result(AIAPI_PREVIEW_ID)],
             confirmResults: $confirmResults,
             confirmStatus: $confirmStatus,
+            confirmResponder: $confirmResponder,
         );
 
         aiapi_send($user, $conversation = aiapi_conversation($user))->assertStatus(202);

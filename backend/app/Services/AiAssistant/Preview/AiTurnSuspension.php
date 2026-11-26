@@ -11,6 +11,8 @@ use App\Models\AiTurn;
 use App\Services\AiAssistant\Agent\AgentRun;
 use App\Services\AiAssistant\Agent\AssistantTools;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Cache\Lock;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * The two ends of the wait for a confirmation (spec 0433, D-17): saving the turn before it goes to
@@ -19,6 +21,9 @@ use Carbon\CarbonImmutable;
  */
 final class AiTurnSuspension
 {
+    /** Seconds the link lock outlives the connector call, in case the worker dies without releasing it. */
+    private const int LOCK_MARGIN_SECONDS = 30;
+
     /**
      * The preview of a `prepare_write` result; expiry runs from the instant the call was SENT, so it
      * is always before the connector one (the connector writes the preview after receiving the call).
@@ -32,6 +37,18 @@ final class AiTurnSuspension
         $lifeSeconds = (int) config('ai-assistant.agent.preview_ttl_seconds') - (int) config('ai-assistant.agent.preview_margin_seconds');
 
         return AiPreview::fromToolResult($resultText, $issuedAt->addSeconds($lifeSeconds));
+    }
+
+    /**
+     * The lock that makes check, call and wait of a `prepare_write` one step per link: held from the
+     * check "another preview is open" until the turn is saved as waiting, so the connector never
+     * receives a second preview of the same link that would silently replace the first.
+     */
+    public function linkLock(AiTurn $turn): Lock
+    {
+        $link = $turn->personal_access_token_id ?? "turn-{$turn->id}";
+
+        return Cache::lock("ai-assistant:prepare-write:{$link}", (int) config('ai-assistant.connector.timeout_seconds') + self::LOCK_MARGIN_SECONDS);
     }
 
     /**
@@ -98,8 +115,21 @@ final class AiTurnSuspension
     }
 
     /**
+     * The fixed message that reports the outcome of the write when a turn that waited for it can not go
+     * on (D-18), or null when the turn has no outcome to report. The saved state stays until the
+     * resumed turn closes, so the outcome is never lost on the way.
+     */
+    public function unreportedOutcome(AiTurn $turn): ?string
+    {
+        $outcome = $turn->resume_state['pending']['outcome'] ?? null;
+
+        return is_string($outcome) ? AiPreviewOutcome::from($outcome)->note($turn->locale) : null;
+    }
+
+    /**
      * The messages of a turn that was waiting, with the outcome as the result of its `prepare_write`
-     * call, or null when the turn starts from the beginning. The saved state is spent: it is cleared.
+     * call, or null when the turn starts from the beginning. It only reads: the saved state is spent
+     * when the resumed turn closes (the outcome is already saved on the preview).
      *
      * @return list<array<string, mixed>>|null
      */
@@ -129,12 +159,6 @@ final class AiTurnSuspension
         foreach ($state['skipped_call_ids'] as $skippedId) {
             $messages[] = ['role' => 'tool', 'tool_call_id' => $skippedId, 'content' => AiPreviewResults::skipped()];
         }
-
-        $preview = AiPreview::fromArray($turn->preview)->withOutcome(AiPreviewOutcome::from($state['pending']['outcome']));
-        AiTurn::query()->whereKey($turn->id)->where('status', AiTurnStatus::Running)->update([
-            'preview' => json_encode($preview->toArray()),
-            'resume_state' => null,
-        ]);
 
         return $messages;
     }

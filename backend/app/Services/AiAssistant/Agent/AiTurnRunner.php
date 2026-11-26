@@ -7,20 +7,16 @@ namespace App\Services\AiAssistant\Agent;
 use App\Enums\AiMessageRole;
 use App\Enums\AiTurnErrorCode;
 use App\Enums\AiTurnStatus;
+use App\Enums\AiTurnStepState;
 use App\Models\AiTurn;
 use App\Services\AiAssistant\Preview\AiPreviewResults;
 use App\Services\AiAssistant\Preview\AiTurnSuspension;
 use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use App\Services\AiAssistant\Settings\AiEffectiveSettings;
 use App\Services\McpLinks\AssistantClientNotConfiguredException;
-use App\Services\McpLinks\AssistantLinkService;
-use App\Services\McpLinks\AssistantSessionInvalidException;
-use App\Services\McpLinks\FirstAccessPendingException;
-use App\Services\McpLinks\McpLinkRejectedException;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Laravel\Sanctum\PersonalAccessToken;
 use stdClass;
 use Throwable;
 
@@ -30,6 +26,10 @@ use Throwable;
  * or a cap stops it. Everything the browser shows is written on the turn row as it happens.
  * It never throws: every failure closes the turn with a fixed error code, and the person's
  * message is never touched (D-16).
+ *
+ * A turn that waited for a write and can not go on after the answer still tells the person what
+ * became of the write (D-18): the outcome is a fixed message, and the saved state of the wait is
+ * spent only when the turn closes.
  */
 final class AiTurnRunner
 {
@@ -38,7 +38,7 @@ final class AiTurnRunner
     private const string INVALID_ARGUMENTS_RESULT = '{"connettore":{"esito":"fallita","codice":"parametri_non_validi"},"dati":null}';
 
     public function __construct(
-        private readonly AssistantLinkService $links,
+        private readonly AiTurnLink $link,
         private readonly ConnectorClient $connector,
         private readonly MeteredModelCall $model,
         private readonly AgentTurnMemory $memory,
@@ -60,18 +60,14 @@ final class AiTurnRunner
 
         try {
             $this->execute($run);
-        } catch (AgentModelException|AgentTurnLimitException $exception) {
-            $limit = in_array($exception->errorCode, [AiTurnErrorCode::LimitPerson, AiTurnErrorCode::LimitTotal], true);
-
-            $this->close($run, $limit ? AiTurnStatus::LimitReached : AiTurnStatus::Failed, $exception->errorCode);
-        } catch (ConnectorLinkRejectedException|AssistantSessionInvalidException|McpLinkRejectedException|FirstAccessPendingException) {
-            $this->close($run, AiTurnStatus::Cancelled, AiTurnErrorCode::LinkLost);
-        } catch (ConnectorUnavailableException|AssistantClientNotConfiguredException) {
-            $this->close($run, AiTurnStatus::Failed, AiTurnErrorCode::ConnectorUnavailable);
         } catch (Throwable $exception) {
-            Log::error('AI agent turn crashed', ['exception' => $exception::class, 'turn_id' => $turnId]);
+            [$status, $code] = $this->failureOf($exception);
 
-            $this->close($run, AiTurnStatus::Failed, AiTurnErrorCode::Internal);
+            if ($code === AiTurnErrorCode::Internal) {
+                Log::error('AI agent turn crashed', ['exception' => $exception::class, 'turn_id' => $turnId]);
+            }
+
+            $this->close($run, $status, $code);
         }
     }
 
@@ -80,35 +76,55 @@ final class AiTurnRunner
      */
     public function fail(int $turnId, AiTurnErrorCode $code): void
     {
-        AiTurn::query()->whereKey($turnId)->whereIn('status', AiTurnStatus::activeValues())->update([
-            'status' => AiTurnStatus::Failed,
-            'error_code' => $code,
-            'finished_at' => now(),
-        ]);
+        $turn = AiTurn::query()->with('conversation')->find($turnId);
+
+        if ($turn === null) {
+            return;
+        }
+
+        $note = $this->suspension->unreportedOutcome($turn);
+
+        DB::transaction(function () use ($turn, $code, $note): void {
+            $closed = AiTurn::query()->whereKey($turn->id)->whereIn('status', AiTurnStatus::activeValues())->update([
+                'status' => AiTurnStatus::Failed,
+                'error_code' => $code,
+                'resume_state' => null,
+                'finished_at' => now(),
+            ] + ($note === null ? [] : ['assistant_text' => $note]));
+
+            if ($closed === 1 && $note !== null) {
+                $this->saveAnswer($turn, $note, null);
+            }
+        });
     }
 
     private function execute(AgentRun $run): void
     {
-        // Step 2: model, routing and instructions in force; a switched-off assistant makes no call
+        // Step 2: what the turn saved before it waited, so its counters and steps survive any failure below
+        $resumed = $this->suspension->resume($run);
+
+        // Step 3: model, routing and instructions in force; a switched-off assistant makes no call
         $settings = $this->settings->effective();
 
         if (! $settings->enabled) {
             throw new AgentTurnLimitException(AiTurnErrorCode::SwitchedOff);
         }
 
-        // Step 3: the credential of the person's link, opened from the session the message came from
-        $session = $run->turn->personal_access_token_id === null
-            ? null
-            : PersonalAccessToken::query()->find($run->turn->personal_access_token_id);
-        $credential = $session === null
-            ? throw new AssistantSessionInvalidException
-            : $this->links->credentialFor($run->turn->conversation->user, $session);
-
-        // Step 4: the tools and the first messages
+        // Step 4: the credential of the person's link, the tools and the first messages
+        $credential = $this->link->credential($run->turn);
         $tools = $this->connector->tools($credential);
-        $messages = $this->suspension->resume($run) ?? $this->memory->messages($run, $settings, $tools);
+        $messages = $resumed ?? $this->memory->messages($run, $settings, $tools);
 
         // Step 5: model rounds until a text answer
+        $this->converse($run, $settings, $credential, $messages, $tools);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $messages
+     * @param  list<array<string, mixed>>  $tools
+     */
+    private function converse(AgentRun $run, AiEffectiveSettings $settings, string $credential, array $messages, array $tools): void
+    {
         while (true) {
             $this->assertCanCallModel($run);
 
@@ -127,28 +143,94 @@ final class AiTurnRunner
             // Step 6: tool calls; the assistant message goes back with its reasoning blocks unchanged
             $messages[] = $this->assistantMessage($result);
 
-            foreach ($result->toolCalls as $position => $call) {
-                $this->assertCanCallTool($run);
-
-                $issuedAt = CarbonImmutable::now();
-                $content = $this->runTool($run, $credential, $call);
-
-                // A valid preview: the turn is saved and waits for the button, nothing stays running (D-17).
-                $preview = $this->suspension->previewFrom($call['name'], $content, $issuedAt);
-                if ($preview !== null) {
-                    $later = array_column(array_slice($result->toolCalls, $position + 1), 'id');
-                    $this->suspension->suspend($run, $messages, $preview, $call['id'], $later);
-
-                    return;
-                }
-
-                $messages[] = ['role' => 'tool', 'tool_call_id' => $call['id'], 'content' => $content];
-            }
-
-            if ($run->aborted) {
+            if (! $this->runToolCalls($run, $credential, $result->toolCalls, $messages)) {
                 return;
             }
         }
+    }
+
+    /**
+     * Runs the calls of one round in order and adds each result to the messages.
+     *
+     * @param  list<array{id: string, name: string, arguments: string}>  $calls
+     * @param  list<array<string, mixed>>  $messages
+     * @return bool false when the turn must stop: it waits for a confirmation or was closed elsewhere
+     */
+    private function runToolCalls(AgentRun $run, string $credential, array $calls, array &$messages): bool
+    {
+        foreach ($calls as $position => $call) {
+            $this->assertCanCallTool($run);
+            $run->toolCalls++;
+
+            $content = $call['name'] === AssistantTools::PREPARE_WRITE
+                ? $this->prepareWrite($run, $credential, $call, $messages, array_column(array_slice($calls, $position + 1), 'id'))
+                : $this->runTool($run, $credential, $call);
+
+            if ($content === null) {
+                return false;
+            }
+
+            $messages[] = ['role' => 'tool', 'tool_call_id' => $call['id'], 'content' => $content];
+        }
+
+        return ! $run->aborted;
+    }
+
+    /**
+     * `prepare_write` under the lock of the link: check, call and wait are one step, so two writes of the
+     * same link can not both pass the check before either has saved its wait (D-3). A valid preview saves
+     * the turn and waits for the button, nothing stays running (D-17).
+     *
+     * @param  array{id: string, name: string, arguments: string}  $call
+     * @param  list<array<string, mixed>>  $messages  up to the call, its result excluded
+     * @param  list<string>  $laterCallIds  later calls of the same round, left out
+     * @return string|null the result for the model, or null when the turn is now waiting (or was closed elsewhere)
+     */
+    private function prepareWrite(AgentRun $run, string $credential, array $call, array $messages, array $laterCallIds): ?string
+    {
+        $lock = $this->suspension->linkLock($run->turn);
+
+        if (! $lock->get()) {
+            return AiPreviewResults::busy($run->turn->locale);
+        }
+
+        try {
+            if ($this->suspension->anotherPreviewIsOpen($run->turn)) {
+                return AiPreviewResults::busy($run->turn->locale);
+            }
+
+            $issuedAt = CarbonImmutable::now();
+            $content = $this->runTool($run, $credential, $call);
+            $preview = $this->suspension->previewFrom($call['name'], $content, $issuedAt);
+
+            if ($preview === null) {
+                return $content;
+            }
+
+            $this->suspension->suspend($run, $messages, $preview, $call['id'], $laterCallIds);
+
+            return null;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * What ends a turn that threw, as the status and the fixed code it closes with.
+     *
+     * @return array{0: AiTurnStatus, 1: AiTurnErrorCode}
+     */
+    private function failureOf(Throwable $exception): array
+    {
+        return match (true) {
+            $exception instanceof AgentModelException, $exception instanceof AgentTurnLimitException => [
+                in_array($exception->errorCode, [AiTurnErrorCode::LimitPerson, AiTurnErrorCode::LimitTotal], true) ? AiTurnStatus::LimitReached : AiTurnStatus::Failed,
+                $exception->errorCode,
+            ],
+            AiTurnLink::isLost($exception) => [AiTurnStatus::Cancelled, AiTurnErrorCode::LinkLost],
+            $exception instanceof ConnectorUnavailableException, $exception instanceof AssistantClientNotConfiguredException => [AiTurnStatus::Failed, AiTurnErrorCode::ConnectorUnavailable],
+            default => [AiTurnStatus::Failed, AiTurnErrorCode::Internal],
+        };
     }
 
     /**
@@ -188,8 +270,6 @@ final class AiTurnRunner
      */
     private function runTool(AgentRun $run, string $credential, array $call): string
     {
-        $run->toolCalls++;
-
         // Closed list: anything else never reaches the connector and leaves no step.
         if (! AssistantTools::isAllowed($call['name'])) {
             Log::warning('AI agent discarded a tool call that is not allowed');
@@ -197,19 +277,9 @@ final class AiTurnRunner
             return ConnectorClient::REJECTED_RESULT;
         }
 
-        // One preview open for a link: a second write from another conversation is refused here (D-3).
-        if ($call['name'] === AssistantTools::PREPARE_WRITE && $this->suspension->anotherPreviewIsOpen($run->turn)) {
-            return AiPreviewResults::busy($run->turn->locale);
-        }
+        $arguments = $this->decodeArguments($call['arguments']);
 
-        // Decoded as objects so an empty `{}` of the model stays an object when sent on.
-        $arguments = $call['arguments'] === '' ? new stdClass : json_decode($call['arguments']);
-
-        if (is_array($arguments) && $arguments === []) {
-            $arguments = new stdClass;
-        }
-
-        if (! $arguments instanceof stdClass) {
+        if ($arguments === null) {
             return self::INVALID_ARGUMENTS_RESULT;
         }
 
@@ -218,14 +288,28 @@ final class AiTurnRunner
         try {
             $result = $this->connector->call($credential, $call['name'], $arguments);
         } catch (ConnectorUnavailableException|ConnectorLinkRejectedException $exception) {
-            $this->closeStep($run, $index, 'failed');
+            $this->closeStep($run, $index, AiTurnStepState::Failed);
 
             throw $exception;
         }
 
-        $this->closeStep($run, $index, $result['is_error'] ? 'failed' : 'done');
+        $this->closeStep($run, $index, $result['is_error'] ? AiTurnStepState::Failed : AiTurnStepState::Done);
 
         return $result['text'];
+    }
+
+    /**
+     * Decoded as objects so an empty `{}` of the model stays an object when sent on; null when it is not one.
+     */
+    private function decodeArguments(string $json): ?stdClass
+    {
+        $arguments = $json === '' ? new stdClass : json_decode($json);
+
+        if (is_array($arguments) && $arguments === []) {
+            $arguments = new stdClass;
+        }
+
+        return $arguments instanceof stdClass ? $arguments : null;
     }
 
     private function complete(AgentRun $run, AiEffectiveSettings $settings, AgentModelResult $result): void
@@ -238,31 +322,39 @@ final class AiTurnRunner
 
         $turn = $run->turn;
 
-        // One transaction: the turn leaves `running` only together with its stored answer.
+        // One transaction: the turn leaves `running` only together with its stored answer, and the
+        // saved state of the wait is spent with it.
         DB::transaction(function () use ($run, $settings, $turn, $text): void {
             $closed = AiTurn::query()->whereKey($turn->id)->where('status', AiTurnStatus::Running)->update([
                 'status' => AiTurnStatus::Completed,
                 'assistant_text' => $text,
                 'usage' => json_encode($run->usageForStorage()),
+                'resume_state' => null,
                 'finished_at' => now(),
             ]);
 
             // Cancelled while the model was answering: nothing to keep.
-            if ($closed === 0) {
-                return;
+            if ($closed === 1) {
+                $this->saveAnswer($turn, $text, $run->model ?? $settings->modelId, $run->inputTokens, $run->outputTokens);
             }
-
-            $message = $turn->conversation->messages()->create([
-                'role' => AiMessageRole::Assistant,
-                'content' => $text,
-                'model' => $run->model ?? $settings->modelId,
-                'input_tokens' => $run->inputTokens,
-                'output_tokens' => $run->outputTokens,
-            ]);
-
-            AiTurn::query()->whereKey($turn->id)->update(['assistant_message_id' => $message->id]);
-            $turn->conversation->update(['last_message_at' => now()]);
         });
+    }
+
+    /**
+     * Stores the answer of the turn as a message of the conversation and links the turn to it.
+     */
+    private function saveAnswer(AiTurn $turn, string $text, ?string $model, ?int $inputTokens = null, ?int $outputTokens = null): void
+    {
+        $message = $turn->conversation->messages()->create([
+            'role' => AiMessageRole::Assistant,
+            'content' => $text,
+            'model' => $model,
+            'input_tokens' => $inputTokens,
+            'output_tokens' => $outputTokens,
+        ]);
+
+        AiTurn::query()->whereKey($turn->id)->update(['assistant_message_id' => $message->id]);
+        $turn->conversation->update(['last_message_at' => now()]);
     }
 
     private function assertCanCallModel(AgentRun $run): void
@@ -321,7 +413,7 @@ final class AiTurnRunner
             'index' => $index,
             'tool' => $tool,
             'label' => AssistantTools::label($tool, $run->turn->locale),
-            'state' => 'running',
+            'state' => AiTurnStepState::Running->value,
             'operation' => $operation,
         ];
         $this->save($run, ['steps' => $run->steps]);
@@ -329,28 +421,41 @@ final class AiTurnRunner
         return $index;
     }
 
-    private function closeStep(AgentRun $run, int $index, string $state): void
+    private function closeStep(AgentRun $run, int $index, AiTurnStepState $state): void
     {
-        $run->steps[$index]['state'] = $state;
+        $run->steps[$index]['state'] = $state->value;
         $this->save($run, ['steps' => $run->steps]);
     }
 
+    /**
+     * Closes the turn with a status and a fixed code; when the turn had a write outcome nobody has
+     * been told yet, the person gets it as the fixed message of the assistant (D-18).
+     */
     private function close(AgentRun $run, AiTurnStatus $status, AiTurnErrorCode $code): void
     {
         foreach ($run->steps as $index => $step) {
-            if ($step['state'] === 'running') {
-                $run->steps[$index]['state'] = 'failed';
+            if ($step['state'] === AiTurnStepState::Running->value) {
+                $run->steps[$index]['state'] = AiTurnStepState::Failed->value;
             }
         }
 
-        AiTurn::query()->whereKey($run->turn->id)->whereIn('status', AiTurnStatus::activeValues())->update([
-            'status' => $status,
-            'error_code' => $code,
-            'assistant_text' => $run->text === '' ? null : $run->text,
-            'steps' => json_encode($run->steps),
-            'usage' => json_encode($run->usageForStorage()),
-            'finished_at' => now(),
-        ]);
+        $note = $this->suspension->unreportedOutcome($run->turn);
+
+        DB::transaction(function () use ($run, $status, $code, $note): void {
+            $closed = AiTurn::query()->whereKey($run->turn->id)->whereIn('status', AiTurnStatus::activeValues())->update([
+                'status' => $status,
+                'error_code' => $code,
+                'assistant_text' => $note ?? ($run->text === '' ? null : $run->text),
+                'steps' => json_encode($run->steps),
+                'usage' => json_encode($run->usageForStorage()),
+                'resume_state' => null,
+                'finished_at' => now(),
+            ]);
+
+            if ($closed === 1 && $note !== null) {
+                $this->saveAnswer($run->turn, $note, $run->model, $run->inputTokens, $run->outputTokens);
+            }
+        });
     }
 
     /**

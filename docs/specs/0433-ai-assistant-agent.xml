@@ -181,7 +181,8 @@
         "outcome": AiPreviewOutcome|null }
       <!-- RIALLINEATO (ticket 05): sostituisce la forma con operation/record/changes/effects (vedi open_points).
            `state` dopo il clic segue la risposta del connettore: confirmed (riuscita), rejected, uncertain, stale
-           (record_cambiato), expired; `outcome` resta null finche' il turno non riprende con quell'esito. -->
+           (record_cambiato), expired; `outcome` si salva nello stesso istante (risposta della conferma, scadenza, annullo):
+           la scheda lo mostra subito, anche se il turno poi non riesce a riprendere (rassegna del turno, rilievo 2). -->
       <!-- AiPreviewOutcome: esito della scrittura dopo il clic -->
       "succeeded"|"rejected"|"uncertain"|"expired"|"cancelled"|"stale"
       <!-- AiTurnErrorCode (testi fissi nella tabella `fixed_texts`) -->
@@ -267,17 +268,25 @@
 
     <endpoint method="POST" path="/api/ai-assistant/conversations/{conversation}/turns/{turn}/confirm">
       <request>JSON `{ "preview_id": string }` (solo l'identificativo; max 128 caratteri; FormRequest).</request>
-      <response status="202">data: AiTurn (status `queued`, preview.state `confirmed`, outcome ancora null: l'esito arriva
-        dal turno ripreso). La rotta controlla che l'anteprima appartenga a QUEL turno, a QUELLA conversazione e a
+      <response status="202">data: AiTurn (status `queued`, preview.state e preview.outcome gia' quelli della risposta del
+        connettore; il turno ripreso li usa come risultato dello strumento. Se il turno non puo' riprendere (interruttore spento,
+        tetto, collegamento caduto, errore del modello) si chiude con un messaggio fisso dell'assistente che riporta l'esito;
+        lo stato salvato dell'attesa si azzera solo alla chiusura del turno ripreso). La rotta controlla che l'anteprima appartenga a QUEL turno, a QUELLA conversazione e a
         QUELLA persona, poi conferma tramite la rotta di conferma dell'ingresso del connettore (mai da uno strumento).</response>
       <errors>
         401; 403 conversazione altrui; 404 anteprima non del turno ("Preview not found.");
         409 anteprima non piu' aperta, `data.reason` = `expired` | `already_used` | `not_open`
         ("This preview is no longer open."); 409 `data.reason` = `not_confirmable` con `preview.confirmable` falso
         ("This preview cannot be confirmed.", il `cancel` resta possibile); 422 forma di `preview_id`;
-        503 connettore non raggiungibile ("The assistant could not reach its tools. Try again later."): l'anteprima resta
-        `open` finche' non scade; esito incerto della conferma: nessuna ripetizione automatica, il turno riprende con
-        esito `uncertain` dopo la lettura di verifica del connettore.
+        503 connettore non raggiunto PRIMA dell'invio (connessione rifiutata, indirizzo non risolto) o rifiuto 4xx/redirect
+        prima di agire ("The assistant could not reach its tools. Try again later."): l'anteprima resta `open` finche' non
+        scade e il clic si puo' ripetere. Esito incerto della conferma (timeout, 5xx o risposta illeggibile DOPO l'invio, o
+        un processo morto con la chiamata in corso, segnato prima della chiamata): nessuna ripetizione, 202 con
+        preview.state/outcome `uncertain`, nessun nuovo clic (409 `already_used`), il turno riprende col risultato fisso
+        `esito_incerto` che dice al modello di rileggere il record con uno strumento di lettura prima di rispondere.
+        Una seconda `prepare_write` dello stesso collegamento (anche in contemporanea) riceve `anteprima_in_attesa`:
+        controllo, chiamata e attesa stanno sotto un blocco per collegamento.
+        Lo storico mostra al modello, di un passo precedente, solo un identificativo `METODO /percorso` validato sul formato.
       </errors>
     </endpoint>
 

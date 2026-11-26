@@ -29,6 +29,9 @@ final class AssistantTools
 
     private const int OPERATION_MAX_CHARS = 80;
 
+    /** `METHOD /path` as the connector lists operations; `D` is end of string, so no trailing line break passes. */
+    private const string OPERATION_ID_PATTERN = '#^(GET|POST|PUT|PATCH|DELETE) /[A-Za-z0-9/_.{}-]*$#D';
+
     public static function isAllowed(string $name): bool
     {
         return in_array($name, self::ALLOWED, true);
@@ -49,6 +52,16 @@ final class AssistantTools
         }
 
         return null;
+    }
+
+    /**
+     * The operation of an earlier step as it may go back to the prompt: only an identifier of the closed
+     * list, `METHOD /path`, checked on its format. Anything else the model wrote (a domain, a free query) is
+     * data of that turn and never returns as an instruction-looking line; the line then names the tool alone.
+     */
+    public static function historyOperation(?string $operation): ?string
+    {
+        return $operation !== null && preg_match(self::OPERATION_ID_PATTERN, $operation) === 1 ? $operation : null;
     }
 
     /**

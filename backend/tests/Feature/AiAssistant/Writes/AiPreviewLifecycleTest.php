@@ -117,13 +117,15 @@ it('an uncertain confirmation is never repeated: one request to the connector, a
         ->and($turn->fresh()->preview['outcome'])->toBe('uncertain');
 });
 
-it('a connector that does not answer leaves the preview open with a fixed text and no repetition', function () {
+// REQUIREMENT CHANGED (review of the turn, spec "Esito incerto di una conferma"): a 5xx after the request was sent
+// does not leave the preview open any more (a second click would find it "used" and call a write that may have
+// happened "rejected"): the preview is uncertain, nothing is repeated, and the turn goes on with that outcome.
+it('a connector that answers with a server error after the request was sent makes the outcome uncertain with no repetition', function () {
     [$turn] = aiapi_waiting_turn(confirmStatus: 503);
 
-    aiapi_decide($turn, 'confirm')->assertStatus(503)->assertJsonPath('message', 'The assistant could not reach its tools. Try again later.');
+    aiapi_decide($turn, 'confirm')->assertStatus(202)->assertJsonPath('data.preview.outcome', 'uncertain');
 
-    expect($turn->fresh()->status)->toBe(AiTurnStatus::AwaitingConfirmation)
-        ->and($turn->fresh()->preview['state'])->toBe('open')
+    expect($turn->fresh()->preview['state'])->toBe('uncertain')
         ->and(Http::recorded()->filter(fn (array $pair): bool => str_ends_with($pair[0]->url(), '/assistant/confirm')))->toHaveCount(1);
 });
 
