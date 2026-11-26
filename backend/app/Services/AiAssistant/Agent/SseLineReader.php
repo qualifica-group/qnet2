@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\AiAssistant\Drivers;
+namespace App\Services\AiAssistant\Agent;
 
 use Generator;
 use Psr\Http\Message\StreamInterface;

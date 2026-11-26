@@ -65,7 +65,7 @@ class AiConversationController extends BaseApiController
         try {
             $this->authorize('view', $conversation);
 
-            return $this->ok(new AiConversationResource($conversation->load('messages.attachments')));
+            return $this->ok(new AiConversationResource($conversation->load(['messages.attachments', 'activeTurn.assistantMessage'])));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['conversation' => $conversation->id]);
         }

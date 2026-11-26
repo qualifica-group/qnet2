@@ -5,39 +5,32 @@ declare(strict_types=1);
 namespace App\Actions\AiAssistant;
 
 use App\Enums\AiMessageRole;
-use App\Http\Resources\AiAssistant\AiConversationResource;
-use App\Http\Resources\AiAssistant\AiMessageResource;
+use App\Enums\AiTurnStatus;
+use App\Jobs\AiAssistant\RunAiTurn;
 use App\Models\AiConversation;
 use App\Models\AiMessage;
+use App\Models\AiTurn;
 use App\Models\Attachment;
 use App\Models\User;
-use App\Services\AiAssistant\AiPromptBuilder;
-use App\Services\AiAssistant\Drivers\AiAssistantNotConfiguredException;
-use App\Services\AiAssistant\Drivers\AiChatDriver;
-use App\Services\AiAssistant\Drivers\AiChatDriverManager;
-use App\Services\AiAssistant\Drivers\AiProviderException;
-use App\Services\AiAssistant\Drivers\AiStreamEvent;
+use App\Services\AiAssistant\Agent\AiAssistantNotConfiguredException;
+use App\Services\AiAssistant\Agent\AiTurnAlreadyActiveException;
+use App\Services\AiAssistant\Agent\ConnectorClient;
+use App\Services\AiAssistant\Agent\OpenRouterAgentClient;
 use App\Services\AiAssistant\Mentions\AiMentionNotFoundException;
 use App\Services\AiAssistant\Mentions\AiMentionResolver;
 use App\Services\AiAssistant\Mentions\ResolvedAiMention;
-use App\Services\AiAssistant\Prompt\AiChatPrompt;
-use Generator;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Http\StreamedEvent;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
 /**
- * One chat turn (spec 0347): validates and persists the user message, then
- * streams the provider answer as SSE and stores it. Everything that can fail
- * for a client reason runs BEFORE the stream opens, so it answers with the
- * usual JSON envelope (D-8); the provider is never called in those cases.
+ * Starts one assistant turn (spec 0433, D-8, D-16): validates and saves the person's message
+ * with its turn in one transaction, then queues the turn. Everything that can fail for a client
+ * reason happens BEFORE any row is written. The message stays whatever happens to the turn.
  */
 final class SendAiMessage
 {
@@ -45,39 +38,31 @@ final class SendAiMessage
 
     public const int TITLE_MAX_CHARS = 60;
 
-    /** Headroom over the provider timeout for persisting the answer. */
-    private const int TIME_LIMIT_MARGIN_SECONDS = 30;
-
-    public function __construct(
-        private readonly AiChatDriverManager $drivers,
-        private readonly AiMentionResolver $mentionResolver,
-        private readonly AiPromptBuilder $promptBuilder,
-    ) {}
+    public function __construct(private readonly AiMentionResolver $mentionResolver) {}
 
     /**
      * @throws AiAssistantNotConfiguredException
+     * @throws AiTurnAlreadyActiveException
      * @throws ValidationException unknown mentioned record (mentions.N.id)
      * @throws AuthorizationException mentioned record not visible to the user
      */
-    public function handle(User $user, AiConversation $conversation, SendAiMessageData $data): StreamedResponse
+    public function handle(User $user, ?PersonalAccessToken $session, AiConversation $conversation, SendAiMessageData $data): AiTurn
     {
         // Step 1: the assistant must be configured, before any write
-        $driver = $this->drivers->driver();
+        if (! OpenRouterAgentClient::isConfigured() || ! ConnectorClient::isConfigured()) {
+            throw new AiAssistantNotConfiguredException;
+        }
 
         // Step 2: resolve and authorize every mentioned record
         $mentions = $this->resolveMentions($user, $data->mentions);
 
-        // Step 3: persist the user message and its files
-        $userMessage = $this->persistUserMessage($conversation, $data, $mentions);
+        // Step 3: message, files and turn, one active turn per conversation
+        $turn = $this->persist($conversation, $session, $data, $mentions);
 
-        // Step 4: build the provider prompt
-        $prompt = $this->promptBuilder->build($conversation, $userMessage, $mentions, $data->pageGuideText, $data->locale);
+        // Step 4: the turn runs in the queue
+        RunAiTurn::dispatch($turn->id);
 
-        // Step 5: stream the answer
-        return response()->eventStream(
-            fn (): Generator => $this->events($driver, $prompt, $conversation, $userMessage),
-            endStreamWith: null,
-        );
+        return $turn;
     }
 
     /**
@@ -102,13 +87,20 @@ final class SendAiMessage
     /**
      * @param  list<ResolvedAiMention>  $mentions
      */
-    private function persistUserMessage(AiConversation $conversation, SendAiMessageData $data, array $mentions): AiMessage
+    private function persist(AiConversation $conversation, ?PersonalAccessToken $session, SendAiMessageData $data, array $mentions): AiTurn
     {
         /** @var list<Attachment> $stored */
         $stored = [];
 
         try {
-            $message = DB::transaction(function () use ($conversation, $data, $mentions, &$stored): AiMessage {
+            return DB::transaction(function () use ($conversation, $session, $data, $mentions, &$stored): AiTurn {
+                // The conversation row is the lock that makes "one active turn" hold under concurrent requests.
+                AiConversation::query()->whereKey($conversation->id)->lockForUpdate()->first();
+
+                if ($conversation->turns()->whereIn('status', AiTurnStatus::activeValues())->exists()) {
+                    throw new AiTurnAlreadyActiveException;
+                }
+
                 $message = $conversation->messages()->create([
                     'role' => AiMessageRole::User,
                     'content' => $data->content,
@@ -123,7 +115,18 @@ final class SendAiMessage
                     $stored[] = $message->attach($file, self::ATTACHMENT_COLLECTION);
                 }
 
-                return $message;
+                $conversation->update([
+                    'last_message_at' => now(),
+                    'title' => $conversation->title !== '' ? $conversation->title : $this->titleFrom($data->content),
+                ]);
+
+                return $conversation->turns()->create([
+                    'user_message_id' => $message->id,
+                    'personal_access_token_id' => $session?->getKey(),
+                    'status' => AiTurnStatus::Queued,
+                    'locale' => $data->locale,
+                    'page_guide_text' => $data->pageGuideText,
+                ]);
             });
         } catch (Throwable $exception) {
             // The rollback removes the rows but not the binaries already written.
@@ -133,102 +136,10 @@ final class SendAiMessage
 
             throw $exception;
         }
-
-        return $message->load('attachments');
-    }
-
-    /**
-     * @return Generator<int, StreamedEvent>
-     */
-    private function events(AiChatDriver $driver, AiChatPrompt $prompt, AiConversation $conversation, AiMessage $userMessage): Generator
-    {
-        set_time_limit((int) config('ai-assistant.timeout_seconds') + self::TIME_LIMIT_MARGIN_SECONDS);
-
-        $completed = false;
-
-        try {
-            yield new StreamedEvent('message.created', ['user_message' => $this->resolve(new AiMessageResource($userMessage))]);
-
-            $text = '';
-            $final = null;
-
-            foreach ($driver->stream($prompt) as $event) {
-                if ($event->type === AiStreamEvent::TYPE_DELTA) {
-                    $text .= $event->text;
-
-                    yield new StreamedEvent('delta', ['text' => $event->text]);
-                } elseif ($event->type === AiStreamEvent::TYPE_COMPLETED) {
-                    $final = $event;
-                }
-            }
-
-            // A reasoning model can spend the whole output budget thinking and close with no text.
-            if ($final === null || trim($text) === '') {
-                throw new AiProviderException;
-            }
-
-            $assistantMessage = $this->persistAnswer($conversation, $userMessage, $text, $final);
-            $completed = true;
-
-            yield new StreamedEvent('message.completed', [
-                'assistant_message' => $this->resolve(new AiMessageResource($assistantMessage)),
-                'conversation' => $this->resolve(new AiConversationResource($conversation)),
-            ]);
-        } catch (Throwable $exception) {
-            $this->discardUserMessage($userMessage);
-
-            Log::warning('AI assistant turn failed', ['exception' => $exception::class, 'conversation_id' => $conversation->id]);
-
-            yield new StreamedEvent('error', ['message' => AiProviderException::GENERIC_MESSAGE]);
-        } finally {
-            // Client disconnected before the answer was stored: no partial state (D-13).
-            if (! $completed) {
-                $this->discardUserMessage($userMessage);
-            }
-        }
-    }
-
-    private function persistAnswer(AiConversation $conversation, AiMessage $userMessage, string $text, AiStreamEvent $final): AiMessage
-    {
-        return DB::transaction(function () use ($conversation, $userMessage, $text, $final): AiMessage {
-            $assistantMessage = $conversation->messages()->create([
-                'role' => AiMessageRole::Assistant,
-                'content' => $text,
-                'model' => $final->model ?? $this->drivers->model(),
-                'input_tokens' => $final->inputTokens,
-                'output_tokens' => $final->outputTokens,
-            ]);
-
-            $conversation->update([
-                'last_message_at' => now(),
-                'title' => $conversation->title !== '' ? $conversation->title : $this->titleFrom($userMessage->content),
-            ]);
-
-            return $assistantMessage->setRelation('attachments', collect());
-        });
     }
 
     private function titleFrom(string $content): string
     {
         return mb_substr(Str::squish($content), 0, self::TITLE_MAX_CHARS);
-    }
-
-    /**
-     * Idempotent: deleting through Eloquent removes the attachment rows and
-     * their files (HasAttachments), a second call finds nothing to delete.
-     */
-    private function discardUserMessage(AiMessage $userMessage): void
-    {
-        if (AiMessage::query()->whereKey($userMessage->id)->exists()) {
-            $userMessage->delete();
-        }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function resolve(JsonResource $resource): array
-    {
-        return $resource->resolve(request());
     }
 }

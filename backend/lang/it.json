@@ -331,5 +331,20 @@
     "This request belongs to the product category :root: its product lines must stay under it. For another product category create a new request.": "Questa richiesta appartiene alla categoria :root: le sue linee di prodotto devono restare sotto questa categoria. Per un'altra categoria crea una nuova richiesta.",
     "The offers of this opportunity are bound to the product categories :roots: the product lines cannot add or remove a parent product category. For another product category create a new request.": "Le offerte di questa opportunità sono legate alle categorie :roots: le linee di prodotto non possono aggiungere o togliere una categoria madre. Per un'altra categoria crea una nuova richiesta.",
     "This offer belongs to the product category :root: the product \":product\" belongs to another one.": "Questa offerta appartiene alla categoria :root: il prodotto \":product\" è di un'altra categoria.",
-    "The product \":product\" does not belong to any parent product category of the request: add its product category to the product lines, or remove the row.": "Il prodotto \":product\" non appartiene a nessuna categoria madre della richiesta: aggiungi la sua categoria alle linee di prodotto oppure togli la riga."
+    "The product \":product\" does not belong to any parent product category of the request: add its product category to the product lines, or remove the row.": "Il prodotto \":product\" non appartiene a nessuna categoria madre della richiesta: aggiungi la sua categoria alle linee di prodotto oppure togli la riga.",
+    "The assistant could not reach the model. Try again later.": "L'assistente non ha raggiunto il modello. Riprova più tardi.",
+    "The assistant could not reach its tools. Try again later.": "L'assistente non ha raggiunto i suoi strumenti. Riprova più tardi.",
+    "Your session changed. Send your message again.": "La tua sessione è cambiata. Invia di nuovo il messaggio.",
+    "The assistant stopped: this request needed too many steps.": "L'assistente si è fermato: la richiesta richiedeva troppi passaggi.",
+    "The assistant stopped: this request took too long.": "L'assistente si è fermato: la richiesta ha richiesto troppo tempo.",
+    "The model returned an error. Try again.": "Il modello ha restituito un errore. Riprova.",
+    "The AI assistant has been switched off.": "L'assistente AI è stato spento.",
+    "You have reached your monthly assistant spending limit.": "Hai raggiunto il tuo limite di spesa mensile dell'assistente.",
+    "The company monthly assistant spending limit has been reached.": "È stato raggiunto il limite di spesa mensile dell'assistente per l'azienda.",
+    "Something went wrong. Try again later.": "Qualcosa è andato storto. Riprova più tardi.",
+    "The assistant is still working on your previous message.": "L'assistente sta ancora lavorando al tuo messaggio precedente.",
+    "The AI assistant is not configured.": "L'assistente AI non è configurato.",
+    "Looking for the right operation": "Cerco l'operazione giusta",
+    "Reading the records": "Leggo i record",
+    "Reading and processing the data": "Leggo ed elaboro i dati"
 }
