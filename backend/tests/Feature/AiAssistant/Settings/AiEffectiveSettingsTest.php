@@ -14,7 +14,9 @@ it('returns the initial values of the spec on first use', function () {
         ->and($settings->modelId)->toBe('deepseek/deepseek-v4-flash-0731')
         ->and($settings->routing)->toBe(['zdr' => true, 'data_collection' => 'deny', 'require_parameters' => true, 'sort' => 'throughput'])
         ->and($settings->instructions)->toBe(AiDefaultInstructions::TEXT)
-        ->and($settings->spendCapPersonUsd)->toBeNull();
+        // REQUIREMENT CHANGED (security review): a new row carries the initial monthly caps of the configuration, not "no cap".
+        ->and($settings->spendCapPersonUsd)->toBe('5.00')
+        ->and($settings->spendCapTotalUsd)->toBe('20.00');
 });
 
 it('returns what the super-admin saved, and the switch off', function () {

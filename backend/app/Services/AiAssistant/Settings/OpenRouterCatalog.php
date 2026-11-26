@@ -23,6 +23,8 @@ class OpenRouterCatalog
 
     private const string TOOLS_PARAMETER = 'tools';
 
+    private const string REASONING_PARAMETER = 'reasoning';
+
     /**
      * Models with tool calling and text-only input and output, sorted by name.
      *
@@ -49,6 +51,30 @@ class OpenRouterCatalog
 
             return $models;
         });
+    }
+
+    /**
+     * Whether the model declares `reasoning` among its supported parameters. Unknown (OpenRouter
+     * down) counts as no: the request then simply carries no reasoning limit.
+     */
+    public function supportsReasoning(string $modelId): bool
+    {
+        try {
+            $ids = $this->cached('reasoning-models', function (): array {
+                $ids = [];
+                foreach ($this->get('/models', ['supported_parameters' => self::REASONING_PARAMETER])['data'] ?? [] as $model) {
+                    if (is_array($model) && is_string($model['id'] ?? null) && in_array(self::REASONING_PARAMETER, $model['supported_parameters'] ?? [], true)) {
+                        $ids[] = $model['id'];
+                    }
+                }
+
+                return $ids;
+            });
+        } catch (OpenRouterCatalogUnavailableException) {
+            return false;
+        }
+
+        return in_array($modelId, $ids, true);
     }
 
     public function has(string $modelId): bool

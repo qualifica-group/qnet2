@@ -99,6 +99,9 @@ return [
         'max_turn_seconds' => (int) env('AI_ASSISTANT_AGENT_MAX_TURN_SECONDS', 600),
         'max_output_tokens' => (int) env('AI_ASSISTANT_AGENT_MAX_OUTPUT_TOKENS', 4096),
 
+        // `reasoning.max_tokens` for a model that reasons; the call always sends less than `max_output_tokens`.
+        'reasoning_max_tokens' => (int) env('AI_ASSISTANT_AGENT_REASONING_MAX_TOKENS', 2048),
+
         // A turn left queued or running longer than the longest job plus this margin is closed as failed.
         'stale_margin_seconds' => (int) env('AI_ASSISTANT_AGENT_STALE_MARGIN_SECONDS', 120),
 
@@ -145,6 +148,10 @@ return [
             'require_parameters' => true,
             'sort' => 'throughput',
         ],
+        // Monthly caps in dollars the settings row is created with (company total, each person); the
+        // super-admin changes them on the settings page. Empty: no cap.
+        'default_spend_cap_total_usd' => env('AI_ASSISTANT_DEFAULT_SPEND_CAP_TOTAL_USD', 20) === '' ? null : env('AI_ASSISTANT_DEFAULT_SPEND_CAP_TOTAL_USD', 20),
+        'default_spend_cap_person_usd' => env('AI_ASSISTANT_DEFAULT_SPEND_CAP_PERSON_USD', 5) === '' ? null : env('AI_ASSISTANT_DEFAULT_SPEND_CAP_PERSON_USD', 5),
         'instructions_max_chars' => (int) env('AI_ASSISTANT_INSTRUCTIONS_MAX_CHARS', 8000),
         'models_cache_seconds' => (int) env('AI_ASSISTANT_MODELS_CACHE_SECONDS', 300),
         'catalog_timeout_seconds' => (int) env('AI_ASSISTANT_CATALOG_TIMEOUT_SECONDS', 10),

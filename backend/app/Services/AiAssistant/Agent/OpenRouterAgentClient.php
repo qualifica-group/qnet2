@@ -35,13 +35,25 @@ final class OpenRouterAgentClient
     }
 
     /**
+     * `reasoning.max_tokens` of a call to a model that reasons: the configured value, always strictly
+     * under `max_tokens` (null when no such value exists).
+     */
+    public static function reasoningMaxTokens(): ?int
+    {
+        $limit = min((int) config('ai-assistant.agent.reasoning_max_tokens'), self::maxTokens() - 1);
+
+        return $limit >= 1 ? $limit : null;
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $messages  system message first
      * @param  list<array<string, mixed>>  $tools  OpenAI function definitions, in a fixed order
      * @param  (callable(string): void)|null  $onText  receives each text fragment as it streams
+     * @param  bool  $limitReasoning  the model declares `reasoning`: its tokens are limited under `max_tokens`
      *
      * @throws AgentModelException
      */
-    public function complete(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices, ?callable $onText = null): AgentModelResult
+    public function complete(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices, ?callable $onText = null, bool $limitReasoning = false): AgentModelResult
     {
         try {
             $response = Http::withHeaders($this->headers())
@@ -50,7 +62,7 @@ final class OpenRouterAgentClient
                 ->timeout((int) config('ai-assistant.timeout_seconds'))
                 ->connectTimeout((int) config('ai-assistant.connect_timeout_seconds'))
                 ->acceptJson()
-                ->post($this->url(), $this->payload($messages, $tools, $conversationId, $settings, $prices));
+                ->post($this->url(), $this->payload($messages, $tools, $conversationId, $settings, $prices, $limitReasoning));
 
             if (! $response->successful()) {
                 $this->fail(AiTurnErrorCode::ModelUnavailable, 'http_status', ['status' => $response->status()]);
@@ -220,7 +232,7 @@ final class OpenRouterAgentClient
      * @param  list<array<string, mixed>>  $tools
      * @return array<string, mixed>
      */
-    private function payload(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices): array
+    private function payload(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices, bool $limitReasoning): array
     {
         $payload = [
             'model' => $settings->modelId,
@@ -231,6 +243,11 @@ final class OpenRouterAgentClient
             // The price ceiling that priced the reservation: a dearer endpoint is never used.
             'provider' => $settings->routing + ['max_price' => $prices->maxPrice()],
         ];
+
+        // Only for a model that declares `reasoning`: with `require_parameters` the key would exclude providers otherwise.
+        if ($limitReasoning && self::reasoningMaxTokens() !== null) {
+            $payload['reasoning'] = ['max_tokens' => self::reasoningMaxTokens()];
+        }
 
         if ($tools !== []) {
             $payload['tools'] = $tools;

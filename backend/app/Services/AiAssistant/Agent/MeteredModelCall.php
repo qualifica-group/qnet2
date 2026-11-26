@@ -57,7 +57,7 @@ final class MeteredModelCall
         // Step 3: the call; a failure before any byte of the response charges nothing, one after it
         // may have been charged: it is settled with the declared cost, or the reservation, and flagged
         try {
-            $result = $this->model->complete($messages, $tools, $run->turn->ai_conversation_id, $settings, $prices, $onText);
+            $result = $this->model->complete($messages, $tools, $run->turn->ai_conversation_id, $settings, $prices, $onText, $this->catalog->supportsReasoning($settings->modelId));
         } catch (AgentModelException $exception) {
             $this->settleFailure($run, $settings, $reservation, $exception);
 
