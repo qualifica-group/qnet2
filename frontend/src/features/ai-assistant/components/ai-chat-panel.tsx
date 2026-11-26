@@ -90,7 +90,7 @@ function AiChatBody({
   const conversationQuery = useAiConversation(conversationId)
   const activeTurn = useAiActiveTurn({
     conversationId,
-    serverTurn: conversationQuery.data?.active_turn,
+    serverTurn: conversationQuery.data?.active_turn ?? conversationQuery.data?.last_turn,
     pollIntervalMs: config.limits.poll_interval_ms,
   })
   const composer = useAiComposer({

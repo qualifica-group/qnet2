@@ -65,6 +65,25 @@ describe('AiTurnStatus', () => {
     expect(screen.getByText('Non ho scritto nulla')).toBeInTheDocument()
   })
 
+  it.each([
+    ['succeeded', 'confirmed', 'la modifica è stata scritta'],
+    ['uncertain', 'uncertain', 'Esito incerto'],
+  ] as const)('keeps the closed card with its %s outcome while the turn is queued again', (outcome, state, text) => {
+    const preview: AiPreview = {
+      id: 'p1', confirmable: true, content: 'Record 1: uno, poi due',
+      expires_at: new Date(Date.now() + 600_000).toISOString(), state, outcome,
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AiTurnStatus turn={turn('queued', { preview })} />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('group', { name: 'Modifica da confermare' })).toHaveTextContent(text)
+    expect(screen.queryByRole('button', { name: 'Conferma' })).not.toBeInTheDocument()
+    expect(screen.getByText(/In coda/)).toBeInTheDocument()
+  })
+
   it('shows the preview card with Confirm and Cancel while waiting for the confirmation', () => {
     const preview: AiPreview = {
       id: 'p1', confirmable: true, content: 'Record 1: uno, poi due',

@@ -489,6 +489,34 @@ it('the conversation detail carries the active turn, and null once it is final',
     $read()->assertOk()->assertJsonPath('data.active_turn', null);
 });
 
+it('the conversation detail carries the decided preview of the last turn, and null when that turn has none', function () {
+    Queue::fake();
+    $user = aiapi_user();
+    $conversation = aiapi_conversation($user);
+    aiapi_send($user, $conversation)->assertStatus(202);
+    $turn = AiTurn::query()->sole();
+    $read = fn () => turn_get($user, "/api/ai-assistant/conversations/{$conversation->id}");
+
+    $turn->update([
+        'status' => AiTurnStatus::Completed,
+        'preview' => [
+            'id' => 'p1', 'confirmable' => true, 'content' => 'Record 1: uno', 'expires_at' => now()->addMinutes(10)->toIso8601String(),
+            'state' => 'confirmed', 'outcome' => 'succeeded',
+        ],
+    ]);
+
+    $read()->assertOk()
+        ->assertJsonPath('data.active_turn', null)
+        ->assertJsonPath('data.last_turn.id', $turn->id)
+        ->assertJsonPath('data.last_turn.preview.state', 'confirmed')
+        ->assertJsonPath('data.last_turn.preview.outcome', 'succeeded')
+        ->assertJsonPath('data.last_turn.preview.content', 'Record 1: uno');
+
+    $turn->update(['preview' => null]);
+
+    $read()->assertOk()->assertJsonPath('data.last_turn', null);
+});
+
 it('the queued state shows the position among the queued turns', function () {
     Queue::fake();
     $user = aiapi_user();

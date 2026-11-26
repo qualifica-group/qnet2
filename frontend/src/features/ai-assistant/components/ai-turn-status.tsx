@@ -38,18 +38,6 @@ export function AiTurnStatus({ turn }: { turn: AiTurn }) {
   const { t } = useTranslation()
   const { status } = turn
 
-  if (status === 'queued') {
-    return (
-      <TurnBubble>
-        <p role="status" className="text-xs text-muted-foreground">
-          {turn.queue_position === null
-            ? t('aiAssistant.turn.queued')
-            : t('aiAssistant.turn.queuedPosition', { position: turn.queue_position })}
-        </p>
-      </TurnBubble>
-    )
-  }
-
   const stoppedWithoutReply = status === 'failed' || status === 'cancelled' || status === 'limit_reached'
   const code: AiTurnErrorCode | null = turn.error_code !== null && KNOWN_ERROR_CODES.includes(turn.error_code) ? turn.error_code : null
   const hasBody = turn.assistant_text !== '' || turn.steps.length > 0
@@ -72,6 +60,13 @@ export function AiTurnStatus({ turn }: { turn: AiTurn }) {
         </ul>
       ) : null}
       {turn.assistant_text !== '' && !hidesModelText ? <AiMarkdown content={turn.assistant_text} /> : null}
+      {status === 'queued' ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          {turn.queue_position === null
+            ? t('aiAssistant.turn.queued')
+            : t('aiAssistant.turn.queuedPosition', { position: turn.queue_position })}
+        </p>
+      ) : null}
       {status === 'running' && !hasBody ? (
         <p role="status" className="text-xs text-muted-foreground">
           {t('aiAssistant.messages.typing')}

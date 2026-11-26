@@ -192,6 +192,24 @@ describe('preview of a turn (spec 0433, D-3)', () => {
     expect(screen.getAllByText('Ho chiuso la commessa 7')).toHaveLength(1)
     expect(screen.queryByText('Conferma o annulla l\'anteprima per continuare.')).not.toBeInTheDocument()
   })
+
+  it('shows the closed card and its outcome again when the conversation is reopened (last_turn)', async () => {
+    const reply = message({ id: 9, role: 'assistant', content: 'Ho chiuso la commessa 7' })
+    const closed: AiTurn = {
+      ...TURN, status: 'completed', assistant_text: reply.content, assistant_message: reply,
+      preview: { ...PREVIEW, state: 'confirmed', outcome: 'succeeded' },
+    }
+    vi.mocked(fetchAiConversation).mockResolvedValue({
+      ...DETAIL, messages: [...DETAIL.messages, reply], active_turn: null, last_turn: closed,
+    })
+    vi.mocked(fetchAiTurn).mockResolvedValue(closed)
+    renderWithProviders(<Harness config={buildAiConfig()} />)
+
+    const card = await screen.findByRole('group', { name: 'Modifica da confermare' })
+    expect(card).toHaveTextContent('Confermata: la modifica è stata scritta.')
+    expect(screen.queryByRole('button', { name: 'Conferma' })).not.toBeInTheDocument()
+    expect(screen.getAllByText('Ho chiuso la commessa 7')).toHaveLength(1)
+  })
 })
 
 describe('guide forwarded to the assistant (AC-024)', () => {

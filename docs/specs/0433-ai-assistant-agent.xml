@@ -154,7 +154,8 @@
       <!-- AiConversation (come 0347; `active_turn` compare solo nel dettaglio) -->
       { "id": int, "title": string, "last_message_at": iso8601|null, "created_at": iso8601,
         "propose_new_conversation": bool,  <!-- true dopo `memory.max_summaries` riassunti: la chat propone di aprirne una nuova (D-5) -->
-        "messages": AiMessage[]?, "active_turn": AiTurn|null? }
+        "messages": AiMessage[]?, "active_turn": AiTurn|null?,
+        "last_turn": AiTurn|null? <!-- ultimo turno, solo se chiuso e con anteprima: la chat ne mostra di nuovo la scheda chiusa con l'esito --> }
       <!-- AiMessage: invariato rispetto a 0347 (mentions: [{module, id, label}], attachments, model, token) -->
       <!-- AiTurnStatus -->
       "queued"|"running"|"awaiting_confirmation"|"completed"|"failed"|"cancelled"|"limit_reached"
@@ -229,7 +230,8 @@
 
     <endpoint method="GET" path="/api/ai-assistant/conversations/{conversation}">
       <response status="200">data: AiConversation con `messages` e `active_turn` (il turno non finale, o null): il browser
-        che ricarica la pagina riprende l'interrogazione del turno.</response>
+        che ricarica la pagina riprende l'interrogazione del turno. `last_turn`: l'ultimo turno della conversazione se e' chiuso e ha
+        un'anteprima (stato, esito, contenuto del connettore), altrimenti null.</response>
       <errors>401; 403 (anche conversazione altrui); 404.</errors>
     </endpoint>
 

@@ -62,6 +62,14 @@ class AiConversation extends BaseModel
     }
 
     /**
+     * The newest turn, whatever its status: its closed preview is shown again when the conversation is reopened.
+     */
+    public function lastTurn(): HasOne
+    {
+        return $this->hasOne(AiTurn::class)->latestOfMany();
+    }
+
+    /**
      * Delete the conversation, its messages, their attachment rows and files.
      * Each message is deleted through Eloquent so HasAttachments removes the
      * binaries (AC-016, AC-017).
