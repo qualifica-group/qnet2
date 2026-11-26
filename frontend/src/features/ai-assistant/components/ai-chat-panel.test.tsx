@@ -5,7 +5,7 @@ import { AiAssistantPageView } from '@/features/ai-assistant/components/ai-assis
 import { AiChatPanel } from '@/features/ai-assistant/components/ai-chat-panel'
 import { buildAiConfig, renderWithProviders } from '@/features/ai-assistant/components/ai-test-support'
 import AiDockWindow from '@/features/ai-assistant/components/ai-dock-window'
-import type { AiAssistantConfig, AiConversationDetail, AiMessage } from '@/features/ai-assistant/types'
+import type { AiAssistantConfig, AiConversationDetail, AiMessage, AiTurn } from '@/features/ai-assistant/types'
 
 vi.mock('@/features/ai-assistant/api', () => ({
   AI_CONVERSATIONS_PAGE_SIZE: 30,
@@ -15,6 +15,8 @@ vi.mock('@/features/ai-assistant/api', () => ({
   createAiConversation: vi.fn(),
   deleteAiConversation: vi.fn(),
   downloadAiAttachment: vi.fn(),
+  sendAiMessage: vi.fn(),
+  fetchAiTurn: vi.fn(),
 }))
 vi.mock('@/features/ai-assistant/hooks/use-ai-page-guide', () => ({
   useAiPageGuide: vi.fn(() => ({ locale: 'it', guideKey: 'general', guideText: 'GUIDE' })),
@@ -26,6 +28,7 @@ import {
   fetchAiAssistantConfig,
   fetchAiConversation,
   fetchAiConversations,
+  fetchAiTurn,
 } from '@/features/ai-assistant/api'
 import { useAiPageGuide } from '@/features/ai-assistant/hooks/use-ai-page-guide'
 
@@ -114,6 +117,40 @@ describe('AiChatPanel messages', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Come si usa questa pagina?' }))
 
     expect(screen.getByRole('textbox', { name: 'Scrivi un messaggio' })).toHaveValue('Come si usa questa pagina?')
+  })
+})
+
+describe('turn resumed from the conversation detail (spec 0433 D-15)', () => {
+  const RUNNING_TURN: AiTurn = {
+    id: 8, conversation_id: 3, status: 'running', user_message_id: 1, assistant_text: 'Sto leggendo', assistant_message: null,
+    steps: [{ index: 0, tool: 'list_records', label: 'Leggo le commesse', state: 'running' }],
+    preview: null, queue_position: null, error_code: null, error_message: null,
+    created_at: 'now', updated_at: 'now', finished_at: null,
+  }
+
+  it('shows the running steps and partial text, then the saved reply once, when the turn completes', async () => {
+    const reply = message({ id: 9, role: 'assistant', content: 'Ecco tutte le commesse' })
+    let finished = false
+    vi.mocked(fetchAiConversation).mockImplementation(async () =>
+      finished
+        ? { ...DETAIL, messages: [...DETAIL.messages, reply], active_turn: null }
+        : { ...DETAIL, active_turn: RUNNING_TURN },
+    )
+    vi.mocked(fetchAiTurn).mockImplementation(async () =>
+      finished
+        ? { ...RUNNING_TURN, status: 'completed', assistant_text: reply.content, assistant_message: reply }
+        : RUNNING_TURN,
+    )
+    renderWithProviders(<Harness config={buildAiConfig()} />)
+
+    expect(await screen.findByText('Leggo le commesse')).toBeInTheDocument()
+    expect(screen.getByText('Sto leggendo')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Invia' })).toBeDisabled()
+
+    finished = true
+    expect(await screen.findByText('Ecco tutte le commesse', {}, { timeout: 4000 })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Leggo le commesse')).not.toBeInTheDocument())
+    expect(screen.getAllByText('Ecco tutte le commesse')).toHaveLength(1)
   })
 })
 

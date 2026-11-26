@@ -1,24 +1,19 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/features/ai-assistant/api', () => ({ createAiConversation: vi.fn() }))
-vi.mock('@/features/ai-assistant/ai-sse-stream', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/ai-assistant/ai-sse-stream')>()),
-  streamAiMessage: vi.fn(),
-}))
+vi.mock('@/features/ai-assistant/api', () => ({ createAiConversation: vi.fn(), sendAiMessage: vi.fn() }))
 
-import { createAiConversation } from '@/features/ai-assistant/api'
-import { AI_STREAM_INTERRUPTED, AiStreamError, AiStreamHttpError, streamAiMessage } from '@/features/ai-assistant/ai-sse-stream'
+import { createAiConversation, sendAiMessage } from '@/features/ai-assistant/api'
 import { useSendAiMessage } from '@/features/ai-assistant/hooks/use-send-ai-message'
 import { aiAssistantKeys } from '@/features/ai-assistant/query-keys'
 import type {
   AiConversation,
   AiConversationDetail,
   AiMessage,
-  AiStreamEvent,
+  AiTurn,
   SendAiMessageInput,
 } from '@/features/ai-assistant/types'
 
@@ -27,23 +22,13 @@ const userMessage: AiMessage = {
   id: 10, role: 'user', content: 'hi', mentions: [], attachments: [],
   model: null, input_tokens: null, output_tokens: null, created_at: 'now',
 }
-const assistantMessage: AiMessage = { ...userMessage, id: 11, role: 'assistant', content: 'Ciao!' }
+const queuedTurn: AiTurn = {
+  id: 5, conversation_id: 1, status: 'queued', user_message_id: 10, assistant_text: '', assistant_message: null,
+  steps: [], preview: null, queue_position: null, error_code: null, error_message: null,
+  created_at: 'now', updated_at: 'now', finished_at: null,
+}
 const input: SendAiMessageInput = {
   content: 'hi', mentions: [], files: [], pageGuideKey: null, pageGuideText: null, locale: 'it',
-}
-
-function stub(events: AiStreamEvent[], failure?: unknown, gate?: Promise<void>) {
-  vi.mocked(streamAiMessage).mockImplementation(async function* () {
-    for (const event of events) {
-      yield event
-      if (event.event === 'delta') {
-        await gate
-      }
-    }
-    if (failure) {
-      throw failure
-    }
-  })
 }
 
 function setup() {
@@ -58,89 +43,51 @@ function setup() {
 const cached = (queryClient: QueryClient) =>
   queryClient.getQueryData<AiConversationDetail>(aiAssistantKeys.conversation(1))
 
+// REQUIREMENT CHANGED (spec 0433 D-15, ticket 04): the POST answers 202 with the queued turn;
+// no SSE stream is read, so the old stream-event tests are replaced by these.
 describe('useSendAiMessage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(createAiConversation).mockResolvedValue(conversation)
+    vi.mocked(sendAiMessage).mockResolvedValue({ user_message: userMessage, turn: queuedTurn })
   })
 
-  it('creates the conversation, grows the text and stores both messages (AC-020)', async () => {
-    let release!: () => void
-    const gate = new Promise<void>((resolve) => { release = resolve })
-    stub(
-      [
-        { event: 'message.created', data: { user_message: userMessage } },
-        { event: 'delta', data: { text: 'Ci' } },
-        { event: 'delta', data: { text: 'ao!' } },
-        {
-          event: 'message.completed',
-          data: { assistant_message: assistantMessage, conversation: { ...conversation, title: 'hi' } },
-        },
-      ],
-      undefined,
-      gate,
-    )
+  it('creates the conversation, stores the saved message and returns the queued turn', async () => {
     const onCreated = vi.fn()
     const { result, queryClient } = setup()
 
-    let promise!: Promise<unknown>
-    act(() => {
-      promise = result.current.send({ input, conversationId: null, onConversationCreated: onCreated })
+    let started
+    await act(async () => {
+      started = await result.current.send({ input, conversationId: null, onConversationCreated: onCreated })
     })
-    await waitFor(() => expect(result.current.streamingText).toBe('Ci'))
-    release()
-    await act(async () => { await promise })
 
     expect(onCreated).toHaveBeenCalledWith(conversation)
-    expect(cached(queryClient)?.messages.map((m) => m.id)).toEqual([10, 11])
-    expect(cached(queryClient)?.title).toBe('hi')
-    expect(result.current.streamingText).toBe('')
+    expect(sendAiMessage).toHaveBeenCalledWith(1, input)
+    expect(started).toEqual({ conversationId: 1, turn: queuedTurn })
+    expect(cached(queryClient)?.messages.map((m) => m.id)).toEqual([10])
   })
 
-  it('on an error event removes the user message and rejects so the composer can restore (AC-021)', async () => {
-    stub([
-      { event: 'message.created', data: { user_message: userMessage } },
-      { event: 'error', data: { message: 'Provider down' } },
-    ])
+  it('does not create a conversation for an existing one', async () => {
     const { result, queryClient } = setup()
     queryClient.setQueryData(aiAssistantKeys.conversation(1), { ...conversation, messages: [] })
 
     await act(async () => {
-      await expect(result.current.send({ input, conversationId: 1 })).rejects.toBeInstanceOf(AiStreamError)
+      await result.current.send({ input, conversationId: 1 })
     })
 
-    expect(cached(queryClient)?.messages).toEqual([])
-    await waitFor(() => expect(result.current.error?.message).toBe('Provider down'))
-  })
-
-  it('rejects with the typed HTTP error and leaves the cache untouched', async () => {
-    stub([], new AiStreamHttpError(503, 'Not configured'))
-    const { result, queryClient } = setup()
-    queryClient.setQueryData(aiAssistantKeys.conversation(1), { ...conversation, messages: [userMessage] })
-
-    await act(async () => {
-      await expect(result.current.send({ input, conversationId: 1 })).rejects.toMatchObject({ status: 503 })
-    })
-
+    expect(createAiConversation).not.toHaveBeenCalled()
     expect(cached(queryClient)?.messages).toHaveLength(1)
   })
 
-  it('treats a stream closed without a final event as an error and invalidates the caches', async () => {
-    stub([
-      { event: 'message.created', data: { user_message: userMessage } },
-      { event: 'delta', data: { text: 'Ci' } },
-    ])
+  it('rejects when the POST fails and leaves the cache untouched, so the composer restores the draft', async () => {
+    vi.mocked(sendAiMessage).mockRejectedValue(new Error('409'))
     const { result, queryClient } = setup()
     queryClient.setQueryData(aiAssistantKeys.conversation(1), { ...conversation, messages: [] })
-    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
 
     await act(async () => {
-      await expect(result.current.send({ input, conversationId: 1 })).rejects.toMatchObject({
-        message: AI_STREAM_INTERRUPTED,
-      })
+      await expect(result.current.send({ input, conversationId: 1 })).rejects.toThrow('409')
     })
 
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: aiAssistantKeys.conversation(1) })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: aiAssistantKeys.conversations })
+    expect(cached(queryClient)?.messages).toEqual([])
   })
 })

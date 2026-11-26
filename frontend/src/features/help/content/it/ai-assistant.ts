@@ -12,11 +12,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'L\'assistente AI risponde in una chat, scrivendo la risposta man mano che la prepara. Puoi chiedergli come si usa una pagina, di riassumere un record, di preparare una bozza di email o di spiegare un documento allegato.',
+          text: 'L\'assistente AI risponde in una chat: dopo l\'invio la richiesta entra in coda, poi l\'assistente lavora e la risposta compare man mano che la prepara. Puoi chiedergli come si usa una pagina, di riassumere un record, di preparare una bozza di email o di spiegare un documento allegato.',
         },
         {
           type: 'note',
-          text: 'L\'assistente non va a cercare dati da solo: vede soltanto ciò che gli scrivi, il tipo e l\'identificativo dei record che menzioni con @, i file che alleghi e la guida in-app della pagina in cui ti trovi.',
+          text: 'L\'assistente vede ciò che gli scrivi, il tipo e l\'identificativo dei record che menzioni con @ e la guida in-app della pagina in cui ti trovi. In più può leggere i dati di QNet con i tuoi stessi permessi (per esempio «mostrami le mie commesse aperte»): non vede mai ciò che tu non potresti vedere.',
         },
       ],
     },
@@ -47,8 +47,8 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Scrivi nel campo in basso. **Invio** manda il messaggio, **Maiusc+Invio** va a capo.',
-            'La risposta compare mentre viene scritta. Con **Interrompi** puoi fermarla.',
-            'Se l\'invio non riesce, il testo, i file e le menzioni restano nel campo: puoi riprovare senza riscrivere nulla.',
+            'Sotto il tuo messaggio compare lo stato: **In coda** finché non parte, poi i passi che l\'assistente sta facendo (per esempio «Leggo le commesse») e il testo della risposta man mano che si forma. Mentre lavora non puoi inviare un altro messaggio, ma puoi già scrivere il prossimo: resta nel campo.',
+            'Se l\'invio viene rifiutato, il testo, i file e le menzioni restano nel campo: puoi riprovare senza riscrivere nulla. Se invece è l\'assistente a fermarsi (errore, troppi passaggi, tempo scaduto, limite di spesa), il tuo messaggio resta salvato e sotto compare il motivo.',
           ],
         },
         {

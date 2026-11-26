@@ -1,7 +1,7 @@
 import axios from 'axios'
-import { AiStreamHttpError } from '@/features/ai-assistant/ai-sse-stream'
+import type { ApiErrorResponse } from '@/api/types'
 
-export type AiSendErrorKind = 'notConfigured' | 'forbidden' | 'validation' | 'generic'
+export type AiSendErrorKind = 'notConfigured' | 'switchedOff' | 'forbidden' | 'busy' | 'validation' | 'generic'
 
 export type AiComposerField = 'content' | 'files' | 'mentions'
 
@@ -13,12 +13,9 @@ export interface AiSendFailure {
 
 const HTTP_NOT_CONFIGURED = 503
 const HTTP_FORBIDDEN = 403
+const HTTP_CONFLICT = 409
 const HTTP_VALIDATION = 422
-
-/** The user pressed stop: not a failure. */
-export function isAiSendCancelled(error: unknown): boolean {
-  return axios.isCancel(error) || (error instanceof DOMException && error.name === 'AbortError')
-}
+const REASON_SWITCHED_OFF = 'switched_off'
 
 function mapFieldErrors(errors: Record<string, string[]>): AiSendFailure['fieldErrors'] {
   const mapped: AiSendFailure['fieldErrors'] = {}
@@ -32,21 +29,26 @@ function mapFieldErrors(errors: Record<string, string[]>): AiSendFailure['fieldE
 }
 
 /**
- * Maps a failed send to a translatable kind (AC-021). Server text is never
- * shown for stream errors (it is English and provider-facing); only the 422
+ * Maps a failed send (the POST that saves the message and queues the turn) to a
+ * translatable kind. Server text is never shown: it is English; only the 422
  * field messages, which come from Laravel validation, are surfaced on fields.
  */
 export function classifyAiSendError(error: unknown): AiSendFailure {
-  if (error instanceof AiStreamHttpError) {
-    if (error.status === HTTP_NOT_CONFIGURED) {
-      return { kind: 'notConfigured', fieldErrors: {} }
-    }
-    if (error.status === HTTP_FORBIDDEN) {
-      return { kind: 'forbidden', fieldErrors: {} }
-    }
-    if (error.status === HTTP_VALIDATION) {
-      return { kind: 'validation', fieldErrors: mapFieldErrors(error.fieldErrors) }
-    }
+  if (!axios.isAxiosError<Partial<ApiErrorResponse> & { data?: { reason?: string } }>(error) || !error.response) {
+    return { kind: 'generic', fieldErrors: {} }
+  }
+  const { status, data } = error.response
+  if (status === HTTP_NOT_CONFIGURED) {
+    return { kind: data?.data?.reason === REASON_SWITCHED_OFF ? 'switchedOff' : 'notConfigured', fieldErrors: {} }
+  }
+  if (status === HTTP_FORBIDDEN) {
+    return { kind: 'forbidden', fieldErrors: {} }
+  }
+  if (status === HTTP_CONFLICT) {
+    return { kind: 'busy', fieldErrors: {} }
+  }
+  if (status === HTTP_VALIDATION) {
+    return { kind: 'validation', fieldErrors: mapFieldErrors(data?.errors ?? {}) }
   }
   return { kind: 'generic', fieldErrors: {} }
 }

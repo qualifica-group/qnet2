@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
-import { AiStreamHttpError } from '@/features/ai-assistant/ai-sse-stream'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { AiChatPanel } from '@/features/ai-assistant/components/ai-chat-panel'
 import { buildAiConfig, renderWithProviders } from '@/features/ai-assistant/components/ai-test-support'
 import type { AiAssistantConfig } from '@/features/ai-assistant/types'
@@ -14,18 +14,15 @@ vi.mock('@/features/ai-assistant/api', () => ({
   createAiConversation: vi.fn(),
   deleteAiConversation: vi.fn(),
   downloadAiAttachment: vi.fn(),
-}))
-vi.mock('@/features/ai-assistant/ai-sse-stream', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/ai-assistant/ai-sse-stream')>()),
-  streamAiMessage: vi.fn(),
+  sendAiMessage: vi.fn(),
+  fetchAiTurn: vi.fn(),
 }))
 vi.mock('@/features/ai-assistant/hooks/use-ai-page-guide', () => ({
   useAiPageGuide: vi.fn(() => ({ locale: 'it', guideKey: 'general', guideText: 'GUIDE TEXT' })),
 }))
 vi.mock('@/features/for-select/api', () => ({ fetchForSelect: vi.fn() }))
 
-import { createAiConversation, fetchAiAssistantConfig } from '@/features/ai-assistant/api'
-import { streamAiMessage } from '@/features/ai-assistant/ai-sse-stream'
+import { createAiConversation, fetchAiAssistantConfig, sendAiMessage } from '@/features/ai-assistant/api'
 import { fetchForSelect } from '@/features/for-select/api'
 
 const CONVERSATION = { id: 7, title: '', last_message_at: null, created_at: '2026-11-02T10:00:00Z' }
@@ -52,7 +49,7 @@ function typeInto(textbox: HTMLTextAreaElement, value: string) {
 
 beforeEach(() => {
   vi.mocked(createAiConversation).mockResolvedValue(CONVERSATION)
-  vi.mocked(streamAiMessage).mockReset()
+  vi.mocked(sendAiMessage).mockReset()
   vi.mocked(fetchForSelect).mockReset()
 })
 
@@ -95,7 +92,7 @@ describe('AiComposer limits and accessible errors (AC-023)', () => {
     expect(alert).toHaveTextContent('supera i 5 caratteri')
     expect(textbox).toHaveAttribute('aria-invalid', 'true')
     expect(textbox.getAttribute('aria-describedby')).toContain(alert.id)
-    expect(streamAiMessage).not.toHaveBeenCalled()
+    expect(sendAiMessage).not.toHaveBeenCalled()
   })
 })
 
@@ -151,15 +148,28 @@ describe('AiComposer mentions (AC-022)', () => {
   })
 })
 
+function httpError(status: number, data: unknown = {}): AxiosError {
+  return new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, undefined, { status, data } as AxiosResponse)
+}
+
+const STARTED = {
+  user_message: {
+    id: 1, role: 'user' as const, content: 'Domanda', mentions: [], attachments: [],
+    model: null, input_tokens: null, output_tokens: null, created_at: '2026-11-02T10:00:00Z',
+  },
+  turn: {
+    id: 5, conversation_id: 7, status: 'queued' as const, user_message_id: 1, assistant_text: '',
+    assistant_message: null, steps: [], preview: null, queue_position: null, error_code: null,
+    error_message: null, created_at: 'now', updated_at: 'now', finished_at: null,
+  },
+}
+
+// REQUIREMENT CHANGED (spec 0433 D-15/D-16): the POST answers 202 with a queued turn and the
+// message is saved before the turn; the old SSE stream and "message deleted on failure" are gone.
 describe('AiComposer send (AC-021, AC-024)', () => {
-  it('keeps draft, files and mentions and shows a translated alert when the send fails', async () => {
+  it('keeps draft, files and mentions and shows a translated alert when the POST is refused', async () => {
     const { textbox } = await renderComposer()
-    vi.mocked(streamAiMessage).mockImplementation(() =>
-      (async function* () {
-        yield* []
-        throw new AiStreamHttpError(503, 'Service unavailable (server English text)')
-      })(),
-    )
+    vi.mocked(sendAiMessage).mockRejectedValue(httpError(503, { message: 'Service unavailable (server English text)' }))
     typeInto(textbox, 'Ciao assistente')
     fireEvent.change(fileInput(), { target: { files: [new File(['x'], 'nota.pdf', { type: 'application/pdf' })] } })
 
@@ -172,53 +182,26 @@ describe('AiComposer send (AC-021, AC-024)', () => {
     expect(screen.getByRole('button', { name: 'Rimuovi nota.pdf' })).toBeInTheDocument()
   })
 
-  it('shows the generic message for an interrupted stream, never the server text', async () => {
+  it('tells the person to wait when a turn is already active (409), keeping the draft', async () => {
     const { textbox } = await renderComposer()
-    vi.mocked(streamAiMessage).mockImplementation(() =>
-      (async function* () {
-        yield { event: 'error' as const, data: { message: 'Provider exploded' } }
-      })(),
-    )
+    vi.mocked(sendAiMessage).mockRejectedValue(httpError(409))
     typeInto(textbox, 'Ciao')
 
     fireEvent.click(screen.getByRole('button', { name: 'Invia' }))
 
-    const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Non è stato possibile ottenere una risposta')
-    expect(alert).not.toHaveTextContent('Provider exploded')
+    expect(await screen.findByRole('alert')).toHaveTextContent('sta ancora lavorando al messaggio precedente')
     expect(textbox.value).toBe('Ciao')
   })
 
-  it('sends Enter, forwards guide and mentions, and clears the composer on success', async () => {
+  it('sends Enter, forwards guide and mentions, shows the queued turn and blocks a second send', async () => {
     const { textbox } = await renderComposer()
-    vi.mocked(streamAiMessage).mockImplementation(() =>
-      (async function* () {
-        yield* []
-        yield {
-          event: 'message.completed' as const,
-          data: {
-            assistant_message: {
-              id: 2,
-              role: 'assistant' as const,
-              content: 'Risposta',
-              mentions: [],
-              attachments: [],
-              model: null,
-              input_tokens: null,
-              output_tokens: null,
-              created_at: '2026-11-02T10:00:01Z',
-            },
-            conversation: CONVERSATION,
-          },
-        }
-      })(),
-    )
+    vi.mocked(sendAiMessage).mockResolvedValue(STARTED)
     typeInto(textbox, 'Domanda')
 
     fireEvent.keyDown(textbox, { key: 'Enter' })
 
-    await waitFor(() => expect(streamAiMessage).toHaveBeenCalledTimes(1))
-    const [conversationId, input] = vi.mocked(streamAiMessage).mock.calls[0]
+    await waitFor(() => expect(sendAiMessage).toHaveBeenCalledTimes(1))
+    const [conversationId, input] = vi.mocked(sendAiMessage).mock.calls[0]
     expect(conversationId).toBe(7)
     expect(input).toMatchObject({
       content: 'Domanda',
@@ -229,6 +212,13 @@ describe('AiComposer send (AC-021, AC-024)', () => {
       mentions: [],
     })
     await waitFor(() => expect(textbox.value).toBe(''))
+    expect(await screen.findByText(/In coda/)).toBeInTheDocument()
+
+    typeInto(textbox, 'Seconda domanda')
+    expect(screen.getByRole('button', { name: 'Invia' })).toBeDisabled()
+    fireEvent.keyDown(textbox, { key: 'Enter' })
+    await waitFor(() => expect(textbox.value).toBe('Seconda domanda'))
+    expect(sendAiMessage).toHaveBeenCalledTimes(1)
   })
 
   it('does not send on Shift+Enter', async () => {
@@ -237,7 +227,7 @@ describe('AiComposer send (AC-021, AC-024)', () => {
 
     fireEvent.keyDown(textbox, { key: 'Enter', shiftKey: true })
 
-    expect(streamAiMessage).not.toHaveBeenCalled()
+    expect(sendAiMessage).not.toHaveBeenCalled()
   })
 })
 

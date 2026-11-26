@@ -12,11 +12,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The AI assistant answers in a chat, writing the reply as it prepares it. You can ask it how a page works, to summarize a record, to draft an email or to explain an attached document.',
+          text: 'The AI assistant answers in a chat: after you send, the request is queued, then the assistant works and the reply shows up as it prepares it. You can ask it how a page works, to summarize a record, to draft an email or to explain an attached document.',
         },
         {
           type: 'note',
-          text: 'The assistant does not look up data on its own: it only sees what you write, the type and identifier of the records you mention with @, the files you attach and the in-app guide of the page you are on.',
+          text: 'The assistant sees what you write, the type and identifier of the records you mention with @ and the in-app guide of the page you are on. It can also read QNet data with your own permissions (for example "show me my open work orders"): it never sees what you could not see.',
         },
       ],
     },
@@ -47,8 +47,8 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Type in the field at the bottom. **Enter** sends the message, **Shift+Enter** adds a new line.',
-            'The reply shows up while it is being written. **Stop** interrupts it.',
-            'If sending fails, the text, files and mentions stay in the field: you can retry without retyping anything.',
+            'Below your message the state appears: **Queued** until it starts, then the steps the assistant is taking (for example "Reading work orders") and the text of the reply as it forms. While it works you cannot send another message, but you can already write the next one: it stays in the field.',
+            'If sending is refused, the text, files and mentions stay in the field: you can retry without retyping anything. If the assistant itself stops (error, too many steps, timeout, spending limit), your message stays saved and the reason appears below it.',
           ],
         },
         {
