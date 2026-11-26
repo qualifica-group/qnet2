@@ -6,6 +6,9 @@ export const aiAssistant = {
   loadFailed: 'Unable to load the AI assistant.',
   loading: 'Loading...',
   newConversation: 'New conversation',
+  longConversation:
+    'This conversation has become long and the assistant has summarized its earlier part, so it may forget details. A new conversation starts clean and gives more precise answers.',
+  startNewConversation: 'Start a new conversation',
   history: 'History',
   backToChat: 'Back to chat',
   openFullPage: 'Open full page',
@@ -65,6 +68,18 @@ export const aiAssistant = {
       limit_person: 'You have reached your monthly assistant spending limit.',
       limit_total: 'The company monthly assistant spending limit has been reached.',
       internal: 'Something went wrong. Try again later.',
+    },
+  },
+  preview: {
+    label: 'Change to confirm',
+    notConfirmable: 'Required data is missing: this change cannot be confirmed. Cancel and try again with the missing data.',
+    expiresIn: 'Expires in {{time}}',
+    expired: 'Expired: nothing was written.',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+    errors: {
+      closed: 'This change is no longer waiting for confirmation: nothing was written.',
+      generic: 'The operation could not be completed. Try again.',
     },
   },
   composer: {

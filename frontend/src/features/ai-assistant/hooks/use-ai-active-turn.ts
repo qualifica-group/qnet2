@@ -3,11 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { fetchAiTurn } from '@/features/ai-assistant/api'
 import { aiAssistantKeys } from '@/features/ai-assistant/query-keys'
-import { isAiTurnFinal, isAiTurnPolling } from '@/features/ai-assistant/turn-status'
+import { isAiTurnAwaitingConfirmation, isAiTurnFinal, isAiTurnPolling } from '@/features/ai-assistant/turn-status'
 import type { AiTurn } from '@/features/ai-assistant/types'
 
 /** Used only when `/config` carries no `limits.poll_interval_ms`. */
 export const AI_TURN_POLL_FALLBACK_MS = 1500
+
+/** While the turn waits for Confirm or Cancel the read is this many times slower. */
+export const AI_TURN_AWAITING_POLL_FACTOR = 4
 
 interface TrackedTurn {
   conversationId: number
@@ -55,10 +58,14 @@ export function useAiActiveTurn({ conversationId, serverTurn, pollIntervalMs }: 
       }
       return turn
     },
-    refetchInterval: (current) =>
-      current.state.data && !isAiTurnPolling(current.state.data.status)
-        ? false
-        : (pollIntervalMs ?? AI_TURN_POLL_FALLBACK_MS),
+    refetchInterval: (current) => {
+      const status = current.state.data?.status
+      const interval = pollIntervalMs ?? AI_TURN_POLL_FALLBACK_MS
+      if (status === undefined || isAiTurnPolling(status)) {
+        return interval
+      }
+      return isAiTurnAwaitingConfirmation(status) ? interval * AI_TURN_AWAITING_POLL_FACTOR : false
+    },
   })
 
   /** Starts following a turn just queued by the POST. */

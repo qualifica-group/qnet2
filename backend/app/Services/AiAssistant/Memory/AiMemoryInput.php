@@ -23,5 +23,7 @@ final readonly class AiMemoryInput
         public ?string $summary,
         public int $summaryCount,
         public int $contextWindow,
+        /** False when the provider takes the tools in their own request field: they then weigh on the budget but are not a message. */
+        public bool $toolsInMessages = true,
     ) {}
 }

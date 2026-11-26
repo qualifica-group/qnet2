@@ -94,6 +94,29 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'confirm-changes',
+      title: 'Chiedere una modifica e confermarla',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Se chiedi una modifica a un record, l\'assistente non la fa subito: mostra nella conversazione una scheda con il record, il valore di ogni campo **prima e dopo** e gli effetti della modifica. La modifica avviene solo quando premi **Conferma**; con **Annulla** non viene scritto nulla.',
+        },
+        {
+          type: 'list',
+          items: [
+            'La scheda mostra solo ciò che il sistema ha preparato, non quello che l\'assistente scrive nel testo: controlla sempre i valori nella scheda.',
+            'La scheda è valida per **10 minuti**: il tempo rimasto è sempre visibile e, scaduto, non si può più confermare. In quel caso non è stato scritto nulla e puoi ripetere la richiesta.',
+            'Se alla scheda mancano dati obbligatori, **Conferma** resta disattivato e una riga lo spiega: puoi solo annullare e ripetere la richiesta con i dati mancanti.',
+            'Se chiedi più modifiche, le schede arrivano una alla volta: confermane o annullane una per continuare con la successiva.',
+          ],
+        },
+        {
+          type: 'warning',
+          text: 'Scrivere «sì» nella chat non conferma nulla: serve il pulsante **Conferma** della scheda.',
+        },
+      ],
+    },
+    {
       id: 'privacy',
       title: 'Cosa viene inviato all\'esterno',
       blocks: [
@@ -113,6 +136,21 @@ const guide: HelpGuide = {
             'Le conversazioni sono salvate per ogni utente: nessun altro può leggere le tue.',
             'Una conversazione ferma da oltre **30 giorni** viene eliminata automaticamente, con i suoi file.',
             'Puoi eliminarla prima con l\'icona cestino accanto al suo titolo: dopo la conferma, messaggi e allegati vengono cancellati definitivamente.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'long-conversations',
+      title: 'Conversazioni lunghe',
+      blocks: [
+        {
+          type: 'list',
+          items: [
+            'Quando una conversazione si allunga, l\'assistente **riassume la parte precedente** e tiene per intero gli ultimi messaggi. Non devi fare nulla.',
+            'I dati che l\'assistente ha letto prima **non vengono conservati**: se gli serve di nuovo un valore lo rilegge, così la risposta riflette quello che QNet mostra adesso.',
+            'Dopo alcuni riassunti la chat mostra un avviso con **Apri una nuova conversazione**. Una conversazione nuova riparte pulita e risponde in modo più preciso.',
+            'Nulla passa da una conversazione all\'altra: l\'assistente non ricorda quanto hai detto nelle altre. Puoi aprirne una nuova quando vuoi con **Nuova conversazione**.',
           ],
         },
       ],
