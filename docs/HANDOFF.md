@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: filtro Titolo "contiene" (2026-11-26) — VERDE, NON COMMITTATO
+
+- `WorkOrderColumnCatalog` colonna `title`: `hasFilterValues => false` -> la griglia usa solo `agTextColumnFilter` (default "contiene"), niente lista a checkbox (richiesta utente).
+- Test: `WorkOrderTableTest` "title filters by a contains condition". Guide `work-orders` IT+EN e manuale Claude Docs (paragrafo "Filtro del Titolo") aggiornati.
+
+## Ricerca richieste/iscritti anche sull'anagrafica dei campi flessibili (2026-11-26) — VERDE, NON COMMITTATO
+
+- Il campo Cerca di Gestione Richieste/Iscritti, oltre al cliente, trova le richieste il cui `quotes.attribute_values` collega un'anagrafica trovata per nome/cognome/CF/P.IVA in un attributo `type=relation` con `relation_target.entity_type=registries` (oggi `user_registry` "Anagrafica Utente" di Orientamento specialistico, `host_registry`, `avv_company_id`, `gare_company_id`). Telefono/email NON estendono ai campi.
+- `RequestClientSearch` Step 4: secondo passaggio `quotes.id IN` (ids letti con lo stesso cap `table-search.request_client_match_cap`), codici attributo filtrati da regex prima del path JSON. MySQL locale: "maria" 51 ms, "rossi" 17 ms.
+- Test: `RequestManagementTableSearchTest` (+2). Guide `request-management` IT+EN e manuale Claude Docs (paragrafo del campo Cerca) aggiornati.
+- Commesse non toccate (fuori richiesta).
+
 ## Richieste legacy bloccate sulle loro categorie madri (spec 0432, 2026-11-26) — VERDE, NON COMMITTATO
 
 - Richiesta legacy = offerta NON legata (`root_product_category_id` null) con almeno una linea `is_legacy` (categoria o radice). In modifica linee (pannello Lavora + cella, `RequestProductLineWriter`) ogni categoria deve stare sotto le radici gia' presenti: `QuoteRootScope::assertWithinLegacyRoots` -> 422 `product_lines`. Togliere una radice si', aggiungerne/sostituirne no. Offerte non legate del catalogo nuovo: libere come prima.

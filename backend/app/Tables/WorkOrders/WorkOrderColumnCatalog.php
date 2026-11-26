@@ -56,6 +56,8 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'text',
+                // Free-text titles: a "contains" condition, not an Excel-style value checklist.
+                'hasFilterValues' => false,
                 'searchable' => true,
                 'editable' => true,
                 // Spec 0215: a cleared title goes back to the automatic one.

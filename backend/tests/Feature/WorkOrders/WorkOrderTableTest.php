@@ -122,6 +122,24 @@ it('sorts by contract_number using quotes.code (AC-041)', function () {
     expect(collect($response->json('items'))->pluck('contract_number')->all())->toBe(['QUO-0001', 'QUO-0002']);
 });
 
+it('title filters by a "contains" condition, with no value checklist (user request 2026-11-26)', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    WorkOrder::factory()->create(['title' => 'Formazione sicurezza Rossi']);
+    WorkOrder::factory()->create(['title' => 'Consulenza HACCP']);
+    Sanctum::actingAs($actor);
+
+    $columns = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.columns'))->keyBy('id');
+    expect($columns['title']['filterType'])->toBe('text')
+        ->and($columns['title']['hasFilterValues'])->toBeFalse();
+
+    $response = $this->postJson('/api/tables/work-orders/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['title' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'sicurezza']],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('title')->all())->toBe(['Formazione sicurezza Rossi']);
+});
+
 it('filters by contract_number text on quotes.code (AC-041)', function () {
     $actor = workOrderUserWith(['viewAny', 'view']);
     $matching = Quote::factory()->create(['code' => 'QUO-1234']);
