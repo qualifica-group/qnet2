@@ -50,3 +50,17 @@ it('replaces tool results of earlier turns with a line naming tool and operation
     expect(array_map(fn ($e) => $e->role, array_slice($plan->messages, 3)))
         ->toBe(['user', 'tool', 'assistant', 'user', 'tool_call', 'tool']);
 });
+
+it('names only the tool in the line of an earlier result that has no operation', function () {
+    $plan = app(AiConversationMemory::class)->plan(aim_input([
+        new AiMemoryEntry('user', 'old question'),
+        new AiMemoryEntry('tool', 'SECRET ROWS 111', 'search_operations'),
+        new AiMemoryEntry('assistant', 'old answer'),
+        new AiMemoryEntry('user', 'new question'),
+    ]));
+
+    $all = implode("\n", array_map(fn ($e) => $e->text, $plan->messages));
+    expect($all)->not->toContain('SECRET ROWS 111')
+        ->and($all)->toContain('tool=search_operations')
+        ->and($all)->not->toContain('operation=');
+});
