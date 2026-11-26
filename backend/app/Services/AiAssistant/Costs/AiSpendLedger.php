@@ -31,6 +31,10 @@ class AiSpendLedger
 
     public const string SIGNAL_COST_MISSING = 'cost_missing';
 
+    public const string SIGNAL_RESERVATION_EXPIRED = 'reservation_expired';
+
+    private const string EXPIRED_MODEL_ID = 'unknown';
+
     public function __construct(private readonly AiAssistantSettingsService $settings) {}
 
     /**
@@ -48,16 +52,19 @@ class AiSpendLedger
         $caps = $this->settings->effective();
         $period = now()->format('Y-m');
 
-        $reservation = DB::transaction(function () use ($userId, $amount, $caps, $period): AiCostReservation {
+        $reservation = DB::transaction(function () use ($userId, $amount, $caps, $period, $turnMessage): AiCostReservation {
             // Step 1: lock the counters; the first statement is a write so SQLite serializes here
             $locked = $this->lockCounters($period, $userId);
-            // Step 2: drop reservations of workers that never came back
-            AiCostReservation::query()->where('period', $period)
-                ->where('created_at', '<', now()->subMinutes((int) config('ai-assistant.costs.reservation_ttl_minutes')))->delete();
+            // Step 2: book at the reserved amount the reservations of workers that never came back
+            $this->expireStale();
             // Step 3: spent + reserved + new against each cap
             $this->assertRoom($period, $userId, $amount, $caps, $locked);
 
-            return AiCostReservation::query()->create(['period' => $period, 'user_id' => $userId, 'amount_usd' => $amount]);
+            return AiCostReservation::query()->create([
+                'period' => $period, 'user_id' => $userId, 'amount_usd' => $amount,
+                'conversation_id' => $turnMessage->ai_conversation_id,
+                'business_function_ids' => array_map('intval', $turnMessage->business_function_ids ?? []),
+            ]);
         });
 
         return new AiReservation(
@@ -84,14 +91,8 @@ class AiSpendLedger
         [$entry, $spent] = DB::transaction(function () use ($reservation, $usage, $cost, $signal): array {
             $locked = $this->lockCounters($reservation->period, $reservation->userId);
             AiCostReservation::query()->whereKey($reservation->id)->delete();
-            $spent = [];
-            foreach ($locked as $counter) {
-                $counter->spent_usd = AiMoney::add($counter->spent_usd, $cost);
-                $counter->save();
-                $spent[$counter->user_id] = $counter->spent_usd;
-            }
 
-            return [$this->writeEntry($reservation, $usage, $cost, $signal), $spent];
+            return $this->book($reservation, $usage, $cost, $signal, $locked);
         });
 
         if ($signal !== null) {
@@ -99,6 +100,52 @@ class AiSpendLedger
         }
 
         return new AiSettlement($entry, $this->exceededScope($reservation->userId, $spent, $caps));
+    }
+
+    /**
+     * Add $cost to the locked counters and write the ledger row with its shares.
+     *
+     * @param  Collection<int, AiSpendCounter>  $locked
+     * @return array{0: AiCostEntry, 1: array<int, string>} the entry and the spent amount per counter user id
+     */
+    private function book(AiReservation $reservation, AiCallUsage $usage, string $cost, ?string $signal, Collection $locked): array
+    {
+        $spent = [];
+        foreach ($locked as $counter) {
+            $counter->spent_usd = AiMoney::add($counter->spent_usd, $cost);
+            $counter->save();
+            $spent[$counter->user_id] = $counter->spent_usd;
+        }
+
+        return [$this->writeEntry($reservation, $usage, $cost, $signal), $spent];
+    }
+
+    /**
+     * A reservation past the TTL belongs to a worker that died after the call: the provider may
+     * have billed it, so it is closed at the reserved amount (an upper bound) as a cost row with
+     * a fixed signal, never dropped. A real settle arriving later is booked on top (prudent: the
+     * cap only ever sees more spend, never less). Runs inside the reserving transaction.
+     */
+    private function expireStale(): void
+    {
+        $stale = AiCostReservation::query()
+            ->where('created_at', '<', now()->subMinutes((int) config('ai-assistant.costs.reservation_ttl_minutes')))
+            ->orderBy('id')->get();
+
+        foreach ($stale as $row) {
+            $locked = $this->lockCounters($row->period, $row->user_id);
+            // Only the transaction that deletes the row books it
+            if (AiCostReservation::query()->whereKey($row->id)->delete() === 0) {
+                continue;
+            }
+            $reservation = new AiReservation(
+                $row->id, $row->period, $row->user_id, $row->conversation_id,
+                array_map('intval', $row->business_function_ids ?? []), $row->amount_usd,
+            );
+            $usage = new AiCallUsage(self::EXPIRED_MODEL_ID, null, 0, 0, 0, 0, null);
+            $entry = $this->book($reservation, $usage, $row->amount_usd, self::SIGNAL_RESERVATION_EXPIRED, $locked)[0];
+            Log::warning('AI assistant cost anomaly', ['signal' => self::SIGNAL_RESERVATION_EXPIRED, 'entry_id' => $entry->id]);
+        }
     }
 
     /** Free the reservation of a call that failed without a cost. */

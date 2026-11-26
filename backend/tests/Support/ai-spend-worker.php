@@ -32,6 +32,7 @@ if ($mode === 'setup') {
         'database/migrations/2026_12_28_100000_create_ai_assistant_settings_table.php',
         'database/migrations/2026_12_30_100000_create_ai_cost_tables.php',
         'database/migrations/2026_12_30_100001_add_business_function_ids_to_ai_messages.php',
+        'database/migrations/2027_01_04_100000_add_attribution_to_ai_cost_reservations.php',
     ]]);
     app(AiAssistantSettingsService::class)->current()->update(['spend_cap_person_usd' => '3.5', 'spend_cap_total_usd' => '3.5']);
     foreach ([1, 2, 3, 4] as $id) {
