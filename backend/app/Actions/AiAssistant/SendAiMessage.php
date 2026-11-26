@@ -105,15 +105,15 @@ final class SendAiMessage
 
         try {
             return DB::transaction(function () use ($conversation, $session, $data, $mentions, &$stored): AiTurn {
-                // The conversation row is the lock that makes "one active turn" hold under concurrent requests.
+                // The person's row is the lock for the count over all their conversations. It is the FIRST statement:
+                // on InnoDB (REPEATABLE READ) a plain read taken before it would fix a snapshot older than the lock.
+                User::query()->whereKey($conversation->user_id)->lockForUpdate()->first();
+                // The conversation row (always after the person's) makes "one active turn" hold under concurrent requests.
                 AiConversation::query()->whereKey($conversation->id)->lockForUpdate()->first();
 
                 if ($conversation->turns()->whereIn('status', AiTurnStatus::activeValues())->exists()) {
                     throw new AiTurnAlreadyActiveException;
                 }
-
-                // The person's row is the lock for the count over all their conversations (always taken after the conversation's).
-                User::query()->whereKey($conversation->user_id)->lockForUpdate()->first();
 
                 $active = AiTurn::query()->whereIn('status', AiTurnStatus::activeValues())
                     ->whereHas('conversation', fn ($query) => $query->where('user_id', $conversation->user_id))->count();

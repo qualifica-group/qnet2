@@ -216,16 +216,32 @@ it('settles or releases a reservation only once', function () {
         ->and(AiCostEntry::query()->count())->toBe(1);
 });
 
-it('drops a stale reservation of a worker that never came back', function () {
-    aic_caps('3.5', null);
+// Requirement changed (judge finding): a stale reservation is no longer dropped, it is booked.
+it('books a stale reservation at its reserved amount, with its shares and counters, instead of dropping it', function () {
+    aic_caps('6.5', '6.5');
     $ledger = app(AiSpendLedger::class);
-    $message = aic_turn_message();
-    $ledger->reserve($message, 1000, 500, aic_prices());
+    $user = User::factory()->create();
+    [$a, $b] = BusinessFunction::factory()->count(2)->create()->all();
+    $user->businessFunctions()->attach([$a->id, $b->id]);
+    $message = aic_turn_message($user);
+    $ledger->reserve($message->fresh(), 1000, 500, aic_prices());
 
     $this->travel(31)->minutes();
+    $ledger->reserve($message->fresh(), 1000, 500, aic_prices());
 
-    expect($ledger->reserve($message, 1000, 500, aic_prices())->amountUsd)->toBe('3.000000000000')
+    $entry = AiCostEntry::query()->sole();
+    expect($entry->cost_usd)->toBe('3.000000000000')
+        ->and($entry->reserved_usd)->toBe('3.000000000000')
+        ->and($entry->signal)->toBe('reservation_expired')
+        ->and($entry->user_id)->toBe($user->id)
+        ->and($entry->conversation_id)->toBe($message->ai_conversation_id)
+        ->and(AiCostShare::query()->where('ai_cost_entry_id', $entry->id)->orderBy('business_function_id')->pluck('cost_usd', 'business_function_id')->all())
+        ->toBe([$a->id => '1.500000000000', $b->id => '1.500000000000'])
+        ->and(AiSpendCounter::query()->where('user_id', $user->id)->value('spent_usd'))->toBe('3.000000000000')
+        ->and(AiSpendCounter::query()->where('user_id', AiSpendCounter::TOTAL_USER_ID)->value('spent_usd'))->toBe('3.000000000000')
         ->and(AiCostReservation::query()->count())->toBe(1);
+    // 3 spent + 3 reserved: no room for a third call under 6.5
+    expect(fn () => $ledger->reserve($message->fresh(), 1000, 500, aic_prices()))->toThrow(AiSpendLimitReached::class);
 });
 
 it('keeps the ledger rows after the conversation is deleted', function () {

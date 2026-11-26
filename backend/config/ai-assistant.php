@@ -170,7 +170,7 @@ return [
     |
     | input_margin_tokens: fixed allowance for the tokens of the chat format, added to the UTF-8
     | bytes of the request when the cost of a call is reserved (a token is never shorter than one
-    | byte). reservation_ttl_minutes: an open reservation older than this is dropped, so a crashed
+    | byte). reservation_ttl_minutes: an open reservation older than this is closed at its reserved amount as a cost row, so a crashed
     | worker cannot hold the cap forever. report_max_days: longest period the costs page may ask for.
     |
     */

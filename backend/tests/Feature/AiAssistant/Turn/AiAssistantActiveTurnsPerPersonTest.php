@@ -3,7 +3,10 @@
 use App\Enums\AiTurnStatus;
 use App\Models\AiMessage;
 use App\Models\AiTurn;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -54,6 +57,31 @@ it('leaves the other people alone and takes the maximum from the configuration',
     aiapi_send($user, aiapi_conversation($user))->assertStatus(409);
 
     aiapi_send($other, aiapi_conversation($other))->assertStatus(202);
+});
+
+// MySQL InnoDB (REPEATABLE READ): the first plain read of a transaction fixes its snapshot, so the
+// row of the person must be locked BEFORE any read of the turns, or a request that waited for the
+// lock counts on a stale snapshot and two concurrent requests pass the maximum. SQLite (tests)
+// ignores FOR UPDATE: this proves the order of the statements, not the lock itself.
+it('locks the row of the person before the first read of the turns inside the transaction', function () {
+    $user = aiapi_user();
+    $conversation = aiapi_conversation($user);
+    $statements = [];
+    $inTransaction = false;
+    Event::listen(TransactionBeginning::class, function () use (&$inTransaction): void {
+        $inTransaction = true;
+    });
+    Event::listen(QueryExecuted::class, function (QueryExecuted $query) use (&$statements, &$inTransaction): void {
+        if ($inTransaction) {
+            $statements[] = $query->sql;
+        }
+    });
+
+    aiapi_send($user, $conversation)->assertStatus(202);
+
+    $firstUsers = collect($statements)->search(fn (string $sql): bool => str_contains($sql, 'from "users"'));
+    $firstTurns = collect($statements)->search(fn (string $sql): bool => str_contains($sql, 'from "ai_turns"'));
+    expect($firstUsers)->not->toBeFalse()->and($firstTurns)->not->toBeFalse()->and($firstUsers)->toBeLessThan($firstTurns);
 });
 
 it('says it in Italian too', function () {
