@@ -10,6 +10,8 @@ use App\Models\AiTurn;
 use App\Models\BusinessFunction;
 use App\Services\AiAssistant\Settings\AiAssistantSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -109,12 +111,58 @@ it('a model call that fails without a cost frees its reservation and writes no l
         ->and(AiSpendCounter::query()->sum('spent_usd'))->toEqual(0);
 })->with([500, 429]);
 
-it('an error in the middle of the stream frees the reservation too', function () {
+// REQUIREMENT CHANGED (spec 0433, D-7: "se fallisce con un costo dichiarato, si registra quello"): once part of the
+// response has arrived the provider may have charged it, so the call is settled (reservation as cost when none is
+// declared) and flagged; only a failure before any byte of the response frees the reservation.
+it('an error in the middle of the stream settles the call at the reservation and flags the missing cost', function () {
     aiapi_fake_agent([aiapi_sse([['error' => ['code' => 500], 'choices' => [['delta' => [], 'finish_reason' => 'error']]]])]);
     $user = aiapi_user();
 
     aiapi_send($user, aiapi_conversation($user))->assertStatus(202);
 
+    $entry = AiCostEntry::query()->sole();
     expect(AiTurn::query()->sole()->error_code)->toBe(AiTurnErrorCode::StreamError)
+        ->and(AiCostReservation::query()->count())->toBe(0)
+        ->and($entry->signal)->toBe('cost_missing')
+        ->and($entry->cost_usd)->toBe($entry->reserved_usd)
+        ->and(AiSpendCounter::query()->where('user_id', $user->id)->value('spent_usd'))->toBe($entry->reserved_usd);
+});
+
+it('an error in the middle of the stream records the cost the provider declared', function () {
+    aiapi_fake_agent([aiapi_sse([
+        ['model' => 'model-x', 'choices' => [['delta' => ['content' => 'Ci']]]],
+        ['error' => ['code' => 500], 'usage' => ['prompt_tokens' => 80, 'completion_tokens' => 2, 'cost' => 0.0003], 'choices' => [['delta' => [], 'finish_reason' => 'error']]],
+    ])]);
+    $user = aiapi_user();
+
+    aiapi_send($user, aiapi_conversation($user))->assertStatus(202);
+
+    $entry = AiCostEntry::query()->sole();
+    expect($entry->cost_usd)->toStartWith('0.0003')
+        ->and($entry->signal)->toBeNull()
+        ->and((int) $entry->input_tokens)->toBe(80)
         ->and(AiCostReservation::query()->count())->toBe(0);
+});
+
+it('a stream cut before its end settles the call too', function () {
+    aiapi_fake_agent(['data: '.json_encode(['choices' => [['delta' => ['content' => 'Ci']]]])."\n\n"]);
+    $user = aiapi_user();
+
+    aiapi_send($user, aiapi_conversation($user))->assertStatus(202);
+
+    expect(AiCostEntry::query()->sole()->signal)->toBe('cost_missing')
+        ->and(AiCostReservation::query()->count())->toBe(0);
+});
+
+it('a connection error before any response frees the reservation', function () {
+    // The first stub that matches wins: the failing one goes in before the helper's.
+    Http::fake(['openrouter.test/api/v1/chat/completions' => fn () => throw new ConnectionException('timed out')]);
+    aiapi_fake_agent(['unused']);
+    $user = aiapi_user();
+
+    aiapi_send($user, aiapi_conversation($user))->assertStatus(202);
+
+    expect(AiTurn::query()->sole()->error_code)->toBe(AiTurnErrorCode::ModelUnavailable)
+        ->and(AiCostReservation::query()->count())->toBe(0)
+        ->and(AiCostEntry::query()->count())->toBe(0);
 });

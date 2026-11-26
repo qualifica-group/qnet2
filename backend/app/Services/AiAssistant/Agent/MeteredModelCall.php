@@ -6,6 +6,7 @@ namespace App\Services\AiAssistant\Agent;
 
 use App\Enums\AiTurnErrorCode;
 use App\Services\AiAssistant\Costs\AiCallUsage;
+use App\Services\AiAssistant\Costs\AiReservation;
 use App\Services\AiAssistant\Costs\AiSpendLedger;
 use App\Services\AiAssistant\Costs\AiSpendLimitReached;
 use App\Services\AiAssistant\Settings\AiEffectiveSettings;
@@ -16,7 +17,8 @@ use Throwable;
 /**
  * One model call inside the cost ledger (spec 0433, D-7): the price ceiling of the allowed
  * endpoints prices the reservation and goes to OpenRouter as `provider.max_price`, the call
- * runs, then the real cost replaces the reservation. A failure without cost frees it.
+ * runs, then the real cost replaces the reservation. A failure before any of the response arrived
+ * frees it; one after part of it arrived is settled (declared cost, else the reservation).
  */
 final class MeteredModelCall
 {
@@ -52,9 +54,14 @@ final class MeteredModelCall
             throw new AgentTurnLimitException($this->codeFor($limit->scope));
         }
 
-        // Step 3: the call; without a response there is no cost to charge
+        // Step 3: the call; a failure before any byte of the response charges nothing, one after it
+        // may have been charged: it is settled with the declared cost, or the reservation, and flagged
         try {
-            $result = $this->model->complete($messages, $tools, $run->turn->ai_conversation_id, $settings, $prices, $onText);
+            $result = $this->model->complete($messages, $tools, $run->turn->ai_conversation_id, $settings, $prices, $onText, $this->catalog->supportsReasoning($settings->modelId));
+        } catch (AgentModelException $exception) {
+            $this->settleFailure($run, $settings, $reservation, $exception);
+
+            throw $exception;
         } catch (Throwable $exception) {
             $this->ledger->release($reservation);
 
@@ -71,6 +78,19 @@ final class MeteredModelCall
         }
 
         return $result;
+    }
+
+    private function settleFailure(AgentRun $run, AiEffectiveSettings $settings, AiReservation $reservation, AgentModelException $failure): void
+    {
+        if (! $failure->responseStarted) {
+            $this->ledger->release($reservation);
+
+            return;
+        }
+
+        $usage = AiCallUsage::fromOpenRouter($settings->modelId, null, $failure->rawUsage);
+        $this->ledger->settle($reservation, $usage);
+        $run->addUsage($usage);
     }
 
     private function codeFor(string $scope): AiTurnErrorCode

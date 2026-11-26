@@ -344,6 +344,7 @@
     "The company monthly assistant spending limit has been reached.": "È stato raggiunto il limite di spesa mensile dell'assistente per l'azienda.",
     "Something went wrong. Try again later.": "Qualcosa è andato storto. Riprova più tardi.",
     "The assistant is still working on your previous message.": "L'assistente sta ancora lavorando al tuo messaggio precedente.",
+    "You have too many assistant requests running at once. Wait for one to finish.": "Hai troppe richieste in corso con l'assistente. Attendi che ne finisca una.",
     "The AI assistant is not configured.": "L'assistente AI non è configurato.",
     "Looking for the right operation": "Cerco l'operazione giusta",
     "Reading the records": "Leggo i record",

@@ -35,21 +35,34 @@ final class OpenRouterAgentClient
     }
 
     /**
+     * `reasoning.max_tokens` of a call to a model that reasons: the configured value, always strictly
+     * under `max_tokens` (null when no such value exists).
+     */
+    public static function reasoningMaxTokens(): ?int
+    {
+        $limit = min((int) config('ai-assistant.agent.reasoning_max_tokens'), self::maxTokens() - 1);
+
+        return $limit >= 1 ? $limit : null;
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $messages  system message first
      * @param  list<array<string, mixed>>  $tools  OpenAI function definitions, in a fixed order
      * @param  (callable(string): void)|null  $onText  receives each text fragment as it streams
+     * @param  bool  $limitReasoning  the model declares `reasoning`: its tokens are limited under `max_tokens`
      *
      * @throws AgentModelException
      */
-    public function complete(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices, ?callable $onText = null): AgentModelResult
+    public function complete(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices, ?callable $onText = null, bool $limitReasoning = false): AgentModelResult
     {
         try {
             $response = Http::withHeaders($this->headers())
                 ->withOptions(['stream' => true])
+                ->withoutRedirecting()
                 ->timeout((int) config('ai-assistant.timeout_seconds'))
                 ->connectTimeout((int) config('ai-assistant.connect_timeout_seconds'))
                 ->acceptJson()
-                ->post($this->url(), $this->payload($messages, $tools, $conversationId, $settings, $prices));
+                ->post($this->url(), $this->payload($messages, $tools, $conversationId, $settings, $prices, $limitReasoning));
 
             if (! $response->successful()) {
                 $this->fail(AiTurnErrorCode::ModelUnavailable, 'http_status', ['status' => $response->status()]);
@@ -80,53 +93,65 @@ final class OpenRouterAgentClient
         $model = null;
         $provider = null;
 
-        foreach ($events as $event) {
-            if ($event['data'] === '[DONE]') {
-                break;
-            }
+        $started = false;
 
-            $chunk = $this->decode($event['data']);
-            $model = $chunk['model'] ?? $model;
-            $provider = $chunk['provider'] ?? $provider;
+        try {
+            foreach ($events as $event) {
+                $started = true;
 
-            if (isset($chunk['error'])) {
-                $this->fail(AiTurnErrorCode::StreamError, 'stream_error_chunk', ['code' => $chunk['error']['code'] ?? null]);
-            }
-
-            $choice = $chunk['choices'][0] ?? [];
-            $delta = $choice['delta'] ?? [];
-
-            if (is_string($delta['content'] ?? null) && $delta['content'] !== '') {
-                $text .= $delta['content'];
-                if ($onText !== null) {
-                    $onText($delta['content']);
+                if ($event['data'] === '[DONE]') {
+                    break;
                 }
-            }
 
-            if (is_string($delta['reasoning'] ?? null)) {
-                $reasoning .= $delta['reasoning'];
-            }
+                $chunk = $this->decode($event['data']);
+                $model = $chunk['model'] ?? $model;
+                $provider = $chunk['provider'] ?? $provider;
 
-            // Each object is kept exactly as it arrived and in order: OpenRouter wants the sequence back unchanged.
-            foreach ($delta['reasoning_details'] ?? [] as $detail) {
-                if (is_array($detail)) {
-                    $details[] = $detail;
+                if (is_array($chunk['usage'] ?? null)) {
+                    $usage = $chunk['usage'];
                 }
+
+                if (isset($chunk['error'])) {
+                    $this->fail(AiTurnErrorCode::StreamError, 'stream_error_chunk', ['code' => $chunk['error']['code'] ?? null]);
+                }
+
+                $choice = $chunk['choices'][0] ?? [];
+                $delta = $choice['delta'] ?? [];
+
+                if (is_string($delta['content'] ?? null) && $delta['content'] !== '') {
+                    $text .= $delta['content'];
+                    if ($onText !== null) {
+                        $onText($delta['content']);
+                    }
+                }
+
+                if (is_string($delta['reasoning'] ?? null)) {
+                    $reasoning .= $delta['reasoning'];
+                }
+
+                // Each object is kept exactly as it arrived and in order: OpenRouter wants the sequence back unchanged.
+                foreach ($delta['reasoning_details'] ?? [] as $detail) {
+                    if (is_array($detail)) {
+                        $details[] = $detail;
+                    }
+                }
+
+                foreach ($delta['tool_calls'] ?? [] as $fragment) {
+                    $this->mergeToolCall($calls, $fragment);
+                }
+
+                $finish = $choice['finish_reason'] ?? $finish;
             }
 
-            foreach ($delta['tool_calls'] ?? [] as $fragment) {
-                $this->mergeToolCall($calls, $fragment);
+            if ($finish === null || $finish === 'error') {
+                $this->fail(AiTurnErrorCode::StreamError, $finish === null ? 'truncated_stream' : 'finish_reason_error');
             }
-
-            $finish = $choice['finish_reason'] ?? $finish;
-
-            if (is_array($chunk['usage'] ?? null)) {
-                $usage = $chunk['usage'];
-            }
-        }
-
-        if ($finish === null || $finish === 'error') {
-            $this->fail(AiTurnErrorCode::StreamError, $finish === null ? 'truncated_stream' : 'finish_reason_error');
+        } catch (AgentModelException $exception) {
+            // The reason was already logged; what matters here is whether the provider may have charged the call.
+            throw new AgentModelException($exception->errorCode, $started, $usage ?? []);
+        } catch (Throwable $exception) {
+            // Mid-stream read timeouts surface as plain runtime exceptions of the HTTP stream.
+            $this->fail(AiTurnErrorCode::ModelUnavailable, 'transport', ['exception' => $exception::class], $started, $usage ?? []);
         }
 
         ksort($calls);
@@ -207,7 +232,7 @@ final class OpenRouterAgentClient
      * @param  list<array<string, mixed>>  $tools
      * @return array<string, mixed>
      */
-    private function payload(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices): array
+    private function payload(array $messages, array $tools, int $conversationId, AiEffectiveSettings $settings, AiPriceCeiling $prices, bool $limitReasoning): array
     {
         $payload = [
             'model' => $settings->modelId,
@@ -218,6 +243,11 @@ final class OpenRouterAgentClient
             // The price ceiling that priced the reservation: a dearer endpoint is never used.
             'provider' => $settings->routing + ['max_price' => $prices->maxPrice()],
         ];
+
+        // Only for a model that declares `reasoning`: with `require_parameters` the key would exclude providers otherwise.
+        if ($limitReasoning && self::reasoningMaxTokens() !== null) {
+            $payload['reasoning'] = ['max_tokens' => self::reasoningMaxTokens()];
+        }
 
         if ($tools !== []) {
             $payload['tools'] = $tools;
@@ -231,13 +261,14 @@ final class OpenRouterAgentClient
      * Logs a sanitized reason (never keys, URLs, bodies or user content) and throws.
      *
      * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $rawUsage
      *
      * @throws AgentModelException
      */
-    private function fail(AiTurnErrorCode $code, string $reason, array $context = []): never
+    private function fail(AiTurnErrorCode $code, string $reason, array $context = [], bool $responseStarted = false, array $rawUsage = []): never
     {
         Log::warning('AI agent model call failed', ['reason' => $reason] + $context);
 
-        throw new AgentModelException($code);
+        throw new AgentModelException($code, $responseStarted, $rawUsage);
     }
 }

@@ -112,6 +112,7 @@ export const aiAssistant = {
     notConfigured: 'L\'assistente AI non è configurato. Contatta l\'amministratore.',
     switchedOff: 'L\'assistente AI è stato disattivato. Il messaggio non è stato inviato.',
     busy: 'L\'assistente sta ancora lavorando al messaggio precedente. Attendi la risposta e riprova.',
+    tooManyTurns: 'Hai troppe richieste in corso con l\'assistente. Attendi che ne finisca una e riprova.',
     forbidden: 'Non sei autorizzato a inviare questo messaggio o a menzionare uno dei record scelti.',
     validation: 'Il messaggio non è valido. Controlla testo, file e menzioni.',
     generic: 'Non è stato possibile ottenere una risposta. Il messaggio non è stato inviato: riprova.',

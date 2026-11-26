@@ -20,7 +20,8 @@ use Spatie\Permission\Models\Role;
 */
 
 const AIAPI_OPENROUTER_URL = 'https://openrouter.test/api/v1';
-const AIAPI_CONNECTOR_URL = 'http://connector.test';
+// REQUIREMENT CHANGED (security review): the client refuses http to a host that is not loopback, so the fake connector is https.
+const AIAPI_CONNECTOR_URL = 'https://connector.test';
 const AIAPI_CONNECTOR_SECRET = 'fake-assistant-secret-0123456789abcdef';
 const AIAPI_OPENROUTER_KEY = 'sk-or-fake-key';
 const AIAPI_PREVIEW_ID = 'a81f00112233445566778899';

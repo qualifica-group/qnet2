@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assistente AI, correzioni della revisione di sicurezza del turno (spec 0433) - VERDE, COMMITTATO NEL RAMO `assistente/sicurezza-turno`
+
+- Rete in uscita: `ConnectorClient::request` (tools, call, confirm) e `OpenRouterAgentClient` usano `withoutRedirecting()`: una 3xx non si segue e chiude con l'errore fisso. Il connettore con schema `http` e host non loopback (`127.0.0.1`, `::1`, `localhost`) non riceve ne' segreto ne' credenziale: `connector_unavailable`, log `reason=insecure_url`. REQUIREMENT CHANGED: `AIAPI_CONNECTOR_URL` dei test e' ora `https://connector.test`.
+- Costo di un fallimento: `AgentModelException` porta `responseStarted` e `rawUsage`; `MeteredModelCall::settleFailure` fa `settle()` (costo dichiarato, altrimenti prenotazione, segnale `cost_missing`) se e' arrivato anche un solo evento della risposta, `release()` solo prima. Vale anche per il riassunto (passa da `MeteredModelCall`). REQUIREMENT CHANGED: il test «errore a meta' streaming» di `AiAssistantTurnCostsTest` ora si aspetta la riga di costo.
+- `reasoning.max_tokens`: `OpenRouterCatalog::supportsReasoning` (cache come gli altri elenchi, ignoto = no) decide se la richiesta lo porta; valore `ai-assistant.agent.reasoning_max_tokens` (env `AI_ASSISTANT_AGENT_REASONING_MAX_TOKENS`, 2048), sempre sotto `max_tokens`; la prenotazione resta su `max_tokens`.
+- Costi mai negativi: `AiMoney::fromNonNegative` (null per negativo, non numerico, non finito), usato da `AiCallUsage` e da `priceCeiling` (un endpoint con prezzo `-1` e' escluso).
+- Tetti iniziali: la riga delle impostazioni nasce con `AI_ASSISTANT_DEFAULT_SPEND_CAP_TOTAL_USD` (20) e `..._PERSON_USD` (5); vuoto = nessun tetto. REQUIREMENT CHANGED: `AiEffectiveSettingsTest`.
+- Turni attivi per persona: `ai-assistant.agent.max_active_turns_per_user` (3), contati in `SendAiMessage::persist` con blocco della riga della persona; oltre: 409 `AiTooManyActiveTurnsException`, testo fisso IT/EN (contratto 0433 aggiornato). Il 409 porta `data.reason = too_many_active_turns` e `classifyAiSendError` mostra il testo `aiAssistant.errors.tooManyTurns` (IT/EN); senza reason resta `busy`.
+- Limitatore `api-client`: resta per client (decisione del lead, voce 8 annullata; test `AssistantClientRateLimitTest` prova che la chiave e' per client anche per il client dell'assistente). La quota al minuto del client del connettore e' condivisa da ChatGPT, Claude e l'assistente; se serve si alza dal client API.
+- `.env.example`: tolte le cinque variabili `AI_ASSISTANT_AGENT_*` del routing mai lette; aggiunte tutte le `AI_ASSISTANT_*` e `MCP_LINK_*` lette dalla configurazione.
+- Non verificato: nessuna chiamata reale a OpenRouter (il filtro `supported_parameters=reasoning` di `/models` e il costo dei fallimenti a meta' risposta si misurano dal vivo).
+
 ## Assistente AI, ticket 05 (backend): scritture con anteprima e conferma dal pulsante (spec 0433, D-3, D-17-D-19) - VERDE, COMMITTATO NEL RAMO `assistente/05-scritture-backend`
 
 - `prepare_write` e' il quarto strumento ammesso (`confirm_write` mai). Un risultato valido (`esito` riuscita, `preview_id` di 24 esadecimali, `confermabile` bool, `anteprima` non vuota) porta il turno in `awaiting_confirmation`; altrimenti e' un risultato come gli altri. Le chiamate successive nello stesso giro non partono e alla ripresa ricevono `non_eseguita`.

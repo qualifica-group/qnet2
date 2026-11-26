@@ -23,6 +23,8 @@ class OpenRouterCatalog
 
     private const string TOOLS_PARAMETER = 'tools';
 
+    private const string REASONING_PARAMETER = 'reasoning';
+
     /**
      * Models with tool calling and text-only input and output, sorted by name.
      *
@@ -49,6 +51,30 @@ class OpenRouterCatalog
 
             return $models;
         });
+    }
+
+    /**
+     * Whether the model declares `reasoning` among its supported parameters. Unknown (OpenRouter
+     * down) counts as no: the request then simply carries no reasoning limit.
+     */
+    public function supportsReasoning(string $modelId): bool
+    {
+        try {
+            $ids = $this->cached('reasoning-models', function (): array {
+                $ids = [];
+                foreach ($this->get('/models', ['supported_parameters' => self::REASONING_PARAMETER])['data'] ?? [] as $model) {
+                    if (is_array($model) && is_string($model['id'] ?? null) && in_array(self::REASONING_PARAMETER, $model['supported_parameters'] ?? [], true)) {
+                        $ids[] = $model['id'];
+                    }
+                }
+
+                return $ids;
+            });
+        } catch (OpenRouterCatalogUnavailableException) {
+            return false;
+        }
+
+        return in_array($modelId, $ids, true);
     }
 
     /**
@@ -121,7 +147,8 @@ class OpenRouterCatalog
 
             foreach ($this->get('/models/'.$modelId.'/endpoints')['data']['endpoints'] ?? [] as $endpoint) {
                 $pricing = is_array($endpoint) ? ($endpoint['pricing'] ?? null) : null;
-                if (! is_array($pricing) || ! is_numeric($pricing['prompt'] ?? null) || ! is_numeric($pricing['completion'] ?? null)
+                // A negative price ("-1" on routers with a variable price) cannot bound a cost: the endpoint is left out.
+                if (! is_array($pricing) || AiMoney::fromNonNegative($pricing['prompt'] ?? null) === null || AiMoney::fromNonNegative($pricing['completion'] ?? null) === null
                     || ! in_array(self::TOOLS_PARAMETER, $endpoint['supported_parameters'] ?? [], true)
                     || ($zdrTags !== null && ! in_array($endpoint['tag'] ?? null, $zdrTags, true))) {
                     continue;

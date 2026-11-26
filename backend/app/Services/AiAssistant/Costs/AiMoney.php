@@ -19,6 +19,16 @@ final class AiMoney
             : number_format((float) $value, self::SCALE, '.', '');
     }
 
+    /** Like `from()`, but null for anything that is not a finite number of zero or more (a provider's `-1` or text). */
+    public static function fromNonNegative(mixed $value): ?string
+    {
+        if (! is_numeric($value) || ! is_finite((float) $value) || (float) $value < 0) {
+            return null;
+        }
+
+        return self::from($value);
+    }
+
     public static function add(string $a, string $b): string
     {
         return bcadd($a, $b, self::SCALE);

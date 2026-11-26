@@ -108,6 +108,8 @@ class AiAssistantSettingsService
             'routing_data_collection' => $routing['data_collection'],
             'routing_require_parameters' => $routing['require_parameters'],
             'routing_sort' => $routing['sort'],
+            'spend_cap_total_usd' => config('ai-assistant.settings.default_spend_cap_total_usd'),
+            'spend_cap_person_usd' => config('ai-assistant.settings.default_spend_cap_person_usd'),
         ];
     }
 }
