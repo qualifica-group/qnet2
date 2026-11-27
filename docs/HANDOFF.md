@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dettaglio Commessa come il vecchio QNet: intestazione con stato + menu tre puntini, niente KPI, motivo chiusura facoltativo (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Intestazione (`work-order-detail-header.tsx`): tolti la striscia KPI grigia (avanzamento, data inizio, data richiamo, scadenza contratto: `WorkOrderStatsStrip`/`WorkOrderDetailStats` cancellati, anche dal form di creazione) e il badge Tipo commessa; in alto a destra lo **stato** (fase spec 0395) accanto al menu **tre puntini verticali** senza bordo (`ghost`, `MoreVertical`; deroga voluta a `frontend.md` §9 su richiesta utente).
+- Menu: `work-order-actions-menu.tsx` + `use-work-order-actions-menu.ts` (voci filtrate dai permessi, popup montati fuori dal menu). Ordine: Avanzamento commessa, Copia dati dall'offerta, Richiedi aggiornamento, Richiedi proforma | separatore | Chiusura forzata / Riapri, Elimina. Cancellati `work-order-closure-actions.tsx`, `work-order-delete-action.tsx`, `work-order-copy-quote-attributes-action.tsx` (+ i loro test, confluiti in `work-order-actions-menu.test.tsx`). Helper test: `work-order-actions-menu-test-utils.ts`. i18n: + `workOrders.detail.actionsMenu`; - `detail.startDate/callbackDate/contractExpiryDate`, `form.forceCloseReasonRequired`.
+- Motivo chiusura forzata facoltativo: FormRequest Store/Update `force_close_reason` => `sometimes|nullable|string` (tolto `required_if`); dialog senza `required`, vuoto => null. Spec 0093 AC-030 REQUIREMENT CHANGED (Rev. 2026-11-27).
+- Verifica: Vitest work-orders+help+i18n 99 file / 808 test verdi, ESLint pulito, `tsc -b --force` pulito; Pest `Feature/WorkOrders` 621/626 (i 5 rossi `WorkOrderAttributeLocksTest` e `QuoteLineWorkOrderMigrationTest` falliscono anche da soli, file non toccati: tabelle `product_categories`/colonna `renewal_number` mancanti nello schema di test), `ContractWorkOrderClosureTest` 5/5, Pint pulito.
+- Manuale: guide in-app IT+EN `work-orders.ts` aggiornate; manuale Claude Docs aggiornato (Commessa, azioni, Richiedi aggiornamento, chiusura forzata, Fasi). PDF derivato da rigenerare.
+- Stato in alto: resta in sola lettura (decisione utente 2026-11-27), la fase si muove da sola come da spec 0395.
+
 ## Campi commessa GDPR dall'[OLD] GDPR, collegati come ISO (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO (c74f574d7 + collegamenti offerta), SEEDER LANCIATO SU qnet2 SOLO NELLA PRIMA VERSIONE
 
 - La radice "GDPR" (id 52 in dev) non aveva campi Commessa. Nuovo `QualificaCatalog/GdprWorkOrderCatalogue` (ATTRIBUTES, SECTIONS, LINKS): 11 campi propri `gdpr_onsite_visits`, `gdpr_offsite_visits`, `gdpr_interview_location`/`gdpr_training_location` (enum radio on_site/off_site come ISO), `gdpr_work_hours` (decimal), `gdpr_work_start_date`, `gdpr_work_end_date`, `gdpr_last_call_date`, `gdpr_callback_date`, `gdpr_consultant_notes`, `gdpr_next_consulting_date`; form a 4 sezioni sulla radice, ereditato da GDPR - GDPR e GDPR - Nomina DPO.

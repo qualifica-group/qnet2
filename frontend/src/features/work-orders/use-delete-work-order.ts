@@ -13,7 +13,7 @@ export interface UseDeleteWorkOrderResult {
 }
 
 /**
- * The commessa delete shared by the grid row and the detail header (user
+ * The commessa delete shared by the grid row and the detail actions menu (user
  * request 2026-11-19). A 409 (accounting documents, spec 0243) shows the
  * server's reason; `onDeleted` runs only after a successful delete.
  */

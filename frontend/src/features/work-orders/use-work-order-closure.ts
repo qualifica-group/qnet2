@@ -12,7 +12,7 @@ interface ClosureVariables {
 }
 
 /** "Chiusura forzata" with its reason (D-4/AC-073) and the closed-group status to land on (spec 0324 D-6). */
-export function forceClosePayload(reason: string, statusId: number): ClosureVariables['payload'] {
+export function forceClosePayload(reason: string | null, statusId: number): ClosureVariables['payload'] {
   return { is_force_closed: true, force_close_reason: reason, force_close_status_id: statusId }
 }
 

@@ -1,28 +1,12 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Euro, Hammer, MessageSquareMore, TrendingUp } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
-import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { Hammer } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCardHeader } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
-import { CompletionBar } from '@/components/completion-bar'
-import { Button } from '@/components/ui/button'
-import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
-import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
-import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
-import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
-import { WorkOrderRequestUpdateDialog } from '@/features/work-orders/work-order-request-update-dialog'
-import { WorkOrderCopyQuoteAttributesAction } from '@/features/work-orders/work-order-copy-quote-attributes-action'
-import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
-import { WorkOrderDeleteAction } from '@/features/work-orders/work-order-delete-action'
-import type { WorkOrderDetailWithPermissions, WorkOrderType, WorkOrderWorkPhase } from '@/features/work-orders/types'
-
-/**
- * Identity band and KPI strip of the work order record card, mirroring
- * `OpportunityDetailHeader`/`QuoteDetailHeader`: both read the same handful of
- * top-level fields and are always mounted together.
- */
+import { WorkOrderActionsMenu } from '@/features/work-orders/work-order-actions-menu'
+import type { WorkOrderDetailWithPermissions, WorkOrderWorkPhase } from '@/features/work-orders/types'
 
 /** Badge colour per working phase (spec 0395), the same tokens as the grid's `#[Color]` badges of `WorkOrderWorkPhase`. */
 const STATUS_TONES: Record<WorkOrderWorkPhase, { badge: string; dot: string }> = {
@@ -45,16 +29,6 @@ function WorkOrderStatusBadge({ status }: { status: WorkOrderWorkPhase }) {
   )
 }
 
-/** "Tipo commessa" pill for the record header (D-10). */
-function WorkOrderTypeBadge({ type }: { type: WorkOrderType }) {
-  const { t } = useTranslation()
-  return (
-    <Badge variant="secondary" className={cn(BADGE_BASE, BADGE_COLOR_CLASSES.blue)}>
-      {t(`workOrders.options.type.${type}`)}
-    </Badge>
-  )
-}
-
 /** Spec 0267: marks a work order whose lines come from several offers. */
 function WorkOrderMultiQuoteBadge() {
   const { t } = useTranslation()
@@ -67,21 +41,21 @@ function WorkOrderMultiQuoteBadge() {
 
 interface WorkOrderDetailHeaderProps {
   workOrder: WorkOrderDetailWithPermissions
-  /** After the closure action changed the record (spec 0195 D-7: the host refreshes its lists). */
+  /** After a record action changed the work order (spec 0195 D-7: the host refreshes its lists). */
   onChanged?: () => void
-}
-
-interface WorkOrderDetailHeaderActionsProps extends WorkOrderDetailHeaderProps {
   /** After "Elimina": the host leaves the record. Absent, no delete is offered. */
   onDeleted?: () => void
 }
 
 /**
- * Identity band: monogram, title, the client company as subtitle (user
- * directive 2026-11-18, it replaces the code; the code only when there is no
- * client), status/type pills, the closure action and Elimina (the fields edit in place below).
+ * Identity band of the work order record card: monogram, title, the client
+ * company as subtitle (user directive 2026-11-18, it replaces the code; the
+ * code only when there is no client). Like the legacy "Gestione commessa"
+ * (user directives 2026-11-27): no type pill, no KPI strip, no row of action
+ * buttons; top-right the status pill beside the "..." menu that folds the
+ * record actions (`WorkOrderActionsMenu`). The fields edit in place below.
  */
-export function WorkOrderDetailHeader({ workOrder, onChanged, onDeleted }: WorkOrderDetailHeaderActionsProps) {
+export function WorkOrderDetailHeader({ workOrder, onChanged, onDeleted }: WorkOrderDetailHeaderProps) {
   return (
     <RecordCardHeader
       media={
@@ -90,168 +64,13 @@ export function WorkOrderDetailHeader({ workOrder, onChanged, onDeleted }: WorkO
       title={workOrder.title}
       legacyId={workOrder.old_id}
       subtitle={workOrder.registry?.name ?? workOrder.code}
-      badges={
-        <>
-          <WorkOrderStatusBadge status={workOrder.status.value} />
-          <WorkOrderTypeBadge type={workOrder.type} />
-          {workOrder.is_multi_quote ? <WorkOrderMultiQuoteBadge /> : null}
-        </>
-      }
+      badges={workOrder.is_multi_quote ? <WorkOrderMultiQuoteBadge /> : undefined}
       actions={
         <>
-          <WorkOrderProgressAction workOrder={workOrder} onChanged={onChanged} />
-          <WorkOrderCopyQuoteAttributesAction workOrder={workOrder} onChanged={onChanged} />
-          {workOrder.permissions.actions.request_update ? <WorkOrderRequestUpdateAction workOrder={workOrder} /> : null}
-          {workOrder.permissions.actions.request_proforma ? (
-            <WorkOrderProformaAction workOrder={workOrder} onChanged={onChanged} />
-          ) : null}
-          <WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />
-          {onDeleted ? <WorkOrderDeleteAction workOrder={workOrder} onDeleted={onDeleted} /> : null}
+          <WorkOrderStatusBadge status={workOrder.status.value} />
+          <WorkOrderActionsMenu workOrder={workOrder} onChanged={onChanged} onDeleted={onDeleted} />
         </>
       }
-    />
-  )
-}
-
-/** Spec 0321: the "Avanzamento commessa" action, the same popup the grid row action opens. */
-function WorkOrderProgressAction({ workOrder, onChanged }: WorkOrderDetailHeaderProps) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  return (
-    <>
-      <Button
-        type="button"
-        variant={ACTION_BUTTON_VARIANT.action}
-        className="bg-card"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
-        <TrendingUp aria-hidden="true" />
-        {t('workOrders.progress.action')}
-      </Button>
-      <WorkOrderProgressDialog workOrderId={open ? workOrder.id : null} onOpenChange={setOpen} onMutated={onChanged} />
-    </>
-  )
-}
-
-/** Spec 0352: the "Richiedi aggiornamento" action, the same dialog the grid row action opens. */
-function WorkOrderRequestUpdateAction({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  return (
-    <>
-      <Button
-        type="button"
-        variant={ACTION_BUTTON_VARIANT.action}
-        className="bg-card"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
-        <MessageSquareMore aria-hidden="true" />
-        {t('workOrders.actions.requestUpdate.label')}
-      </Button>
-      <WorkOrderRequestUpdateDialog open={open} onOpenChange={setOpen} workOrder={workOrder} />
-    </>
-  )
-}
-
-/** Ticket #427857: the grid's "€" proforma request, the same dialog, from inside the record. */
-function WorkOrderProformaAction({ workOrder, onChanged }: WorkOrderDetailHeaderProps) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  return (
-    <>
-      <Button
-        type="button"
-        variant={ACTION_BUTTON_VARIANT.action}
-        className="bg-card"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
-        <Euro aria-hidden="true" />
-        {t('proformaRequests.detailAction')}
-      </Button>
-      {open ? (
-        <ProformaRequestDialog
-          workOrderId={workOrder.id}
-          workOrderCode={workOrder.code}
-          open
-          onOpenChange={setOpen}
-          onSent={() => {
-            setOpen(false)
-            onChanged?.()
-          }}
-        />
-      ) : null}
-    </>
-  )
-}
-
-interface WorkOrderStatsStripProps {
-  /** Sum of the manual progress increments (spec 0321); `null` on a work order not created yet. */
-  completionPercentage: number | null
-  /** `Y-m-d` of the latest registration, `null` when none. */
-  completionRecordedOn?: string | null
-  startDate: string | null
-  callbackDate: string | null
-  /** Expiry of the contract reached through the offer (read-only, edited on the contract). */
-  contractExpiryDate: string | null
-}
-
-/** KPI strip: completion, start date, callback date and contract expiry — the detail's, and the create draft's live. */
-export function WorkOrderStatsStrip({
-  completionPercentage,
-  completionRecordedOn = null,
-  startDate,
-  callbackDate,
-  contractExpiryDate,
-}: WorkOrderStatsStripProps) {
-  const { t } = useTranslation()
-
-  return (
-    <RecordStatStrip>
-      <RecordStat
-        label={t('workOrders.columns.completion_percentage')}
-        icon={<CheckCircle2 aria-hidden="true" />}
-        value={
-          completionPercentage === null ? (
-            <DetailEmpty />
-          ) : (
-            <CompletionBar value={completionPercentage} label={t('workOrders.columns.completion_percentage')} />
-          )
-        }
-        hint={completionPercentage !== null ? formatDate(completionRecordedOn) || '—' : undefined}
-      />
-      <RecordStat
-        label={t('workOrders.detail.startDate')}
-        icon={<CalendarDays aria-hidden="true" />}
-        value={formatDate(startDate) || <DetailEmpty />}
-      />
-      <RecordStat
-        label={t('workOrders.detail.callbackDate')}
-        icon={<CalendarClock aria-hidden="true" />}
-        value={formatDate(callbackDate) || <DetailEmpty />}
-      />
-      <RecordStat
-        label={t('workOrders.detail.contractExpiryDate')}
-        icon={<CalendarX aria-hidden="true" />}
-        value={formatDate(contractExpiryDate) || <DetailEmpty />}
-      />
-    </RecordStatStrip>
-  )
-}
-
-export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
-  return (
-    <WorkOrderStatsStrip
-      completionPercentage={workOrder.completion_percentage}
-      completionRecordedOn={workOrder.completion_recorded_on}
-      startDate={workOrder.start_date}
-      callbackDate={workOrder.callback_date}
-      contractExpiryDate={workOrder.contract?.expiry_date ?? null}
     />
   )
 }

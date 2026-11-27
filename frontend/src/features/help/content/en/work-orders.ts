@@ -14,7 +14,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "The work order detail is organised in tabs as in the old QNet. Under the header (title with the client company's name below it, status, indicators) there is a row of tabs: **Info**, **Tasks**, **Documents** (Work order documents and Registry documents), **Administration** (Costs, Active proforma and Passive proforma), **Notes**, then **Chat**, **Email** and **Activity log** where available. Each tab appears only if you may see it; when a group has a single item available, the tab shows that item directly. Tabs behave like pages: entering the work order opens **Info**; reloading the page keeps you on the tab you were on, and a save inside a tab does not bring you back to Info. At the end of the row, set a little apart, is the **work order title**: clicking it takes you back to Info.",
+          text: "The work order detail is organised in tabs as in the old QNet. At the top is the header: the title with the client company's name below it and, on the right, the work order **Status** (for example To plan) beside the **three-dots** button (**Work order actions**), which gathers the work order's actions: **Work order progress**, **Copy data from the offer**, **Request update**, **Request proforma** and, below a separator line, **Force close** (or **Reopen**) and **Delete**; each action shows only if you may use it. Under the header there is a row of tabs: **Info**, **Tasks**, **Documents** (Work order documents and Registry documents), **Administration** (Costs, Active proforma and Passive proforma), **Notes**, then **Chat**, **Email** and **Activity log** where available. Each tab appears only if you may see it; when a group has a single item available, the tab shows that item directly. Tabs behave like pages: entering the work order opens **Info**; reloading the page keeps you on the tab you were on, and a save inside a tab does not bring you back to Info. At the end of the row, set a little apart, is the **work order title**: clicking it takes you back to Info.",
         },
         {
           type: 'paragraph',
@@ -51,7 +51,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer). The **Task template** is changed from the **Tasks** tab (see **Tasks: loading a template**). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer). The **Task template** is changed from the **Tasks** tab (see **Tasks: loading a template**). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry (shown in the table column, edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
           type: 'note',
@@ -73,7 +73,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Tasks and Documents show in the menu only if you can see those tabs, Delete only if you may delete work orders. Force close, Progress, Request update, Request proforma and Activity are no longer row actions: you find them in the work order detail. The progress also opens from the **Progress** cell of the table.",
+          text: "Tasks and Documents show in the menu only if you can see those tabs, Delete only if you may delete work orders. Force close, Progress, Request update, Request proforma and Activity are no longer row actions: you find them in the work order detail, in the three-dots menu at the top. The progress also opens from the **Progress** cell of the table.",
         },
         {
           type: 'paragraph',
@@ -99,7 +99,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** is done from the work order detail (it asks for a reason), not from a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only. The **Title** column filter finds the work orders whose title **contains** the text you type (for example \"safety\"), with no list of values to tick.",
+          text: "**Force closing** is done from the work order detail (with an optional reason), not from a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only. The **Title** column filter finds the work orders whose title **contains** the text you type (for example \"safety\"), with no list of values to tick.",
         },
       ],
     },
@@ -119,7 +119,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. The phase is the work order **Status** (the **Status** column of the table and the badge at the top of the detail), separate from the **Working status** and from progress, and moves on its own as in the old QNet: a new work order is **To plan**; it becomes **In progress** when you add a **Supervisor**; a forced closure moves it to **Completed** (positive closing status) or **Cancelled** (negative); reopening it brings it back to **In progress**, or **To plan** when it has no Supervisors. From the contract: **Cancelled** moves all its work orders to **Cancelled**; **Terminated** moves to **Terminated** only those to plan or in progress, and reactivating the contract puts them back. **All** removes the filter. Every tab except **All** shows how many work orders it holds (only when not zero): the number follows the search and the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters, **Parent category** included: if a work order is missing, check those too.",
+          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. The phase is the work order **Status** (the **Status** column of the table and the badge at the top right of the detail, beside the three dots), separate from the **Working status** and from progress, and moves on its own as in the old QNet: a new work order is **To plan**; it becomes **In progress** when you add a **Supervisor**; a forced closure moves it to **Completed** (positive closing status) or **Cancelled** (negative); reopening it brings it back to **In progress**, or **To plan** when it has no Supervisors. From the contract: **Cancelled** moves all its work orders to **Cancelled**; **Terminated** moves to **Terminated** only those to plan or in progress, and reactivating the contract puts them back. **All** removes the filter. Every tab except **All** shows how many work orders it holds (only when not zero): the number follows the search and the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters, **Parent category** included: if a work order is missing, check those too.",
         },
       ],
     },
@@ -155,15 +155,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The forced closure is an **action**, not a field: you find it at the top of the work order detail. It shows if you may edit the work order or you are one of its **Supervisors** or **Participants**.',
+          text: 'The forced closure is an **action**, not a field: you find it in the **three-dots** menu at the top right of the detail. It shows if you may edit the work order or you are one of its **Supervisors** or **Participants**.',
         },
         {
           type: 'steps',
           items: [
-            'Press **Force close**.',
-            'Write the **reason** (required). If the work order still has open tasks, the dialog tells you how many will be closed with a negative outcome.',
+            'Open the **three dots** and choose **Force close**.',
+            'If you wish, write the **reason** (optional). If the work order still has open tasks, the dialog tells you how many will be closed with a negative outcome.',
             'Pick the **Closing status** (required): the list shows the **Closed (won)** and **Closed (lost)** statuses of the work order\'s set and starts on the main lost one. With a won status the work order progress goes to **100%** (an entry dated today is added, unless it was already at 100%).',
-            'Press **Close work order**: the status becomes Closed, the Processing status becomes the closing status you picked and the reason appears among the work order details.',
+            'Press **Close work order**: the status becomes Closed, the Processing status becomes the closing status you picked and the reason, if written, appears among the work order details.',
           ],
         },
         {
@@ -178,12 +178,12 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Progress is recorded by hand and is the **sum** of the percentages of all the records (in the popup, the Percentage column is the increment of each row). The table's **Progress** column and the indicator at the top of the detail show the total and the date of the latest record; with no records the table cell shows a **+** icon and progress is 0%.",
+          text: "Progress is recorded by hand and is the **sum** of the percentages of all the records (in the popup, the Percentage column is the increment of each row). The table's **Progress** column shows the total and the date of the latest record; with no records the table cell shows a **+** icon and progress is 0%.",
         },
         {
           type: 'steps',
           items: [
-            'Open the **Work order progress list**: click the **Progress** cell of the table, or press **Work order progress** at the top of the work order detail (next to Force close).',
+            'Open the **Work order progress list**: click the **Progress** cell of the table, or, in the work order detail, open the **three dots** and choose **Work order progress**.',
             'The **Total % reached** field shows the sum already recorded. Type the new total (1 to 100) in **Current status %**: it must be greater than the total reached. Enter the **Date** (required).',
             'Press **Confirm**: the record is saved (as the difference from the total) and the popup closes.',
             "To delete a row press the trash in the Actions column, then confirm with the trash or cancel with the X: the total drops by that row's increment.",
@@ -201,7 +201,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the work order detail; it shows only if you hold the **Request updates** permission and only on a **To plan** or **In progress** work order (not on a Completed, Cancelled or Terminated one). The work order is not changed.',
+          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The action is in the **three-dots** menu at the top of the work order detail; it shows only if you hold the **Request updates** permission and only on a **To plan** or **In progress** work order (not on a Completed, Cancelled or Terminated one). The work order is not changed.',
         },
         {
           type: 'table',
@@ -381,7 +381,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When the work order is born from a contract (**Schedule**, batch creation or multi-offer work order), the **Additional information** fields sharing a code with the offer's start already filled; on a multi-offer work order the first non-empty value wins. For existing work orders use **Copy data from the offer** in the header (requires **Edit**): it fills only empty fields, never overwrites, and tells you how many fields it copied.",
+          text: "When the work order is born from a contract (**Schedule**, batch creation or multi-offer work order), the **Additional information** fields sharing a code with the offer's start already filled; on a multi-offer work order the first non-empty value wins. For existing work orders use **Copy data from the offer** in the detail's three-dots menu at the top (requires **Edit**): it fills only empty fields, never overwrites, and tells you how many fields it copied.",
         },
         {
           type: 'paragraph',
@@ -395,7 +395,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'If you can create proforma requests, the **Request proforma** button is at the top of the work order detail, next to **Work order progress**, at the bottom of the **Supervisors and Participants** popup of the Work orders list and in the icon of the table\'s **€** column (see **Table actions**): they all open the same window.',
+          text: 'If you can create proforma requests, **Request proforma** is in the **three-dots** menu at the top of the work order detail, at the bottom of the **Supervisors and Participants** popup of the Work orders list and in the icon of the table\'s **€** column (see **Table actions**): they all open the same window.',
         },
         {
           type: 'steps',
@@ -448,7 +448,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'A work order can be deleted in three ways, all requiring the permission to delete work orders: from the three-dots menu of its row (**Delete**), from the **Delete** button at the top of its detail, or by selecting one or more in the list and using **Delete selected**. You are asked to confirm first; deleted from the detail, you go back to the list. It **cannot be deleted** if it has linked proforma requests, active invoices, purchase orders or purchase invoices: in the detail the Delete button does not show, from the row a message explains why, with Delete selected the message counts it among the ones not deleted. Tasks, hours and manually entered costs do not block deletion.',
+          text: 'A work order can be deleted in three ways, all requiring the permission to delete work orders: from the three-dots menu of its row (**Delete**), from **Delete** in the three-dots menu at the top of its detail, or by selecting one or more in the list and using **Delete selected**. You are asked to confirm first; deleted from the detail, you go back to the list. It **cannot be deleted** if it has linked proforma requests, active invoices, purchase orders or purchase invoices: in the detail the Delete item does not show, from the row a message explains why, with Delete selected the message counts it among the ones not deleted. Tasks, hours and manually entered costs do not block deletion.',
         },
       ],
     },

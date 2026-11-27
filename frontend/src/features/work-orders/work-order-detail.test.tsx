@@ -9,13 +9,18 @@ import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
+import {
+  actionsMenuTrigger,
+  hasWorkOrderAction,
+  selectWorkOrderAction,
+} from '@/features/work-orders/work-order-actions-menu-test-utils'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /**
  * Every render goes through a Router (the card links related records with
  * real `<Link>`s), a query client (the in-place editors share the edit
- * form, spec 0195 applied to Commesse) and the confirm service (the header's
- * "Riapri" action asks first).
+ * form, spec 0195 applied to Commesse) and the confirm service (the actions
+ * menu's "Riapri" asks first).
  */
 function render(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -147,7 +152,7 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByRole('heading', { name: 'Installazione impianto' })).toBeInTheDocument()
-    // Header subtitle/KPI and the in-place "Details" rows both show these.
+    // The header subtitle/badges and the in-place "Details" rows both show these.
     expect(screen.getAllByText('COM-0001').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Processing').length).toBeGreaterThan(0)
     expect(screen.getAllByText('To plan').length).toBeGreaterThan(0)
@@ -218,11 +223,22 @@ describe('WorkOrderDetailView — working phase and completion (spec 0149 AC-014
     expect(screen.getAllByText(label).length).toBeGreaterThan(0)
   })
 
-  it('shows the coloured completion bar with the progress total in the KPI strip', () => {
+  // User directives 2026-11-27, like the legacy: the status sits beside the "..." menu, the type is no header pill.
+  it('puts the status beside the actions menu and shows no type pill in the header', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(actionsMenuTrigger().parentElement).toHaveTextContent('To plan')
+    const band = screen.getByRole('heading', { name: 'Installazione impianto' }).closest('div.border-b')
+    expect(band).not.toBeNull()
+    expect(within(band as HTMLElement).queryByText('Processing')).not.toBeInTheDocument()
+  })
+
+  // REQUIREMENT CHANGED (user directive 2026-11-27, like the legacy): no KPI strip; the completion is in the progress popup.
+  it('shows no KPI strip with the completion bar', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ completion_percentage: 40 })} />)
 
-    expect(screen.getByRole('progressbar', { name: 'Progress' })).toBeInTheDocument()
-    expect(screen.getByText('40%')).toHaveClass('text-warning')
+    expect(screen.queryByRole('progressbar', { name: 'Progress' })).not.toBeInTheDocument()
+    expect(screen.queryByText('40%')).not.toBeInTheDocument()
   })
 })
 
@@ -427,24 +443,13 @@ describe('WorkOrderDetailView — related records', () => {
     expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
   })
 
-  it('shows the contract expiry date read-only in the KPI strip, in place of the contract no.', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-27): the contract expiry left with the KPI strip.
+  it('shows neither the contract expiry nor the contract no.', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
-    expect(screen.getAllByText('Contract expiry')).toHaveLength(1)
-    expect(screen.getByText('Contract expiry').closest('div')).toHaveTextContent(formatDate('2027-03-31'))
-    expect(screen.queryByText('Contract no.')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /contract expiry/i })).not.toBeInTheDocument()
-  })
-
-  it('shows the empty placeholder for the contract expiry when the contract has none', () => {
-    render(
-      <WorkOrderDetailView
-        workOrder={workOrder({ contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale', expiry_date: null } })}
-      />,
-    )
-
-    expect(screen.getByText('Contract expiry')).toBeInTheDocument()
+    expect(screen.queryByText('Contract expiry')).not.toBeInTheDocument()
     expect(screen.queryByText(formatDate('2027-03-31'))).not.toBeInTheDocument()
+    expect(screen.queryByText('Contract no.')).not.toBeInTheDocument()
   })
 
   it('has no client info section when the commessa has no client registry', () => {
@@ -677,24 +682,27 @@ describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', ()
   })
 })
 
-/** Spec 0352 AC-014: the header's "Request update" button follows `permissions.actions.request_update` alone. */
+/**
+ * Spec 0352 AC-014: the "Request update" action follows `permissions.actions.request_update` alone.
+ * REQUIREMENT CHANGED (user directive 2026-11-27): an item of the "..." actions menu, no longer a header button.
+ */
 describe('WorkOrderDetailView — request update action (spec 0352)', () => {
   function withActions(actions: Record<string, boolean>) {
     const base = workOrder()
     return workOrder({ permissions: { ...base.permissions, actions } })
   }
 
-  it('shows the button and opens the dialog with the request_update flag', () => {
+  it('offers the action and opens the dialog with the request_update flag', () => {
     render(<WorkOrderDetailView workOrder={withActions({ request_update: true })} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Request update' }))
+    selectWorkOrderAction('Request update')
 
     expect(screen.getByRole('dialog', { name: 'Request update' })).toBeInTheDocument()
   })
 
-  it('hides the button without the flag', () => {
+  it('hides the action without the flag', () => {
     render(<WorkOrderDetailView workOrder={withActions({ request_update: false })} />)
 
-    expect(screen.queryByRole('button', { name: 'Request update' })).not.toBeInTheDocument()
+    expect(hasWorkOrderAction('Request update')).toBe(false)
   })
 })

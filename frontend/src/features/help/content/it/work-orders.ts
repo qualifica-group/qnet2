@@ -14,7 +14,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. Sotto l'intestazione (titolo con sotto il nome dell'azienda cliente, stato, indicatori) c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
+          text: "Il dettaglio della commessa è organizzato a schede come nel vecchio QNet. In alto c'è l'intestazione: titolo con sotto il nome dell'azienda cliente e, a destra, lo **Stato** della commessa (per esempio In programmazione) accanto al pulsante con i **tre puntini** (**Azioni commessa**), che raccoglie le azioni della commessa: **Avanzamento commessa**, **Copia dati dall'offerta**, **Richiedi aggiornamento**, **Richiedi proforma** e, sotto una riga di separazione, **Chiusura forzata** (o **Riapri**) ed **Elimina**; ogni azione compare solo se hai il permesso di usarla. Sotto l'intestazione c'è una riga di schede: **Info**, **Task**, **Documenti** (Documenti commessa e Documenti anagrafica), **Amministrazione** (Costi, Proforma attiva e Proforma passiva), **Note**, poi **Chat**, **Email** e **Attività** dove previste. Ogni scheda compare solo se hai il permesso di vederla; quando un gruppo ha una sola voce disponibile, la scheda mostra direttamente quella. Le schede si comportano come pagine: entrando nella commessa è attiva **Info**; ricaricando la pagina resti sulla scheda in cui eri, e un salvataggio dentro una scheda non riporta su Info. In fondo alla riga, un po' staccato, c'è il **titolo della commessa**: cliccandolo torni su Info.",
         },
         {
           type: 'paragraph',
@@ -51,7 +51,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata). Il **Modello di Task** si cambia dalla scheda **Task** (vedi **Task: caricare un modello**). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata). Il **Modello di Task** si cambia dalla scheda **Task** (vedi **Task: caricare un modello**). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto (visibile nella colonna della tabella, si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {
           type: 'note',
@@ -73,7 +73,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Task e Documenti compaiono nel menu solo se puoi vedere quelle schede, Elimina solo se hai il permesso di eliminare le commesse. Chiusura forzata, Avanzamento, Richiedi aggiornamento, Richiedi proforma e Attività non sono più azioni di riga: le trovi nel dettaglio della commessa. L'avanzamento si apre anche dalla cella **Avanzamento** della tabella.",
+          text: "Task e Documenti compaiono nel menu solo se puoi vedere quelle schede, Elimina solo se hai il permesso di eliminare le commesse. Chiusura forzata, Avanzamento, Richiedi aggiornamento, Richiedi proforma e Attività non sono più azioni di riga: le trovi nel dettaglio della commessa, nel menu con i tre puntini in alto. L'avanzamento si apre anche dalla cella **Avanzamento** della tabella.",
         },
         {
           type: 'paragraph',
@@ -99,7 +99,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Chiusura forzata** si fa dal dettaglio della commessa (chiede il motivo), non da una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il. Il filtro della colonna **Titolo** cerca le commesse il cui titolo **contiene** il testo scritto (per esempio \"sicurezza\"), senza l'elenco di valori da spuntare.",
+          text: "La **Chiusura forzata** si fa dal dettaglio della commessa (con un motivo facoltativo), non da una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). La colonna **Periodo** indica in quale periodo del contratto è stata programmata la commessa: **Iniziale** o **Rinnovo N** (vedi la guida Contratti, Rinnovare il contratto). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Periodo, Stato, Avanzamento, Creata il e Aggiornata il. Il filtro della colonna **Titolo** cerca le commesse il cui titolo **contiene** il testo scritto (per esempio \"sicurezza\"), senza l'elenco di valori da spuntare.",
         },
       ],
     },
@@ -119,7 +119,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. La fase è lo **Stato** della commessa (colonna **Stato** della tabella e badge in alto nel dettaglio), che come nel vecchio QNet usa parole sue: **In programmazione** (tab Da pianificare), **In lavorazione**, **Chiusa** (tab Concluse), **Annullata**, **Disdetta**. È distinta dallo **Stato lavorazione** e dall'avanzamento, e si muove da sola come nel vecchio QNet: una commessa nuova è **In programmazione**; passa **In lavorazione** quando le aggiungi un **Responsabile**; con la chiusura forzata va in **Concluse** (stato di chiusura positivo) o **Annullate** (negativo); se la riapri torna **In lavorazione**, o **In programmazione** se non ha Responsabili. Dal contratto: **Annullato** porta tutte le sue commesse in **Annullate**; **Disdetto** porta in **Disdette** solo quelle da pianificare o in lavorazione, e riattivando il contratto tornano dov'erano. **Tutte** toglie il filtro. Accanto a ogni tab, tranne **Tutte**, c'è il numero di commesse (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri, compresa la **Categoria madre**: se non vedi una commessa, controlla anche quelli.",
+          text: "In alto a destra nella pagina **Commesse** trovi i tab **Tutte**, **Da pianificare**, **In lavorazione**, **Concluse**, **Annullate** e **Disdette**. La fase è lo **Stato** della commessa (colonna **Stato** della tabella e badge in alto a destra nel dettaglio, accanto ai tre puntini), che come nel vecchio QNet usa parole sue: **In programmazione** (tab Da pianificare), **In lavorazione**, **Chiusa** (tab Concluse), **Annullata**, **Disdetta**. È distinta dallo **Stato lavorazione** e dall'avanzamento, e si muove da sola come nel vecchio QNet: una commessa nuova è **In programmazione**; passa **In lavorazione** quando le aggiungi un **Responsabile**; con la chiusura forzata va in **Concluse** (stato di chiusura positivo) o **Annullate** (negativo); se la riapri torna **In lavorazione**, o **In programmazione** se non ha Responsabili. Dal contratto: **Annullato** porta tutte le sue commesse in **Annullate**; **Disdetto** porta in **Disdette** solo quelle da pianificare o in lavorazione, e riattivando il contratto tornano dov'erano. **Tutte** toglie il filtro. Accanto a ogni tab, tranne **Tutte**, c'è il numero di commesse (solo se diverso da zero): tiene conto di ricerca e filtri attivi, quindi corrisponde a quello che vedi aprendo il tab. Il tab si combina con gli altri filtri, compresa la **Categoria madre**: se non vedi una commessa, controlla anche quelli.",
         },
       ],
     },
@@ -155,15 +155,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa. Compare se puoi modificare la commessa oppure se ne sei **Responsabile** o **Partecipante**.',
+          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi nel menu con i **tre puntini** in alto a destra nel dettaglio. Compare se puoi modificare la commessa oppure se ne sei **Responsabile** o **Partecipante**.',
         },
         {
           type: 'steps',
           items: [
-            'Premi **Chiusura forzata**.',
-            'Scrivi il **motivo** (obbligatorio). Se la commessa ha task ancora aperti, il dialog ti avvisa quanti verranno chiusi con esito negativo.',
+            'Apri i **tre puntini** e scegli **Chiusura forzata**.',
+            'Se vuoi, scrivi il **motivo** (facoltativo). Se la commessa ha task ancora aperti, il dialog ti avvisa quanti verranno chiusi con esito negativo.',
             'Scegli lo **Stato di chiusura** (obbligatorio): l\'elenco mostra gli stati **Chiusa con esito positivo** e **Chiusa con esito negativo** del set della commessa ed è già impostato su quello negativo principale. Con uno stato positivo l\'avanzamento della commessa sale al **100%** (viene aggiunta una registrazione con data di oggi, se non era già al 100%).',
-            'Premi **Chiudi commessa**: lo stato diventa Chiusa, lo Stato lavorazione diventa lo stato di chiusura scelto e il motivo compare tra i dati della commessa.',
+            'Premi **Chiudi commessa**: lo stato diventa Chiusa, lo Stato lavorazione diventa lo stato di chiusura scelto e il motivo, se scritto, compare tra i dati della commessa.',
           ],
         },
         {
@@ -178,12 +178,12 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "L'avanzamento si registra a mano ed è la **somma** delle percentuali di tutte le registrazioni (nel popup, la colonna Percentuale è l'incremento di ogni riga). La colonna **Avanzamento** della tabella e l'indicatore in alto nel dettaglio mostrano il totale e la data dell'ultima registrazione; senza registrazioni la cella della tabella mostra un'icona **+** e l'avanzamento è 0%.",
+          text: "L'avanzamento si registra a mano ed è la **somma** delle percentuali di tutte le registrazioni (nel popup, la colonna Percentuale è l'incremento di ogni riga). La colonna **Avanzamento** della tabella mostra il totale e la data dell'ultima registrazione; senza registrazioni la cella della tabella mostra un'icona **+** e l'avanzamento è 0%.",
         },
         {
           type: 'steps',
           items: [
-            "Apri **Lista avanzamenti commessa**: clicca la cella **Avanzamento** della tabella, oppure premi **Avanzamento commessa** in alto nel dettaglio della commessa (accanto a Chiusura forzata).",
+            "Apri **Lista avanzamenti commessa**: clicca la cella **Avanzamento** della tabella, oppure, nel dettaglio della commessa, apri i **tre puntini** e scegli **Avanzamento commessa**.",
             'Il campo **Totale % raggiunto** mostra la somma già registrata. Scrivi in **% Stato attuale** il nuovo totale (da 1 a 100): deve essere maggiore del totale raggiunto. Indica la **Data** (obbligatoria).',
             'Premi **Conferma**: la registrazione viene salvata (come differenza rispetto al totale) e il popup si chiude.',
             "Per eliminare una riga premi il cestino nella colonna Azioni, poi conferma con il cestino o annulla con la X: il totale scende dell'incremento di quella riga.",
@@ -201,7 +201,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio della commessa; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **In programmazione** o **In lavorazione** (non su una Chiusa, Annullata o Disdetta). La commessa non viene modificata.',
+          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. L\'azione è nel menu con i **tre puntini** in alto nel dettaglio della commessa; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa **In programmazione** o **In lavorazione** (non su una Chiusa, Annullata o Disdetta). La commessa non viene modificata.',
         },
         {
           type: 'table',
@@ -381,7 +381,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Quando la commessa nasce da un contratto (**Programma**, creazione multipla o commessa multi-offerta), le **Informazioni aggiuntive** con lo stesso codice di quelle dell'offerta partono già compilate; nella commessa multi-offerta vale il primo valore non vuoto. Per le commesse esistenti usa **Copia dati dall'offerta** nell'intestazione (serve **Modifica**): riempie solo i campi vuoti, non sovrascrive mai, e ti dice quanti campi ha copiato.",
+          text: "Quando la commessa nasce da un contratto (**Programma**, creazione multipla o commessa multi-offerta), le **Informazioni aggiuntive** con lo stesso codice di quelle dell'offerta partono già compilate; nella commessa multi-offerta vale il primo valore non vuoto. Per le commesse esistenti usa **Copia dati dall'offerta** nel menu con i tre puntini in alto nel dettaglio (serve **Modifica**): riempie solo i campi vuoti, non sovrascrive mai, e ti dice quanti campi ha copiato.",
         },
         {
           type: 'paragraph',
@@ -395,7 +395,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Se hai il permesso di creare richieste proforma, trovi il pulsante **Richiedi proforma** in alto nel dettaglio della commessa, accanto ad **Avanzamento commessa**, in fondo al popup **Responsabili e Partecipanti** dell\'elenco Commesse e nell\'icona della colonna **€** della tabella (vedi **Azioni della tabella**): aprono tutti la stessa finestra.',
+          text: 'Se hai il permesso di creare richieste proforma, trovi **Richiedi proforma** nel menu con i **tre puntini** in alto nel dettaglio della commessa, in fondo al popup **Responsabili e Partecipanti** dell\'elenco Commesse e nell\'icona della colonna **€** della tabella (vedi **Azioni della tabella**): aprono tutti la stessa finestra.',
         },
         {
           type: 'steps',
@@ -448,7 +448,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Una commessa si elimina in tre modi, tutti con il permesso di eliminare le commesse: dal menu con i tre puntini della sua riga (**Elimina**), dal pulsante **Elimina** in alto nel suo dettaglio, oppure selezionandone una o più nell\'elenco e usando **Elimina selezionati**. Prima di eliminare ti viene chiesta una conferma; eliminata dal dettaglio, si torna all\'elenco. **Non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: nel dettaglio il pulsante Elimina non compare, dalla riga compare un messaggio che spiega il motivo, con Elimina selezionati il messaggio la conta tra quelle non eliminate. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
+          text: 'Una commessa si elimina in tre modi, tutti con il permesso di eliminare le commesse: dal menu con i tre puntini della sua riga (**Elimina**), da **Elimina** nel menu con i tre puntini in alto nel suo dettaglio, oppure selezionandone una o più nell\'elenco e usando **Elimina selezionati**. Prima di eliminare ti viene chiesta una conferma; eliminata dal dettaglio, si torna all\'elenco. **Non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: nel dettaglio la voce Elimina non compare, dalla riga compare un messaggio che spiega il motivo, con Elimina selezionati il messaggio la conta tra quelle non eliminate. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
         },
       ],
     },

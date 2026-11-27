@@ -7,6 +7,7 @@ import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
 import { fetchWorkOrderFormContext, updateWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
+import { hasWorkOrderAction, selectWorkOrderAction } from '@/features/work-orders/work-order-actions-menu-test-utils'
 import { OPEN_WORKFLOW_STATUS, WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { FieldPermission } from '@/features/authorization/types'
 import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -15,7 +16,7 @@ import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from 
  * Spec 0195 applied to Commesse (user directive 2026-10-06): no edit page,
  * a pencil per editable row — the flexible fields included, one row each —
  * Save PATCHes that field alone, Cancel restores it without any request; the
- * forced closure is a header action, not a row.
+ * forced closure is a record action (the "..." actions menu), not a row.
  */
 
 vi.mock('@/features/modules/use-module-open-mode', () => ({
@@ -256,12 +257,13 @@ describe('WorkOrderDetailView — flexible fields, one in-place row each', () =>
 })
 
 describe('WorkOrderDetailView — forced closure as an action (user directive 2026-10-06)', () => {
-  it('has no closure row to edit, only the header action', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-27): the action is an item of the "..." actions menu.
+  it('has no closure row to edit, only the menu action', () => {
     renderDetail(workOrder())
 
     expect(queryPencil(label('workOrders.form.isForceClosed'))).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: label('actions.forceClose') })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: label('actions.reopen') })).not.toBeInTheDocument()
+    expect(hasWorkOrderAction(label('actions.forceClose'))).toBe(true)
+    expect(hasWorkOrderAction(label('actions.reopen'))).toBe(false)
   })
 
   it('force-closes with the reason through the dialog, warning about the open tasks', async () => {
@@ -277,7 +279,7 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
     })
     const { onChanged } = renderDetail(record)
 
-    fireEvent.click(screen.getByRole('button', { name: label('actions.forceClose') }))
+    selectWorkOrderAction(label('actions.forceClose'))
     expect(await screen.findByRole('alert')).toHaveTextContent('2 open tasks will be closed with a negative outcome.')
     fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.form.forceCloseReason') }), {
       target: { value: 'Cliente insolvente' },
@@ -306,7 +308,7 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
 
     expect(screen.getByText('Cliente insolvente')).toBeInTheDocument()
     expect(queryPencil(label('workOrders.detail.forceCloseReason'))).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: label('actions.reopen') }))
+    selectWorkOrderAction(label('actions.reopen'))
 
     await waitFor(() =>
       expect(updateWorkOrder).toHaveBeenCalledWith(4, { is_force_closed: false, force_close_reason: null }),

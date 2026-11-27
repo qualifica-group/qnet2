@@ -59,7 +59,7 @@ export function WorkOrderStartDateRow({ form, inline, startDate }: RowProps & { 
   )
 }
 
-/** "Motivo chiusura": only while the closure is forced, written by the header's action, read-only here. */
+/** "Motivo chiusura": only while the closure is forced and a reason was written (the actions menu's "Chiusura forzata"), read-only here. */
 export function WorkOrderForceCloseReasonRow({ reason }: { reason: string | null }) {
   const { t } = useTranslation()
 

@@ -4,7 +4,7 @@ import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
+import { WorkOrderDetailHeader } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
 import { WorkOrderDetailTabs } from '@/features/work-orders/work-order-detail-tabs'
 import { useWorkOrderInlineEdit } from '@/features/work-orders/use-work-order-inline-edit'
@@ -14,7 +14,7 @@ interface WorkOrderDetailViewProps {
   workOrder: WorkOrderDetailWithPermissions
   /** Called after an in-place save, so the host refreshes whatever lists the work order (spec 0195 D-7). */
   onChanged?: () => void
-  /** After "Elimina" in the header: the host leaves the deleted record. */
+  /** After "Elimina" in the actions menu: the host leaves the deleted record. */
   onDeleted?: () => void
   /** The tab to open first outside the work order's page (spec 0405). */
   initialTab?: string
@@ -22,11 +22,12 @@ interface WorkOrderDetailViewProps {
 
 /**
  * Detail of a single work order (AC-075), laid out like the legacy "Gestione
- * commessa" (user directive 2026-11-16): the identity band with its KPI strip
- * on top, then ONE card of tabs (Info | Task | Documenti | Amministrazione |
- * Note | Chat | Email | Attivita', each with its own gate) with the work order
- * title set apart at the end of the strip; a metadata footer last. The Info
- * tab carries the record sections.
+ * commessa" (user directives 2026-11-16, 2026-11-27): the identity band on
+ * top with the "..." menu of the record actions (no KPI strip), then ONE card
+ * of tabs (Info | Task | Documenti | Amministrazione | Note | Chat | Email |
+ * Attivita', each with its own gate) with the work order title set apart at
+ * the end of the strip; a metadata footer last. The Info tab carries the
+ * record sections.
  *
  * There is no edit page (spec 0195 applied to Commesse, user directive
  * 2026-10-06): the sections' fields edit IN PLACE, one at a time
@@ -52,12 +53,7 @@ function WorkOrderDetailContent({ workOrder, onChanged, onDeleted, initialTab }:
   return (
     <RecordCanvas>
       <RecordBody
-        header={
-          <>
-            <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} onDeleted={onDeleted} />
-            <WorkOrderDetailStats workOrder={workOrder} />
-          </>
-        }
+        header={<WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} onDeleted={onDeleted} />}
       />
 
       <WorkOrderDetailTabs

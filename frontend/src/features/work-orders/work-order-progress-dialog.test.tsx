@@ -6,7 +6,8 @@ import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { workOrderDetailQueryKey } from '@/features/work-orders/api'
-import { WorkOrderDetailHeader, WorkOrderStatsStrip } from '@/features/work-orders/work-order-detail-header'
+import { WorkOrderActionsMenu } from '@/features/work-orders/work-order-actions-menu'
+import { selectWorkOrderAction } from '@/features/work-orders/work-order-actions-menu-test-utils'
 import type { WorkOrderDetailWithPermissions, WorkOrderProgressEntry } from '@/features/work-orders/types'
 
 const fetchEntriesMock = vi.fn<(id: number) => Promise<WorkOrderProgressEntry[]>>()
@@ -164,26 +165,8 @@ describe('WorkOrderProgressDialog', () => {
   })
 })
 
-describe('WorkOrderStatsStrip progress KPI', () => {
-  beforeEach(async () => {
-    await i18n.changeLanguage('it')
-  })
-
-  const base = { startDate: '2026-01-01', callbackDate: null, contractExpiryDate: null }
-
-  it('shows the total as text with the date of the latest entry', () => {
-    render(<WorkOrderStatsStrip {...base} completionPercentage={130} completionRecordedOn="2026-10-10" />)
-    expect(screen.getByText('130%')).toBeInTheDocument()
-    expect(screen.getByText('10/10/2026')).toBeInTheDocument()
-  })
-
-  it('shows a dash instead of the date when there is no entry', () => {
-    render(<WorkOrderStatsStrip {...base} completionPercentage={0} completionRecordedOn={null} />)
-    expect(screen.getByText('—', { selector: 'span.truncate' })).toBeInTheDocument()
-  })
-})
-
-describe('WorkOrderDetailHeader progress action', () => {
+// REQUIREMENT CHANGED (user directive 2026-11-27): no KPI strip, the action is an item of the "..." actions menu.
+describe('WorkOrderActionsMenu progress action', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     await i18n.changeLanguage('it')
@@ -191,7 +174,7 @@ describe('WorkOrderDetailHeader progress action', () => {
     fetchWorkOrderMock.mockResolvedValue(detail())
   })
 
-  it('opens the progress popup from the header action, like the grid row action', async () => {
+  it('opens the progress popup from the actions menu, like the grid row action', async () => {
     const workOrder = {
       ...detail(),
       title: 'Commessa',
@@ -205,13 +188,13 @@ describe('WorkOrderDetailHeader progress action', () => {
     render(
       <QueryClientProvider client={client}>
         <ConfirmDialogProvider>
-          <WorkOrderDetailHeader workOrder={workOrder} />
+          <WorkOrderActionsMenu workOrder={workOrder} />
         </ConfirmDialogProvider>
       </QueryClientProvider>,
     )
 
     client.setQueryData(workOrderDetailQueryKey(7), workOrder)
-    fireEvent.click(screen.getByRole('button', { name: 'Avanzamento commessa' }))
+    selectWorkOrderAction('Avanzamento commessa')
 
     expect(await screen.findByRole('dialog', { name: 'Lista avanzamenti commessa n. COM-1' })).toBeInTheDocument()
     await waitFor(() => expect(fetchEntriesMock).toHaveBeenCalledWith(7))

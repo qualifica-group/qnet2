@@ -98,9 +98,9 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * Descrizione), then the flexible fields ("Informazioni aggiuntive"). Not on
  * the commessa: Contesto (Fonte), Buoni, Documento e pagamento, Modello di
  * Task. Everything the offer owns is a read-only projection. Status and
- * completion are computed (spec 0149): they stay the header pill and the KPI
- * strip. The forced closure is an action of the header (user directive
- * 2026-10-06), its reason a read-only row of the data.
+ * completion are computed (spec 0149): the status is the header pill, the
+ * completion the "Avanzamento commessa" popup. The forced closure is a record
+ * action (user directive 2026-10-06), its reason a read-only row of the data.
  */
 export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProps) {
   const { t } = useTranslation()

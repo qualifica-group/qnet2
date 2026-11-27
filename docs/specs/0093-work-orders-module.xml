@@ -82,8 +82,8 @@
     <decision id="D-4">
       "Chiusura forzata" e la coppia `is_force_closed` BOOLEAN default false indicizzato +
       `force_close_reason` TEXT nullable, entrambi in `#[Fillable]` (l'utente li imposta dal
-      form, non sono flag di sistema). `force_close_reason` e OBBLIGATORIO quando
-      `is_force_closed` e true e viene AZZERATO a NULL quando torna false, nello stesso save:
+      form, non sono flag di sistema). `force_close_reason` e facoltativo (Rev. 2026-11-27,
+      prima obbligatorio con `is_force_closed` true) e viene AZZERATO a NULL quando torna false, nello stesso save:
       senza questa regola resta a schermo la motivazione di una chiusura non piu in vigore.
       NON vengono aggiunte le colonne `force_closed_at`/`force_closed_by`: chi e quando lo
       registra gia `LogsModelActivity` (spec 0034), duplicarlo sarebbe stato morto.
@@ -230,7 +230,7 @@
           description?: string|null,
           internal_notes?: string|null,
           is_force_closed?: bool (default false),
-          force_close_reason?: string|null (REQUIRED se is_force_closed true),
+          force_close_reason?: string|null (facoltativo, Rev. 2026-11-27),
           quote_line_ids?: int[] (righe REVENUE del quote_id indicato; default [])
         }
       </request>
@@ -240,8 +240,7 @@
           permissions: &lt;ResourcePermissions&gt; }
       </response>
       <errors>401; 403 senza `work-orders.create`; 422 validazione (inclusi
-        `quote_line_ids` non appartenenti all'offerta o non REVENUE, e
-        `force_close_reason` mancante con chiusura forzata attiva).</errors>
+        `quote_line_ids` non appartenenti all'offerta o non REVENUE).</errors>
     </endpoint>
 
     <endpoint method="GET" path="/api/work-orders/{workOrder}">
@@ -351,7 +350,7 @@
     <criterion id="AC-027">`GET /api/quote-offer-lines/for-select?quote_id=N` restituisce SOLO le righe REVENUE dell'offerta N, ordinate per `sort_order`, con label composta da `product.code` e `product.name`; senza `quote_id` risponde 422.</criterion>
 
     <!-- Chiusura forzata e stato calcolato -->
-    <criterion id="AC-030">POST con `is_force_closed: true` e `force_close_reason` assente/vuoto da 422 sul campo `force_close_reason`.</criterion>
+    <criterion id="AC-030">REQUIREMENT CHANGED (Rev. 2026-11-27, decisione utente): `force_close_reason` e facoltativo anche con `is_force_closed: true`; assente o vuoto si salva null (POST 201, PATCH 200). Prima: 422 sul campo. [Pest: WorkOrderCrudTest]</criterion>
     <criterion id="AC-031">PATCH che porta `is_force_closed` da true a false azzera `force_close_reason` a NULL nello stesso salvataggio (D-4).</criterion>
     <criterion id="AC-032">La Resource di una commessa con `is_force_closed = false` espone `status.value = "open"`; con `is_force_closed = true` espone `"closed"`. Nessuna colonna `status` esiste in tabella DB.</criterion>
     <criterion id="AC-033">POST/PATCH che inviano `status` non lo scrivono e non lo accettano: lo stato non e client-writable (D-3).</criterion>
