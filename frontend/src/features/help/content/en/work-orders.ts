@@ -65,7 +65,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "The **Actions** column of the Work orders list (also in the Work orders sections of a Contract and of a Registry) has the actions of the old QNet: the **eye** opens the work order, **Supervisors and Participants** opens a popup with the people of the work order, **Info** opens the work order on the Info tab. The three-dots menu opens the work order straight on the **Notes history**, **Tasks** or **Documents** tab; at the bottom of the menu there is **Delete** (see **Deleting a work order**).",
+          text: "The **Actions** column of the Work orders list (also in the Work orders sections of a Contract and of a Registry) has the actions of the old QNet: only the **eye**, which opens the work order, and **Supervisors and Participants**, which opens a popup with the people of the work order, stay on the row. Every other action is in the three-dots menu: **Info**, **Notes history**, **Tasks** and **Documents** open the work order in the side panel, straight on that tab, without leaving the list (even if you chose to open records as a full page; Ctrl or Cmd + click opens it in a new browser tab instead); at the bottom of the menu there is **Delete** (see **Deleting a work order**).",
         },
         {
           type: 'paragraph',

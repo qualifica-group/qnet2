@@ -319,9 +319,9 @@ final class WorkOrderColumnCatalog
 
     /**
      * The legacy `OrdersTable` "Azioni" column (spec 0405): the eye (in place
-     * of the legacy "Modifica"), "Responsabili e Partecipanti" and Info on the
-     * row (user directives 2026-11-16), then a menu opening the commessa on its Storico
-     * Note / Task / Documenti tab (`menu`: always in the "..." menu), and
+     * of the legacy "Modifica") and "Responsabili e Partecipanti" on the row,
+     * then a menu opening the commessa on its Info / Storico Note / Task /
+     * Documenti tab (`menu`: always in the "..." menu, user request 2026-11-27), and
      * Elimina last in that menu (user request 2026-11-19, offered per row by
      * WorkOrdersTableDefinition::actionsFor; it also enables the bulk
      * "Elimina selezionati").
@@ -353,6 +353,7 @@ final class WorkOrderColumnCatalog
                 'icon' => 'info',
                 'type' => 'link',
                 'confirm' => false,
+                'menu' => true,
                 'permission' => 'work-orders.view',
             ],
             [

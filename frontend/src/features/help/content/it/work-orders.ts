@@ -65,7 +65,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Nella colonna **Azioni** dell'elenco Commesse (anche nelle sezioni Commesse del Contratto e dell'Anagrafica) trovi le azioni del vecchio QNet: l'**occhio** apre la commessa, **Responsabili e Partecipanti** apre un popup con le persone della commessa, **Info** apre la commessa sulla scheda Info. Il menu con i tre puntini apre la commessa direttamente sulla scheda **Storico Note**, **Task** o **Documenti**; in fondo al menu c'è **Elimina** (vedi **Eliminare una commessa**).",
+          text: "Nella colonna **Azioni** dell'elenco Commesse (anche nelle sezioni Commesse del Contratto e dell'Anagrafica) trovi le azioni del vecchio QNet: sulla riga restano solo l'**occhio**, che apre la commessa, e **Responsabili e Partecipanti**, che apre un popup con le persone della commessa. Tutte le altre azioni sono nel menu con i tre puntini: **Info**, **Storico Note**, **Task** e **Documenti** aprono la commessa nella finestra laterale, direttamente su quella scheda, senza lasciare l'elenco (anche se hai scelto di aprire i record a pagina intera; con Ctrl o Cmd + clic la apri invece in una nuova scheda del browser); in fondo al menu c'è **Elimina** (vedi **Eliminare una commessa**).",
         },
         {
           type: 'paragraph',

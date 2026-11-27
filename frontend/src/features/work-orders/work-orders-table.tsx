@@ -18,7 +18,7 @@ interface WorkOrdersGridProps {
 
 /**
  * The shared body of the work orders pages (spec 0359): the grid with the legacy row actions
- * (Modifica, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
+ * (the eye, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
  * and its dialogs. Permission gating is an affordance only; the backend re-authorizes each call.
  */
 export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false }: WorkOrdersGridProps) {

@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse, azioni di riga: solo occhio e team sulla riga, schede sempre in modale (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO
+
+- Backend: `WorkOrderColumnCatalog::actions()` mette anche `info` nel menu (`'menu' => true`); sulla riga restano `view` e `team`. Test `WorkOrderRowActionsLegacyTest` aggiornato (REQUIREMENT CHANGED: menu = info, notes, delete).
+- Frontend: `useWorkOrderRowActions` usa un secondo `useModuleOpener` con `forceMode: OPEN_MODE_MODAL` per le voci di scheda (`TAB_ACTION_KEYS`: info/notes/tasks/documents): aprono sempre lo Sheet sulla scheda, mai la pagina, qualunque sia la preferenza. L'occhio segue ancora la preferenza (o il `forceMode` del chiamante). `sheet` restituito = i due Sheet insieme. Ctrl/Cmd+clic invariato (pagina sulla scheda in nuova scheda browser).
+- Manuale: guida in-app `work-orders` sezione `row-actions` IT+EN; manuale Claude Docs, paragrafo "Stesso ordine nei moduli commerciali".
+- Verifica: Pest `WorkOrderRowActionsLegacyTest` 5/5, Vitest work-orders/contracts/registries/help verdi, ESLint e `tsc -b --force` puliti.
+
 ## Campi flessibili: modifica di una sezione intera in un popup, Offerte e Commesse (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO
 
 - Solo frontend, nessun endpoint nuovo: la PATCH diff di `buildUpdatePayload` (quote/work-order) manda gia' l'intera mappa `attribute_values` quando cambia un codice, quindi piu' campi salvano in una richiesta.
