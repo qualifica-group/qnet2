@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Campi commessa GDPR dall'[OLD] GDPR, collegati come ISO (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO, SEEDER NON LANCIATO SU qnet2
+
+- La radice "GDPR" (id 52 in dev) non aveva campi Commessa. Nuovo `QualificaCatalog/GdprWorkOrderCatalogue` (ATTRIBUTES, SECTIONS, LINKS): 11 campi propri `gdpr_onsite_visits`, `gdpr_offsite_visits`, `gdpr_interview_location`/`gdpr_training_location` (enum radio on_site/off_site come ISO), `gdpr_work_hours` (decimal), `gdpr_work_start_date`, `gdpr_work_end_date`, `gdpr_last_call_date`, `gdpr_callback_date`, `gdpr_consultant_notes`, `gdpr_next_consulting_date`; form a 4 sezioni sulla radice, ereditato da GDPR - GDPR e GDPR - Nomina DPO.
+- Seeder one-shot `QualificaGdprWorkOrderFieldsSeeder` (`php artisan db:seed --class=QualificaGdprWorkOrderFieldsSeeder --force`): campi + form (non tocca un form gia' configurato) + 8 collegamenti `current_attribute_id` (gdpr_accessi_onsite/offsite, gdp_ore_lavorazione, gdpr_inizio/fine_lavorazione, gdpr_ultima_chiamata, gdpr_richiamo, gdpr_prossima_consulenza). NON collegati: enum `gdpr_intervista`/`gdpr_formazione` (regole 0429), `note_consulente` (gia' collegato a `iso_consultant_notes`). Escluso per scelta `stato_consulenza_9` (Stato Lavorazione: stati di lavorazione, come ISO/SOA). Non e' nel percorso del seed di produzione (`QualificaBranchWorkOrderSeeder` invariato).
+- Logica di collegamento estratta nel trait `Concerns/LinksLegacyAttributes` (usato anche da `QualificaLinkedAttributesSeeder`, comportamento invariato).
+- Verifica: Pest `Seeding/QualificaGdprWorkOrderFieldsSeederTest` 4/4, `tests/Feature/Attributes` + `QualificaGdprCatalogueTest` 120/121 (rosso preesistente `AttributeCurrentAttributeTest` D-1 rollback: migrazioni successive con `dropForeign` su SQLite). Pint pulito. Simulazione su qnet2 in transazione annullata: 11 campi, form ereditato dalle 2 sottocategorie, 8/8 collegamenti, secondo giro senza duplicati.
+- Manuale: Claude Docs, paragrafo dopo la nota sui 41 collegamenti ISO. Guide in-app: nessun impatto.
+
 ## Filtri di colonna: oltre 2000 valori solo "Contiene"/data/numero, niente avviso "solo i primi valori" (richiesta utente 2026-11-27) — VERDE, NON COMMITTATO
 
 - Regola: colonna testo/numero/data con piu' di 2000 valori distinti -> solo filtro a condizione; fino a 2000 -> checklist Excel completa. Colonne set/enum/tags/badge/boolean invariate (sempre checklist).
