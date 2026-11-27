@@ -19,6 +19,9 @@ export const activityLog = {
   emptyFiltered: 'No activity matches the selected filter.',
   loadMore: 'Load more',
   systemCauser: 'System',
+  via: {
+    mcp: 'Made with MCP AI',
+  },
   filter: {
     label: 'Filter by operation type',
     all: 'All',

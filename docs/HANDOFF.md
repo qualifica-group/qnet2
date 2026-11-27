@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dicitura "Fatta con MCP AI" nella Cronologia attivita', spec 0434 (richiesta utente 2026-11-26) — VERDE
+
+- Backend: `EnforceMcpLinkLife` mette l'id del collegamento vivo nell'attributo di richiesta `McpLink::REQUEST_ATTRIBUTE` (`mcp_link_id`); `McpLinksServiceProvider` (ascoltatore `Activity::creating`) lo copia nelle `properties` come `McpLink::ACTIVITY_PROPERTY`. `ActivityLogEntryResource` espone `via`: `'mcp'` | null. Il segno e' il collegamento (abilita' `mcp-link:<id>`), NON `api_client_id`: la chiave del client e il login da client restano `via` null. Nessuna migrazione; righe precedenti senza segno; scritture fuori richiesta (code, comandi) senza segno, come `api_client_id`.
+- Frontend: tipo `ActivityLogVia`, campo `via` in `ActivityLogEntry`; distintivo `Badge outline` con icona `Bot` accanto all'autore in `ActivityLogSection`; i18n `activityLog.via.mcp` ("Fatta con MCP AI" / "Made with MCP AI").
+- Test: Pest `tests/Feature/McpLinks/McpLinkActivityOriginTest.php` (4: creazione e modifica via MCP, app, chiave del client); Vitest `activity-log-section.test.tsx` (fixture con `via: null`, REQUIREMENT CHANGED). Cartelle ActivityLog, McpLinks, ApiClients, UserActivityLog, Impersonation verdi salvo `ApiDocsDescriptionsTest` (rosso PREESISTENTE, 12 operazioni non descritte). ESLint, Pint, `tsc -b --force` puliti.
+- Manuale: guida in-app `general` IT/EN, sezione `activity-history`, aggiornata.
+
 ## Commesse: filtro Titolo "contiene" (2026-11-26) — VERDE, NON COMMITTATO
 
 - `WorkOrderColumnCatalog` colonna `title`: `hasFilterValues => false` -> la griglia usa solo `agTextColumnFilter` (default "contiene"), niente lista a checkbox (richiesta utente).
