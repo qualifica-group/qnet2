@@ -113,7 +113,7 @@ final class AiMentionRegistry
                     'operator' => 'name', 'company' => 'denomination', 'companySite' => 'name', 'operationalSite' => 'alias', 'source' => 'name', 'paymentMethod' => 'name'],
                 [QuotePolicy::VIEW_COSTS_ABILITY => ['cost_net', 'cost_vat', 'margin_net']]),
             new AiMentionDefinition('work-orders', WorkOrder::class, static fn (Model $m): string => self::codeAndTitle($m->code, $m->title),
-                ['code', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason'],
+                ['code', 'title', 'type', 'start_date', 'callback_date', 'description', 'is_force_closed', 'force_close_reason'],
                 ['quote' => ['code', 'title'], 'workOrderWorkflowStatus' => 'name', 'supervisors' => 'name']),
             new AiMentionDefinition('projects', Project::class, static fn (Model $m): string => (string) $m->name,
                 ['code', 'name', 'description', 'start_date', 'end_date', 'total_budget', 'target_lead'],

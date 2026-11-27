@@ -66,7 +66,6 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [],
     description: null,
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: 'QUO-0004',
@@ -157,7 +156,9 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     expect(rightColumn).not.toBe(leftColumn)
     expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
     expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work order progress', 'team'])
-    expect(columnTitles(rightColumn).slice(0, 4)).toEqual([
+    // REQUIREMENT CHANGED (user decision 2026-11-27): the description callout heads the right column.
+    expect(columnTitles(rightColumn).slice(0, 5)).toEqual([
+      'description',
       'company references and business functions',
       'callback date',
       'work order description',
@@ -179,13 +180,23 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     }
   })
 
-  it('moves code, type, callback date and description to the work order description on the right', () => {
+  // REQUIREMENT CHANGED (user decision 2026-11-27): the description is the yellow callout of the right column, no longer a row of the section.
+  it('moves code, type and callback date to the work order description on the right, the description text on top', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ callback_date: '2026-04-10', description: 'Testo libero' })} />)
 
     const description = screen.getByRole('heading', { level: 3, name: /work order description/i }).closest('section') as HTMLElement
     expect(within(description).getByText('COM-0001')).toBeInTheDocument()
     expect(within(description).getByText('Processing')).toBeInTheDocument()
-    expect(within(description).getByText('Testo libero')).toBeInTheDocument()
+    expect(within(description).queryByText('Testo libero')).not.toBeInTheDocument()
+    const callout = screen.getByRole('heading', { level: 3, name: 'Description' }).closest('section') as HTMLElement
+    // User directive 2026-11-27: a long description scrolls past 300px instead of the shared callout's cap.
+    expect(within(callout).getByText('Testo libero')).toHaveClass('max-h-[300px]', 'overflow-y-auto')
+    expect(within(callout).getByText('Testo libero')).not.toHaveClass('max-h-64')
+    // User decision 2026-11-27: the callout heads the right column, above the company references.
+    const company = screen.getByRole('heading', { level: 3, name: 'Company references and business functions' }).closest('section') as HTMLElement
+    expect(callout.parentElement).toBe(company.parentElement)
+    expect(callout.compareDocumentPosition(company) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText('Work order notes')).not.toBeInTheDocument()
     const callback = screen.getByRole('heading', { level: 3, name: /callback date/i }).closest('section') as HTMLElement
     expect(within(callback).getByText('10/04/2026')).toBeInTheDocument()
     // REQUIREMENT CHANGED (user directive 2026-11-16): "Dati commessa" merged into "Dati contrattuali commessa".

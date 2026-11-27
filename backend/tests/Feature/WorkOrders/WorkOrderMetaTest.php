@@ -29,7 +29,7 @@ it('200: field catalogue is in the frozen data_contract order, status is absent 
     // so this expectation is updated to match, not tampered with. Spec 0322
     // appends `work_order_workflow_status_id` last (REQUIREMENT CHANGED).
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['code', 'quote_id', 'title', 'type', 'start_date', 'supervisor_ids', 'participant_slots', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'quote_line_ids', 'attribute_values', 'task_template_id', 'work_order_workflow_status_id'])
+    expect($keys)->toBe(['code', 'quote_id', 'title', 'type', 'start_date', 'supervisor_ids', 'participant_slots', 'callback_date', 'description', 'is_force_closed', 'force_close_reason', 'quote_line_ids', 'attribute_values', 'task_template_id', 'work_order_workflow_status_id'])
         ->and($keys)->not->toContain('status');
 
     $fields = collect($response->json('data.fields'))->keyBy('key');

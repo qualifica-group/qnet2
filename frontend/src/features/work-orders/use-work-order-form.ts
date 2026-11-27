@@ -40,7 +40,6 @@ const SERVER_ERROR_FIELDS = [
   'participant_slots',
   'callback_date',
   'description',
-  'internal_notes',
   'quote_line_ids',
   'task_template_id',
 ] as const
@@ -61,7 +60,6 @@ function editDefaults(workOrder: WorkOrderDetail): WorkOrderFormValues {
     participant_slots: padManagerSlots(managerSlotsFromRefs(workOrder.participants), DEFAULT_PARTICIPANT_SLOTS),
     callback_date: workOrder.callback_date,
     description: workOrder.description,
-    internal_notes: workOrder.internal_notes,
     quote_line_ids: workOrder.quote_lines.map((line) => line.id),
     // Spec 0124 D-9: never resubmitted (`buildUpdatePayload` never reads it,
     // D-5), kept only so the shared shape stays one.
@@ -89,7 +87,6 @@ function createDefaults(initialCode: string | undefined): WorkOrderFormValues {
     participant_slots: Array.from({ length: DEFAULT_PARTICIPANT_SLOTS }, () => null),
     callback_date: null,
     description: null,
-    internal_notes: null,
     quote_line_ids: [],
     task_template_id: null,
     attribute_values: {},

@@ -78,7 +78,6 @@ function workOrder(): WorkOrderDetailWithPermissions {
     supervisors: [],
     participants: [],
     description: 'Descrizione libera',
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: null,

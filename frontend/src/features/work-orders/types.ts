@@ -221,7 +221,6 @@ export interface WorkOrderDetail {
   /** "Partecipanti": the ordered team, gaps preserved via `position`. */
   participants: WorkOrderParticipant[]
   description: string | null
-  internal_notes: string | null
   /** Spec 0267 D-7: true when the lines come from more than one offer (the single-offer fields below are then null). */
   is_multi_quote: boolean
   /** Spec 0267 D-7: always present, one element on a single-offer work order. */
@@ -313,7 +312,6 @@ export interface CreateWorkOrderPayload {
   supervisor_ids: number[]
   callback_date?: string | null
   description?: string | null
-  internal_notes?: string | null
   is_force_closed?: boolean
   force_close_reason?: string | null
   /** Spec 0324 D-6: a `closed`-group status of the resolved set; used only when forcing the closure. */

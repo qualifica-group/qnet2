@@ -69,10 +69,11 @@ if (! function_exists('workOrderComments')) {
     }
 }
 
-it('adds the note as a comment on the commessa and leaves internal_notes alone', function () {
+// REQUIREMENT CHANGED (user decision 2026-11-27): the commessa's free text is `description` (internal_notes merged into it).
+it('adds the note as a comment on the commessa and leaves its description alone', function () {
     $actor = timeEntryCommentActor();
     Sanctum::actingAs($actor);
-    $workOrder = WorkOrder::factory()->create(['internal_notes' => 'Nota manuale']);
+    $workOrder = WorkOrder::factory()->create(['description' => 'Nota manuale']);
 
     $id = $this->postJson('/api/time-entries', timeEntryCommentPayload([
         'work_order_id' => $workOrder->id,
@@ -81,7 +82,7 @@ it('adds the note as a comment on the commessa and leaves internal_notes alone',
 
     $note = Note::query()->sole();
 
-    expect($workOrder->fresh()->internal_notes)->toBe('Nota manuale')
+    expect($workOrder->fresh()->description)->toBe('Nota manuale')
         ->and($note->notable_type)->toBe($workOrder->getMorphClass())
         ->and($note->notable_id)->toBe($workOrder->id)
         ->and($note->body)->toBe('<p>Cliente assente<br>&lt;b&gt;richiamare&lt;/b&gt;</p>')

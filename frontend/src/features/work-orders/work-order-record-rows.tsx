@@ -8,7 +8,6 @@ import {
   WorkOrderCallbackDateField,
   WorkOrderCodeField,
   WorkOrderStartDateField,
-  WorkOrderTextAreaField,
   WorkOrderTitleField,
   WorkOrderTypeField,
 } from '@/features/work-orders/work-order-identity-fields'
@@ -122,23 +121,3 @@ export function WorkOrderCallbackDateRow({ form, inline, callbackDate }: RowProp
   )
 }
 
-/** "Descrizione", capped and scrollable so a long text does not push the rest of the section away. */
-export function WorkOrderDescriptionRow({ form, inline, description }: RowProps & { description: string | null }) {
-  const { t } = useTranslation()
-  const label = t('workOrders.detail.description')
-
-  return (
-    <RecordInlineField
-      field="description"
-      label={label}
-      inline={inline}
-      editor={<WorkOrderTextAreaField control={form.form.control} name="description" label={label} />}
-    >
-      {description ? (
-        <p className="max-h-40 overflow-y-auto break-words whitespace-pre-wrap">{description}</p>
-      ) : (
-        <DetailEmpty />
-      )}
-    </RecordInlineField>
-  )
-}

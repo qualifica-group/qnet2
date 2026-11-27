@@ -31,7 +31,6 @@ class WorkOrderFactory extends Factory
             'start_date' => fake()->date(),
             'callback_date' => fake()->optional()->date(),
             'description' => fake()->optional()->sentence(),
-            'internal_notes' => fake()->optional()->sentence(),
             'is_force_closed' => false,
             'force_close_reason' => null,
             // Spec 0322: a work order lands on the `open` row of the global

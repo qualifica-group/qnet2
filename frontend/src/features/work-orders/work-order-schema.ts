@@ -33,7 +33,6 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
       .max(MAX_MANAGER_SLOTS, t('workOrders.form.participantsMax')),
     callback_date: z.string().nullable(),
     description: z.string().nullable(),
-    internal_notes: z.string().nullable(),
     quote_line_ids: z.array(z.number()),
     // "Modello di Task" (spec 0124 D-9): opzionale, immutabile dopo la
     // creazione (D-5) — resta nella shape CONDIVISA cosi' l'edit form puo'

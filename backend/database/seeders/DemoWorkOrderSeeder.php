@@ -83,7 +83,6 @@ class DemoWorkOrderSeeder extends Seeder
             startDate: $faker->dateTimeBetween('-6 months', '+1 month')->format('Y-m-d'),
             callbackDate: $faker->optional(0.4)->date(),
             description: $faker->optional(0.6)->sentence(12),
-            internalNotes: $faker->optional(0.3)->sentence(8),
             isForceClosed: $isForceClosed,
             forceCloseReason: $isForceClosed ? $faker->sentence(6) : null,
             quoteLineIds: $lineIds,

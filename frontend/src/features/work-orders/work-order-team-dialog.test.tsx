@@ -51,7 +51,6 @@ function workOrder(actions: Record<string, boolean>, update = true): WorkOrderDe
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [{ id: 31, name: 'Bruno Bianchi', position: 1 }],
     description: null,
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: null,

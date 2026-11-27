@@ -392,8 +392,9 @@
       { id:int, quote_id:int (quotation_id), title:string (title; vuoto -> "Commessa {id}"),
         type:("processing"|"project") (tipo_commessa),
         start_date:date (datestart; assente o anno &lt; 2000 -> data di creazione; null solo se manca anche quella),
-        callback_date:?date (recall_date), description:?string,
-        internal_notes:?string (colonna `note`, poi "Data fine (legacy): d/m/Y" da dateend; uniti da una riga vuota),
+        callback_date:?date (recall_date),
+        description:?string (colonna `note`, poi la colonna `description`, poi "Data fine (legacy): d/m/Y" da
+          dateend; uniti da una riga vuota. Rev. 2026-11-27: la commessa di qnet-2 non ha piu `internal_notes`),
         force_close_reason:?string (status 3 "Chiusa (legacy)", 4 "Annullata (legacy)", 5 "Disdetta (legacy)";
           null = aperta, G-10),
         status_label:?string (informativa),

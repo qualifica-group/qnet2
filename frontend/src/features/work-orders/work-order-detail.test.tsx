@@ -26,7 +26,7 @@ vi.mock('@/features/auth/use-abilities', () => ({
 
 /**
  * Spec 0093 AC-075: number, title, type, calculated status, callback date,
- * contract no., linked offer, linked product lines, description and notes
+ * contract no., linked offer, linked product lines, description
  * are all shown; the closure reason only when force-closed.
  */
 
@@ -107,11 +107,11 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     expect(screen.getByText('Installazione')).toBeInTheDocument()
   })
 
-  it('shows description, notes and both timestamps', () => {
+  // REQUIREMENT CHANGED (user decision 2026-11-27): the notes were merged into the description, the yellow callout.
+  it('shows the description and both timestamps', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByText('Descrizione libera')).toBeInTheDocument()
-    expect(screen.getByText('Nota interna')).toBeInTheDocument()
     expect(screen.getByText(formatDateTime('2026-01-01T09:00:00Z'))).toBeInTheDocument()
     expect(screen.getByText(formatDateTime('2026-02-15T14:30:00Z'))).toBeInTheDocument()
   })

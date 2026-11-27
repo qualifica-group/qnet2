@@ -18,9 +18,11 @@ uses(RefreshDatabase::class);
 it('schema: work_orders has every declared column, code unique, quote_id restrictOnDelete (AC-001)', function () {
     // `start_date` (spec 0096, D-1) joins the declared set; the Responsabili
     // live in their own `work_order_supervisor` pivot, not in a column.
-    foreach (['id', 'code', 'quote_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'created_at', 'updated_at'] as $column) {
+    foreach (['id', 'code', 'quote_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'is_force_closed', 'force_close_reason', 'created_at', 'updated_at'] as $column) {
         expect(Schema::hasColumn('work_orders', $column))->toBeTrue("missing column {$column}");
     }
+    // REQUIREMENT CHANGED (user decision 2026-11-27): the notes were merged into `description`.
+    expect(Schema::hasColumn('work_orders', 'internal_notes'))->toBeFalse();
 
     $quote = Quote::factory()->create();
     // REQUIREMENT CHANGED (spec 0322): the "Stato lavorazione" column is NOT NULL.

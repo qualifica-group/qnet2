@@ -69,7 +69,6 @@ class UpdateWorkOrderRequest extends FormRequest
             'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'callback_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'internal_notes' => ['sometimes', 'nullable', 'string'],
             'is_force_closed' => ['sometimes', 'boolean'],
             // Optional even on a forced closure (user directive 2026-11-27,
             // REQUIREMENT CHANGED from AC-030), as in StoreWorkOrderRequest.

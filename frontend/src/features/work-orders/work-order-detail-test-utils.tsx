@@ -45,7 +45,6 @@ export function detailWorkOrder(overrides: Partial<WorkOrderDetailWithPermission
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [{ id: 31, name: 'Bruno Bianchi', position: 1 }],
     description: 'Descrizione libera',
-    internal_notes: 'Nota interna',
     is_multi_quote: false,
     source_quotes: [],
     contract_number: 'QUO-0004',

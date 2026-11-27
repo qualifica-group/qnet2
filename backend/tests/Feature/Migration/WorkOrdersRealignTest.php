@@ -79,7 +79,6 @@ it('AC-002: realigns the scalar fields, sets the legacy updated_at and logs noth
         'start_date' => '2024-07-01',
         'callback_date' => '2024-08-01',
         'description' => 'New description',
-        'internal_notes' => 'New notes',
         'force_close_reason' => 'Cliente rinuncia',
         'updated_at' => '2025-01-10 10:00:00',
     ])]);
@@ -93,7 +92,6 @@ it('AC-002: realigns the scalar fields, sets the legacy updated_at and logs noth
         ->and($workOrder->start_date->toDateString())->toBe('2024-07-01')
         ->and($workOrder->callback_date->toDateString())->toBe('2024-08-01')
         ->and($workOrder->description)->toBe('New description')
-        ->and($workOrder->internal_notes)->toBe('New notes')
         ->and($workOrder->is_force_closed)->toBeTrue()
         ->and($workOrder->force_close_reason)->toBe('Cliente rinuncia')
         ->and($workOrder->code)->toBe('COM-0017')

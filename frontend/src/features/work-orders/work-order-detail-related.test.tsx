@@ -25,7 +25,7 @@ vi.mock('@/features/auth/use-abilities', () => ({
 
 /**
  * Spec 0093 AC-075: number, title, type, calculated status, callback date,
- * contract no., linked offer, linked product lines, description and notes
+ * contract no., linked offer, linked product lines, description
  * are all shown; the closure reason only when force-closed.
  */
 

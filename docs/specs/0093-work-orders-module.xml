@@ -132,6 +132,12 @@
       implicherebbe un promemoria che qui non esiste.
       "Note commessa" = `internal_notes` TEXT nullable, stesso nome usato da `quotes`: `notes`
       confonderebbe con il modulo Note collaborative (spec 0052), che qui NON viene abilitato.
+      REQUIREMENT CHANGED (Rev. 2026-11-27, decisione utente): le Note commessa diventano la
+      "Descrizione". La migration 2026_12_28_100000 sposta `internal_notes` in `description`
+      (con entrambi: prima le note, poi la vecchia descrizione dopo una riga vuota) ed elimina
+      la colonna; il riquadro giallo in cima al dettaglio si chiama Descrizione e scrive
+      `description`, la riga Descrizione della sezione "Descrizione commessa" non c'e piu.
+      `quotes.internal_notes` resta invariato.
     </decision>
     <decision id="D-10">
       "Tipo commessa" = colonna `type` string(16) NOT NULL, cast su nuovo enum
@@ -228,7 +234,6 @@
           type: "processing" | "project" REQUIRED,
           callback_date?: string|null (Y-m-d),
           description?: string|null,
-          internal_notes?: string|null,
           is_force_closed?: bool (default false),
           force_close_reason?: string|null (facoltativo, Rev. 2026-11-27),
           quote_line_ids?: int[] (righe REVENUE del quote_id indicato; default [])
@@ -282,7 +287,6 @@
         force_close_reason: string|null,
         callback_date: "2026-09-30"|null,
         description: string|null,
-        internal_notes: string|null,
         contract_number: "QUO-0001"|null,                              // = quote.code, derivato (D-2)
         quote: { id: int, code: string, title: string }|null,
         quote_lines: [ { id: int, sort_order: int,
@@ -315,7 +319,7 @@
       <response status="200">
         Campi del catalogo permessi di campo, in quest'ordine:
           code (text), quote_id (select), title (text), type (select), callback_date (date),
-          description (textarea), internal_notes (textarea), is_force_closed (select),
+          description (textarea), is_force_closed (select),
           force_close_reason (textarea), quote_line_ids (select)
         Ceiling: `code` e `quote_id` editabili SOLO in create (model === null), altrove readonly.
         `title` e `type` mandatory. `status` NON compare: non e scrivibile (D-3).

@@ -92,7 +92,6 @@ class WorkOrderResource extends JsonResource
             'supervisors' => $this->summarizeUsers($this->supervisors),
             'participants' => $this->summarizeSlots($this->participants),
             'description' => $this->description,
-            'internal_notes' => $this->internal_notes,
             'contract_number' => $this->quote?->code,
             'task_template' => $this->summarizeTaskTemplate(),
             'is_multi_quote' => $this->isMultiQuote(),

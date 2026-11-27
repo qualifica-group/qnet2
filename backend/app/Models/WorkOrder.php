@@ -76,7 +76,6 @@ use Illuminate\Support\Facades\DB;
     'start_date',
     'callback_date',
     'description',
-    'internal_notes',
     'is_force_closed',
     'force_close_reason',
     'task_template_id',

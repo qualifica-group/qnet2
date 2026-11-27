@@ -300,7 +300,6 @@ class DemoCommissionShowcaseSeeder extends Seeder
             startDate: now()->toDateString(),
             callbackDate: null,
             description: null,
-            internalNotes: null,
             isForceClosed: false,
             forceCloseReason: null,
             quoteLineIds: $quote->offerLines()->orderBy('sort_order')->orderBy('id')->pluck('id')->all(),

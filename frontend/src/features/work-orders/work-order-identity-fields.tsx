@@ -138,13 +138,13 @@ export function WorkOrderCallbackDateField({ control }: FieldProps) {
 }
 
 interface TextAreaFieldProps extends FieldProps {
-  name: 'description' | 'internal_notes'
+  name: 'description'
   label: string
   /** The notes callout writes its textarea unstyled (`GENERAL_NOTES_TEXTAREA_CLASS`). */
   className?: string
 }
 
-/** "Descrizione" / "Note interne": free text, an emptied box is `null`. */
+/** "Descrizione": free text, an emptied box is `null`. */
 export function WorkOrderTextAreaField({ control, name, label, className }: TextAreaFieldProps) {
   return (
     <MetaField control={control} name={name} metaKey={name} label={label}>

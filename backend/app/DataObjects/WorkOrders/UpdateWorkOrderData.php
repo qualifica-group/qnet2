@@ -12,7 +12,7 @@ use App\Enums\WorkOrderType;
  * GONE — immutable after create (D-1/D-5, rejected at the FormRequest layer
  * via `prohibited`, never reach this DTO).
  *
- * Nullable columns (`callback_date`/`description`/`internal_notes`/
+ * Nullable columns (`callback_date`/`description`/
  * `force_close_reason`) each carry a `*Submitted` flag so "not submitted"
  * (leave as-is) is distinguishable from "submitted as null" (clear it) —
  * mirrors UpdateUnitOfMeasureData. `quoteLineIds` is null when the key was
@@ -41,8 +41,6 @@ final readonly class UpdateWorkOrderData
         public bool $callbackDateSubmitted = false,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
-        public ?string $internalNotes = null,
-        public bool $internalNotesSubmitted = false,
         public ?bool $isForceClosed = null,
         public ?string $forceCloseReason = null,
         public bool $forceCloseReasonSubmitted = false,
@@ -73,8 +71,6 @@ final readonly class UpdateWorkOrderData
             callbackDateSubmitted: array_key_exists('callback_date', $data),
             description: array_key_exists('description', $data) ? $data['description'] : null,
             descriptionSubmitted: array_key_exists('description', $data),
-            internalNotes: array_key_exists('internal_notes', $data) ? $data['internal_notes'] : null,
-            internalNotesSubmitted: array_key_exists('internal_notes', $data),
             isForceClosed: array_key_exists('is_force_closed', $data) ? (bool) $data['is_force_closed'] : null,
             forceCloseReason: array_key_exists('force_close_reason', $data) ? $data['force_close_reason'] : null,
             forceCloseReasonSubmitted: array_key_exists('force_close_reason', $data),
@@ -122,10 +118,6 @@ final readonly class UpdateWorkOrderData
 
         if ($this->descriptionSubmitted) {
             $attributes['description'] = $this->description;
-        }
-
-        if ($this->internalNotesSubmitted) {
-            $attributes['internal_notes'] = $this->internalNotes;
         }
 
         if ($this->isForceClosed !== null) {

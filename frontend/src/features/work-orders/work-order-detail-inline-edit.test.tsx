@@ -86,7 +86,6 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [{ id: 31, name: 'Bruno Bianchi', position: 3 }],
     description: null,
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: 'QUO-0004',
@@ -201,7 +200,7 @@ describe('WorkOrderDetailView — in-place editing', () => {
       permissions: {
         ...record.permissions,
         fields: Object.fromEntries(
-          ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'supervisor_ids',
+          ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'supervisor_ids',
             'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id'].map((key) => [key, READ_ONLY_FIELD]),
         ),
       },

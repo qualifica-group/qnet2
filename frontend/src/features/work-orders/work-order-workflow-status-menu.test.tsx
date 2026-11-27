@@ -70,7 +70,6 @@ function workOrder(statusPermission: FieldPermission = FIELD_PERMISSION): WorkOr
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [],
     description: null,
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: 'QUO-0004',

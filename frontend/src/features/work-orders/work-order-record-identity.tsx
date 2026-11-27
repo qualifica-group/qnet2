@@ -5,13 +5,13 @@ import { RecordLink } from '@/components/detail/record-link'
 import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { GENERAL_NOTES_TEXTAREA_CLASS } from '@/components/record-form/layout'
 import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
+import { cn } from '@/lib/utils'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import { WorkOrderTaskTemplateField, WorkOrderTextAreaField } from '@/features/work-orders/work-order-identity-fields'
 import {
   WorkOrderCallbackDateRow,
   WorkOrderCodeRow,
-  WorkOrderDescriptionRow,
   WorkOrderForceCloseReasonRow,
   WorkOrderStartDateRow,
   WorkOrderTitleRow,
@@ -27,7 +27,6 @@ export interface WorkOrderIdentityValues {
   type: WorkOrderType
   start_date: string | null
   callback_date: string | null
-  description: string | null
   task_template: RelationFieldRef | null
   /** Set only while the closure is forced: written by the header's action, read-only here. */
   force_close_reason: string | null
@@ -56,7 +55,6 @@ export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIden
         <WorkOrderTypeRow form={form} inline={inline} type={values.type} />
         <WorkOrderStartDateRow form={form} inline={inline} startDate={values.start_date} />
         <WorkOrderCallbackDateRow form={form} inline={inline} callbackDate={values.callback_date} />
-        <WorkOrderDescriptionRow form={form} inline={inline} description={values.description} />
         <RecordInlineField
           field="task_template_id"
           label={t('workOrders.detail.taskTemplate')}
@@ -77,31 +75,40 @@ export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIden
   )
 }
 
-interface WorkOrderInternalNotesRowProps {
-  notes: string | null
+/** User directive 2026-11-27: a long description scrolls past 300px, reading and writing alike. */
+const DESCRIPTION_MAX_HEIGHT_CLASS = 'max-h-[300px] overflow-y-auto'
+
+interface WorkOrderDescriptionCalloutRowProps {
+  description: string | null
   form: WorkOrderFormState
   inline: InlineEdit
   className?: string
 }
 
-/** "Note commessa" across the record's full width, in the request work panel's callout (`NotesCalloutRow`). */
-export function WorkOrderInternalNotesRow({ notes, form, inline, className }: WorkOrderInternalNotesRowProps) {
+/**
+ * "Descrizione" in the request work panel's callout (`NotesCalloutRow`): the
+ * yellow box that was "Note commessa" (user decision 2026-11-27, the notes
+ * were merged into `description`). The detail puts it on top of the right
+ * column, the create form across its full width.
+ */
+export function WorkOrderDescriptionCalloutRow({ description, form, inline, className }: WorkOrderDescriptionCalloutRowProps) {
   const { t } = useTranslation()
-  const label = t('workOrders.detail.internalNotes')
+  const label = t('workOrders.detail.description')
 
   return (
     <NotesCalloutRow
-      field="internal_notes"
+      field="description"
       title={label}
-      notes={notes}
-      placeholder={t('workOrders.detail.internalNotesPlaceholder')}
+      notes={description}
+      placeholder={t('workOrders.detail.descriptionPlaceholder')}
+      textClassName={DESCRIPTION_MAX_HEIGHT_CLASS}
       inline={inline}
       editor={
         <WorkOrderTextAreaField
           control={form.form.control}
-          name="internal_notes"
+          name="description"
           label={label}
-          className={GENERAL_NOTES_TEXTAREA_CLASS}
+          className={cn(GENERAL_NOTES_TEXTAREA_CLASS, DESCRIPTION_MAX_HEIGHT_CLASS)}
         />
       }
       className={className}

@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 /** Commesse with people, phases, payment data, flexible fields and costs (spec 0375 D-11, D-13). */
 final class WorkOrdersTarget extends AbstractSourceRealignTarget
 {
-    private const array COLUMNS = ['title', 'start_date', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason'];
+    private const array COLUMNS = ['title', 'start_date', 'callback_date', 'description', 'is_force_closed', 'force_close_reason'];
 
     public function __construct(MigrationRegistry $registry, private readonly WorkOrderCostRealigner $costs)
     {
