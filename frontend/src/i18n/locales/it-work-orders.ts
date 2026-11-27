@@ -106,7 +106,6 @@ export const workOrders = {
     companySite: 'Sede',
     operationalSite: 'Sede operativa',
     businessFunction: 'Funzione aziendale',
-    amount: 'Importo',
     paymentStatus: 'Stato pagamento',
     forceCloseReason: 'Motivo chiusura',
     description: 'Descrizione',
@@ -124,7 +123,6 @@ export const workOrders = {
       identity: 'Dettagli',
       team: 'Responsabili e partecipanti',
       description: 'Descrizione commessa',
-      detailTeam: 'Team',
       company: 'Riferimenti Società e Funzioni Aziendali',
       closure: 'Chiusura',
     },
@@ -167,7 +165,7 @@ export const workOrders = {
     },
     team: {
       label: 'Responsabili e Partecipanti',
-      description: 'Commessa {{code}}: aggiungi o togli Responsabili e Partecipanti.',
+      description: '{{code}} · {{title}}',
     },
     openTab: {
       info: 'Info',

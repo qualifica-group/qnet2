@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { ClipboardCopy, Euro, Lock, LockOpen, MessageSquareMore, Trash2, TrendingUp, type LucideIcon } from 'lucide-react'
+import { ClipboardCopy, Contact, Euro, Lock, LockOpen, MessageSquareMore, Trash2, TrendingUp, type LucideIcon } from 'lucide-react'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { useDeleteWorkOrder } from '@/features/work-orders/use-delete-work-order'
 import { REOPEN_PAYLOAD, useWorkOrderClosure } from '@/features/work-orders/use-work-order-closure'
@@ -9,7 +9,7 @@ import { useWorkOrderCopyQuoteAttributes } from '@/features/work-orders/use-work
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /** The popups an action of the menu opens; they live outside the menu, which unmounts on close. */
-export type WorkOrderActionDialog = 'progress' | 'requestUpdate' | 'proforma' | 'forceClose'
+export type WorkOrderActionDialog = 'progress' | 'team' | 'requestUpdate' | 'proforma' | 'forceClose'
 
 /** `work`: the day-to-day actions; `closure`: closing, reopening and deleting, set apart below a separator. */
 export type WorkOrderActionSection = 'work' | 'closure'
@@ -94,6 +94,17 @@ export function useWorkOrderActionsMenu({ workOrder, onChanged, onDeleted }: Use
       visible: true,
       disabled: false,
       onSelect: () => setDialog('progress'),
+    },
+    {
+      // The grid's "Responsabili e Partecipanti" popup (spec 0405), in place of the Info "Team" block (user directive 2026-11-27).
+      key: 'team',
+      label: t('workOrders.actions.team.label'),
+      icon: Contact,
+      section: 'work',
+      variant: 'default',
+      visible: true,
+      disabled: false,
+      onSelect: () => setDialog('team'),
     },
     {
       key: 'copyQuoteAttributes',

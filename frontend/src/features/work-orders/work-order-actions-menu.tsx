@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
 import { WorkOrderForceCloseDialog } from '@/features/work-orders/work-order-force-close-dialog'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
+import { WorkOrderTeamDialog } from '@/features/work-orders/work-order-team-dialog'
 import { WorkOrderRequestUpdateDialog } from '@/features/work-orders/work-order-request-update-dialog'
 import { useWorkOrderActionsMenu, type WorkOrderMenuAction } from '@/features/work-orders/use-work-order-actions-menu'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -35,7 +36,7 @@ function MenuItems({ items }: { items: WorkOrderMenuAction[] }) {
 /**
  * The work order's record actions folded into a "..." menu at the top right
  * of the identity band, like the legacy "Gestione commessa" (user directive
- * 2026-11-27): Avanzamento, Copia dati dall'offerta, Richiedi aggiornamento,
+ * 2026-11-27): Avanzamento, Responsabili e Partecipanti, Copia dati dall'offerta, Richiedi aggiornamento,
  * Richiedi proforma, then Chiusura forzata / Riapri and Elimina. The popups
  * are mounted beside the menu, since its content unmounts when it closes.
  */
@@ -73,6 +74,11 @@ export function WorkOrderActionsMenu({ workOrder, onChanged, onDeleted }: WorkOr
 
       <WorkOrderProgressDialog
         workOrderId={dialog === 'progress' ? workOrder.id : null}
+        onOpenChange={handleOpenChange}
+        onMutated={onChanged}
+      />
+      <WorkOrderTeamDialog
+        workOrderId={dialog === 'team' ? workOrder.id : null}
         onOpenChange={handleOpenChange}
         onMutated={onChanged}
       />

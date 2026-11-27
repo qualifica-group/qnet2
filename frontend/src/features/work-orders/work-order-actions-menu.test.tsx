@@ -29,6 +29,11 @@ vi.mock('@/features/work-orders/api', async (importOriginal) => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+vi.mock('@/features/work-orders/work-order-team-dialog', () => ({
+  WorkOrderTeamDialog: ({ workOrderId }: { workOrderId: number | null }) =>
+    workOrderId !== null ? <div role="dialog" aria-label={`team-${workOrderId}`} /> : null,
+}))
+
 const REFUSED = 'The work order cannot be deleted: it has linked accounting documents.'
 
 function conflict(): AxiosError {
@@ -106,6 +111,7 @@ describe('work order actions menu', () => {
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Work order progress',
+      'Supervisors and Participants',
       'Copy data from the offer',
       'Request update',
       'Request proforma',
@@ -113,6 +119,17 @@ describe('work order actions menu', () => {
       'Delete',
     ])
     expect(screen.getByRole('separator')).toBeInTheDocument()
+  })
+})
+
+// User directive 2026-11-27: the Info "Team" block became the grid's "Responsabili e Partecipanti" popup.
+describe('work order actions menu: "Supervisors and Participants"', () => {
+  it('opens the team popup of the grid on this work order, whatever the permissions', () => {
+    renderMenu(workOrder({ canDelete: false, update: false }))
+
+    selectWorkOrderAction('Supervisors and Participants')
+
+    expect(screen.getByRole('dialog', { name: 'team-7' })).toBeInTheDocument()
   })
 })
 

@@ -14,11 +14,9 @@ import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-at
 import { WorkOrderClientInfoSection } from '@/features/work-orders/work-order-client-info-section'
 import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
 import { WorkOrderDescriptionSections } from '@/features/work-orders/work-order-record-description'
-import { WorkOrderAmountRow } from '@/features/work-orders/work-order-amount-row'
 import { WorkOrderDescriptionCalloutRow } from '@/features/work-orders/work-order-record-identity'
 import { WorkOrderProgressSection } from '@/features/work-orders/work-order-progress-section'
 import { WorkOrderForceCloseReasonRow, WorkOrderStartDateRow } from '@/features/work-orders/work-order-record-rows'
-import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -89,11 +87,13 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * The work order's Info tab, laid out as the legacy "Info" tab (user
  * directives 2026-11-16), every user-written field editable in place (spec
  * 0195 applied to Commesse), in two columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
- * (Importo, Data inizio, the link to the Contratto, then
+ * (Data inizio, the link to the Contratto, then
  * each product with its payment fields (spec 0403) and the totals; no title
- * and no commessa-wide payment status, user directive 2026-11-16),
+ * and no commessa-wide payment status, user directive 2026-11-16; no Importo,
+ * user directive 2026-11-27),
  * "Avanzamento commessa" (the "Stato lavorazione" moved to the header, user
- * directive 2026-11-27), "Team". Right: the "Descrizione" callout (user
+ * directive 2026-11-27). The Team block is the "Responsabili e Partecipanti"
+ * action of the "..." menu (user directive 2026-11-27). Right: the "Descrizione" callout (user
  * decision 2026-11-27), "Riferimenti società", "Data richiamo", "Descrizione
  * commessa" (Commessa n., Tipo commessa), then the flexible fields ("Informazioni aggiuntive"). Not on
  * the commessa: Contesto (Fonte), Buoni, Documento e pagamento, Modello di
@@ -116,7 +116,6 @@ export function WorkOrderDetailSections({ workOrder, editor, onChanged }: Detail
           <WorkOrderClientInfoSection registry={workOrder.registry} info={workOrder.client_info} />
         ) : null}
         <WorkOrderContractDataPanel workOrder={workOrder}>
-          <WorkOrderAmountRow amount={workOrder.amount} />
           <WorkOrderStartDateRow form={editor} inline={inline} startDate={workOrder.start_date} />
           {hasSingleQuote ? (
             <LinkedField
@@ -132,13 +131,6 @@ export function WorkOrderDetailSections({ workOrder, editor, onChanged }: Detail
           <WorkOrderForceCloseReasonRow reason={workOrder.is_force_closed ? workOrder.force_close_reason : null} />
         </WorkOrderContractDataPanel>
         <WorkOrderProgressSection workOrder={workOrder} onChanged={onChanged} />
-        <WorkOrderTeamSection
-          title={t('workOrders.detail.sections.detailTeam')}
-          supervisors={workOrder.supervisors}
-          participants={workOrder.participants}
-          form={editor}
-          inline={inline}
-        />
       </div>
       <div className={RECORD_COLUMN_CLASS}>
         {/* User decision 2026-11-27: the description (the yellow callout) heads the right column. */}

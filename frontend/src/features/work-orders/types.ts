@@ -202,11 +202,6 @@ export interface WorkOrderDetail {
   /** The set resolved for THIS work order: the picker never offers anything outside it (422 otherwise). */
   work_order_workflow_statuses: WorkOrderWorkflowStatusRef[]
   /**
-   * Spec 0402: the net amount of the commessa's lines, `null` without
-   * `view_contract_data`. Optional so older fixtures stay valid.
-   */
-  amount?: string | null
-  /**
    * Spec 0146 D-8/AC-023: task of this commessa NOT closed, counted WITHOUT
    * visibility (the actor may not see all of them) — the exact set the
    * force-close side effect would flip to `ClosedNegative`. Drives the

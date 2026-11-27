@@ -111,7 +111,6 @@ describe('WorkOrderDetailView — related records', () => {
     render(
       <WorkOrderDetailView
         workOrder={workOrder({
-          amount: null,
           quote_lines: [
             {
               ...base.quote_lines[0],
@@ -137,16 +136,17 @@ describe('WorkOrderDetailView — related records', () => {
     expect(paymentTerms.map((term) => term.textContent)).toEqual(['Payment statusConsulting', 'Payment statusEnte'])
   })
 
-  it('has neither the work order title nor a work order payment status in the contract data (spec 0403)', () => {
-    render(<WorkOrderDetailView workOrder={workOrder({ amount: '1250.50' })} />)
+  // REQUIREMENT CHANGED (user directive 2026-11-27): no "Importo" row either; the contract data open on Start date.
+  it('has neither the work order title, nor an amount, nor a work order payment status in the contract data (spec 0403)', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     const section = screen.getByRole('heading', { name: 'Work order contract data' }).closest('section') as HTMLElement
     const terms = within(section).getAllByRole('term').map((term) => term.textContent)
-    expect(terms[0]).toBe('Amount')
+    expect(terms[0]).toBe('Start date')
+    expect(terms).not.toContain('Amount')
     expect(within(section).queryByText('Installazione impianto')).not.toBeInTheDocument()
     // The only payment statuses are the two products' own (each label carries the product typology badge).
     expect(terms.filter((term) => term?.startsWith('Payment status'))).toHaveLength(2)
-    expect(within(section).getByText('1,250.50')).toBeInTheDocument()
   })
 
   it("links the client registry reached through the commessa's offer", () => {

@@ -148,6 +148,7 @@ function sectionTitles(): string[] {
 describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
   // REQUIREMENT CHANGED (user directives 2026-11-16): the Info tab follows the legacy "Info" layout.
   // REQUIREMENT CHANGED (user directive 2026-11-27): "Avanzamento commessa" takes the place of "Stato lavorazione".
+  // REQUIREMENT CHANGED (user directive 2026-11-27): "Team" left the Info tab for the "..." menu action.
   it('renders the sections in the legacy order, left then right', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
 
@@ -155,7 +156,7 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     const rightColumn = columnOf(/company references/i)
     expect(rightColumn).not.toBe(leftColumn)
     expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
-    expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work order progress', 'team'])
+    expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work order progress'])
     // REQUIREMENT CHANGED (user decision 2026-11-27): the description callout heads the right column.
     expect(columnTitles(rightColumn).slice(0, 5)).toEqual([
       'description',
@@ -264,7 +265,6 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     for (const dropped of ['context', 'client info', 'company references']) {
       expect(titles).not.toContain(dropped)
     }
-    expect(titles).toContain('team')
   })
 
   it('keeps the company references on the right even without additional information (user directive 2026-11-16)', () => {

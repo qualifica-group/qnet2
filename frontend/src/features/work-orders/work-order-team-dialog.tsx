@@ -17,7 +17,7 @@ import { ResourcePermissionsProvider } from '@/features/authorization/permission
 import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
 import { useWorkOrderInlineEdit } from '@/features/work-orders/use-work-order-inline-edit'
-import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
+import { WorkOrderTeamFields } from '@/features/work-orders/work-order-record-team'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 interface WorkOrderTeamDialogProps {
@@ -28,11 +28,14 @@ interface WorkOrderTeamDialogProps {
   onMutated?: () => void
 }
 
+/** Past this height the people scroll inside the popup; the dialog node itself must never clip (see `DialogContent`). */
+const BODY_SCROLL_CLASS = '-mx-1 max-h-[70vh] overflow-y-auto px-1'
+
 /**
- * "Responsabili e Partecipanti" of the grid row (spec 0405, legacy
- * `orders.responsabili-partecipanti`): the record's own Team block, edited in
- * place with the detail's rules, and the "Richiesta Proforma" button of the
- * legacy modal.
+ * "Responsabili e Partecipanti" (spec 0405, legacy
+ * `orders.responsabili-partecipanti`), the one popup of the grid row and of
+ * the detail's "..." menu: the record's Team rows, edited in place with the
+ * detail's rules, and the "Richiesta Proforma" button of the legacy modal.
  */
 export function WorkOrderTeamDialog({ workOrderId, onOpenChange, onMutated }: WorkOrderTeamDialogProps) {
   return (
@@ -58,11 +61,12 @@ function WorkOrderTeamContent({ workOrderId, onClose, onMutated }: WorkOrderTeam
   })
 
   return (
-    <DialogContent className="sm:max-w-lg">
+    <DialogContent size="sm">
       <DialogHeader>
         <DialogTitle>{t('workOrders.actions.team.label')}</DialogTitle>
-        <DialogDescription>
-          {t('workOrders.actions.team.description', { code: workOrder?.code ?? '' })}
+        {/* The commessa it is about: the same popup opens from rows of any list. */}
+        <DialogDescription className="truncate">
+          {workOrder ? t('workOrders.actions.team.description', { code: workOrder.code, title: workOrder.title }) : null}
         </DialogDescription>
       </DialogHeader>
       {isError ? (
@@ -98,12 +102,14 @@ function WorkOrderTeamBody({ workOrder, onClose, onMutated }: WorkOrderTeamBodyP
     <>
       {/* Provider only (no DOM): the inline editors share the edit form. */}
       <Form {...editor.form}>
-        <WorkOrderTeamSection
-          supervisors={workOrder.supervisors}
-          participants={workOrder.participants}
-          form={editor}
-          inline={editor.inline}
-        />
+        <div className={BODY_SCROLL_CLASS}>
+          <WorkOrderTeamFields
+            supervisors={workOrder.supervisors}
+            participants={workOrder.participants}
+            form={editor}
+            inline={editor.inline}
+          />
+        </div>
       </Form>
       <DialogFooter className="gap-2">
         {workOrder.permissions.actions.request_proforma ? (

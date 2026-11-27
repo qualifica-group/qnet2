@@ -106,7 +106,6 @@ export const workOrders = {
     companySite: 'Site',
     operationalSite: 'Operational site',
     businessFunction: 'Business function',
-    amount: 'Amount',
     paymentStatus: 'Payment status',
     forceCloseReason: 'Force close reason',
     description: 'Description',
@@ -124,7 +123,6 @@ export const workOrders = {
       identity: 'Details',
       team: 'Supervisors and participants',
       description: 'Work order description',
-      detailTeam: 'Team',
       company: 'Company references and business functions',
       closure: 'Closure',
     },
@@ -167,7 +165,7 @@ export const workOrders = {
     },
     team: {
       label: 'Supervisors and Participants',
-      description: 'Work order {{code}}: add or remove Supervisors and Participants.',
+      description: '{{code}} · {{title}}',
     },
     openTab: {
       info: 'Info',

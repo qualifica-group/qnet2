@@ -209,15 +209,6 @@ describe('WorkOrderDetailView — in-place editing', () => {
     expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument()
   })
 
-  it('hydrates the participants editor without compacting a gap', () => {
-    renderDetail(workOrder())
-
-    fireEvent.click(queryPencil(label('workOrders.detail.participants'))!)
-
-    expect(screen.getByText('Participant 1')).toBeInTheDocument()
-    expect(screen.getByText('Participant 3')).toBeInTheDocument()
-  })
-
   it('offers no way to edit the product lines: they are fixed at creation', () => {
     renderDetail(workOrder())
 

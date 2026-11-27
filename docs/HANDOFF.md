@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa: Team nei tre puntini, popup "Responsabili e Partecipanti" migliorato, via l'Importo (richiesta utente 2026-11-27) — VERDE, COMMITTATO
+
+- Solo frontend, contratto API invariato. Info non ha piu' la sezione "Team": il menu tre puntini (`useWorkOrderActionsMenu`, voce `team`, sempre visibile, icona `Contact`, dopo Avanzamento) apre `WorkOrderTeamDialog`, lo STESSO popup dell'azione di riga `team` della tabella (`useWorkOrderRowActions`).
+- `work-order-record-team.tsx`: `WorkOrderTeamFields` (le due righe in-place, con il conteggio "(n)" accanto all'etichetta e "Partecipante n" sulla stessa riga della persona) + `WorkOrderTeamSection` (RecordSection titolata, usata solo dal create form). Prop `title` e chiave i18n `workOrders.detail.sections.detailTeam` rimosse.
+- Popup: niente titolo di sezione doppione, descrizione = `{{code}} · {{title}}` (`workOrders.actions.team.description`), corpo con scroll interno `max-h-[70vh]` (mai overflow sul `DialogContent`), `size="sm"`.
+- "Importo" tolto dai Dati contrattuali commessa: eliminati `work-order-amount-row.tsx`, `amount` dal tipo `WorkOrderDetail`, chiave `workOrders.detail.amount`. Il backend manda ancora `amount` (`WorkOrderResource`, trait `SummarizesWorkOrderPayment`, spec 0402): da togliere solo se nessun client API esterno lo usa (da decidere con l'utente).
+- Test: `work-order-actions-menu`, `work-order-team-dialog` (gap dei partecipanti spostato qui, conteggi, intestazione), `work-order-detail-layout`, `work-order-detail-related`, `work-order-detail-inline-edit`. Guide IT/EN e manuale Claude Docs aggiornati.
+
 ## Commessa: Stato lavorazione nell'intestazione, "Avanzamento commessa" in Info e in Amministrazione (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO (27e0f0869 + seguito)
 
 - Seguito (richiesta utente "deve stare pure nel tab amministrazione": la sotto-scheda in fondo non si notava): in Amministrazione "Avanzamento commessa" non e' piu' una sotto-scheda ma il `footer` del gruppo (`WorkOrderDetailTab.footer`, reso da `WorkOrderDetailSubTabs` sotto la sotto-scheda aperta, come in fondo alla pagina "€" legacy); con una sola sotto-scheda (solo Costi) il footer va sotto il suo contenuto. Test tabs/related riallineati (Costs da solo torna tab "Costs").
