@@ -32,7 +32,7 @@ describe('cash flow api helpers', () => {
       operationalSiteIds: [],
       documentType: 'all',
       horizonMonths: 6,
-      includePersonnel: true, // REQUIREMENT CHANGED (spec 0432)
+      includePersonnel: true, // REQUIREMENT CHANGED (spec 0434)
     })
   })
 

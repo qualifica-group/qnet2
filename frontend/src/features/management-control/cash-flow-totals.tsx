@@ -24,7 +24,7 @@ function tilesOf(data: CashFlow): Tile[] {
   ]
 }
 
-/** Eight KPI tiles (spec 0270, 0432): net backlog, receipts, payments, commitments and estimated personnel outflows of the horizon, balance with and without scenario. */
+/** Eight KPI tiles (spec 0270, 0434): net backlog, receipts, payments, commitments and estimated personnel outflows of the horizon, balance with and without scenario. */
 export function CashFlowTotals({ data }: { data: CashFlow }) {
   const { t } = useTranslation()
 

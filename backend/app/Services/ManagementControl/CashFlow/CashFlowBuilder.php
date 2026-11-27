@@ -35,7 +35,7 @@ final class CashFlowBuilder
      */
     public function handle(CashFlowFilters $filters, string $today): array
     {
-        // Step 1: the four sources (the personnel one is an estimate, spec 0432), by company and expected bucket
+        // Step 1: the four sources (the personnel one is an estimate, spec 0434), by company and expected bucket
         $sources = [
             'receivable' => $this->receivable->cents($filters, $today),
             'payable' => $this->payable->cents($filters, $today),

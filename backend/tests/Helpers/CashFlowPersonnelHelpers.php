@@ -12,7 +12,7 @@ use App\Models\PurchaseInvoiceInstallment;
 use App\Models\User;
 use Carbon\Carbon;
 
-// Synthetic data only (spec 0432): invented people and amounts.
+// Synthetic data only (spec 0434): invented people and amounts.
 
 if (! function_exists('cfpToday')) {
     /** Freezes the day of the snapshot (the cash flow reads "today" from the clock). */

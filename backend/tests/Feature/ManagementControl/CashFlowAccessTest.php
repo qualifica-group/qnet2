@@ -29,7 +29,7 @@ it('AC-002: invalid parameters answer 422', function (array $params) {
     'horizon not a number' => [['horizon_months' => 'six']],
 ]);
 
-// REQUIREMENT CHANGED (spec 0432): applied and the flows carry include_personnel, salaries and f24.
+// REQUIREMENT CHANGED (spec 0434): applied and the flows carry include_personnel, salaries and f24.
 it('AC-002: the defaults and the normalised parameters are echoed in applied', function () {
     Sanctum::actingAs(mcActor());
     $first = Company::factory()->create();

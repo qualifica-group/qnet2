@@ -110,7 +110,7 @@ describe('ManagementControlCashFlowPage', () => {
     renderPage()
 
     const totals = await screen.findByRole('region', { name: 'Cash flow totals' })
-    expect(within(totals).getAllByRole('term')).toHaveLength(8) // REQUIREMENT CHANGED (spec 0432): salaries and F24 tiles
+    expect(within(totals).getAllByRole('term')).toHaveLength(8) // REQUIREMENT CHANGED (spec 0434): salaries and F24 tiles
     const expected: [string, number][] = [
       ['Net backlog', 200],
       ['Receipts in the horizon', 1600],

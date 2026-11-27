@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
-// Spec 0432, AC-001..AC-004 — the personnel outflows estimated from the last imported month.
+// Spec 0434, AC-001..AC-004 — the personnel outflows estimated from the last imported month.
 uses(RefreshDatabase::class);
 
 beforeEach(function () {

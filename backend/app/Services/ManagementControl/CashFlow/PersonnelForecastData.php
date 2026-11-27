@@ -9,7 +9,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The imported personnel data the forecast starts from (spec 0432, D-2): a
+ * The imported personnel data the forecast starts from (spec 0434, D-2): a
  * constant number of aggregate queries, never one per person. Rows are keyed
  * "companyId:userId"; amounts are integer cents; periods are "YYYY-MM".
  */

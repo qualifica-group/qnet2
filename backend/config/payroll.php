@@ -41,7 +41,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Personnel cash flow forecast (spec 0432, D-2..D-4)
+    | Personnel cash flow forecast (spec 0434, D-2..D-4)
     |--------------------------------------------------------------------------
     |
     | The regular payslip type that carries the monthly net, the default payment

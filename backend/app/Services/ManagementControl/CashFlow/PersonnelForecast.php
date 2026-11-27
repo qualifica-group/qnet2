@@ -8,7 +8,7 @@ use App\DataObjects\ManagementControl\CashFlowFilters;
 use Carbon\CarbonImmutable;
 
 /**
- * Estimated outflows for the personnel (spec 0432): net salaries (thirteenth
+ * Estimated outflows for the personnel (spec 0434): net salaries (thirteenth
  * and fourteenth included) and F24, projected from the last month with costs
  * and nets imported. Estimates dated before today are omitted and the
  * projection runs one month past the horizon, so that "beyond" has a content.

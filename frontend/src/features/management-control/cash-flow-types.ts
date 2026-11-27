@@ -8,7 +8,7 @@ export type CashFlowHorizon = (typeof CASH_FLOW_HORIZONS)[number]
 
 /**
  * Amounts on the document total; `net` = receivable - payable - committed - salaries - f24.
- * `salaries` and `f24` are estimated personnel outflows (spec 0432), zero when excluded.
+ * `salaries` and `f24` are estimated personnel outflows (spec 0434), zero when excluded.
  */
 export interface Flow {
   receivable: number

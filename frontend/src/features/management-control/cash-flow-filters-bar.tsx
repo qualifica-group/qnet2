@@ -12,7 +12,7 @@ interface CashFlowFiltersBarProps {
   onChange: (filters: CashFlowFilters) => void
 }
 
-/** Filters of the cash flow page (spec 0270): scope, document type, horizon and personnel estimate (spec 0432). There is no period: the forecast starts today. */
+/** Filters of the cash flow page (spec 0270): scope, document type, horizon and personnel estimate (spec 0434). There is no period: the forecast starts today. */
 export function CashFlowFiltersBar({ filters, onChange }: CashFlowFiltersBarProps) {
   const { t } = useTranslation()
   const horizonId = useId()

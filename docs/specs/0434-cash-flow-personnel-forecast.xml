@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Spec 0432 - Previsione delle uscite per il personale nel Cash flow previsionale (fase 3 degli statini paga).
+  Spec 0434 - Previsione delle uscite per il personale nel Cash flow previsionale (fase 3 degli statini paga).
   Stima di stipendi netti, tredicesima, quattordicesima e F24 dei mesi futuri dai file importati (spec 0430, 0431).
 -->
-<spec id="0432-cash-flow-personnel-forecast" status="draft" owner="utente" date="2026-11-27">
+<spec id="0434-cash-flow-personnel-forecast" status="draft" owner="utente" date="2026-11-27">
 
   <goal>
     Il Cash flow previsionale mostra anche le uscite future per il personale, stimate dall'ultimo mese con costi e

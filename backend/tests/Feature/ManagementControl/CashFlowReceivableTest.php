@@ -38,7 +38,7 @@ it('AC-003: a partially collected installment counts only its residual', functio
     expect(array_sum(array_column($data['months'], 'receivable')) + $data['beyond']['receivable'])->toEqual(60);
 });
 
-// REQUIREMENT CHANGED (spec 0432): the flows carry salaries and f24.
+// REQUIREMENT CHANGED (spec 0434): the flows carry salaries and f24.
 it('AC-005: net is receivable minus payable minus committed and the cumulative skips the backlog', function () {
     mcReceivable([['due' => -2, 'amount' => '500.00'], ['due' => 0, 'amount' => '100.00'], ['due' => mcMonthDue(1), 'amount' => '300.00']]);
     mcPayable([['due' => -2, 'amount' => '70.00'], ['due' => 0, 'amount' => '30.00'], ['due' => mcMonthDue(2), 'amount' => '50.00']]);

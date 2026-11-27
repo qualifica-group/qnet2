@@ -7,7 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
-// Spec 0432, AC-005 and AC-006 — companies, filters, switch, rounding and query count.
+// Spec 0434, AC-005 and AC-006 — companies, filters, switch, rounding and query count.
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
