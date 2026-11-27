@@ -98,6 +98,50 @@ export const documentRequests = {
     rejectQueued: 'Rejection queued.',
     rejectError: 'Could not reject the item.',
   },
+  rules: {
+    refresh: 'Refresh rules from the checklist',
+    refreshTitle: 'Refresh the rules of the request?',
+    refreshDescription:
+      'The request will take the current rules of the checklist "{{name}}" (description, formats, size, validation prompt and rules). Name, required flag and number of files of the items do not change, and the outcomes already given stay until you revalidate the item.',
+    refreshQueued: 'Rules refresh queued.',
+    refreshError: 'Could not refresh the rules of the request.',
+    keep: 'Cancel',
+    changedItems_one: '{{count}} item with new rules has an outcome to review.',
+    changedItems_other: '{{count}} items with new rules have an outcome to review.',
+    revalidateAll: 'Revalidate changed items',
+    revalidateAllTitle: 'Revalidate the changed items?',
+    revalidateAllDescription_one:
+      'The item {{names}} will be validated again by the AI with the new rules. Every revalidation is a call to the AI model.',
+    revalidateAllDescription_other:
+      'The {{count}} items ({{names}}) will be validated again by the AI with the new rules. Every revalidation is a call to the AI model.',
+    revalidate: 'Revalidate with AI',
+    revalidateTitle: 'Revalidate the item?',
+    revalidateDescription: 'The files of the item "{{name}}" will be validated again by the AI with the current rules.',
+    revalidateManualDescription:
+      'The files of the item "{{name}}" will be validated again by the AI with the current rules: the decision taken by hand on the item will be lost.',
+    revalidateQueued: 'Revalidation queued.',
+    revalidateError: 'Could not revalidate the item.',
+    stop: 'Stop validation',
+    stopTitle: 'Stop the validation?',
+    stopDescription:
+      'The files of the item "{{name}}" waiting for the AI go to manual review: you can then approve or reject it.',
+    stopQueued: 'Validation stop queued.',
+    stopError: 'Could not stop the validation.',
+  },
+  openRequests: {
+    title: 'Refresh the open requests?',
+    description_one:
+      'There is {{count}} open request created with this checklist. The changes apply to new requests; you can also bring them into the open one.',
+    description_other:
+      'There are {{count}} open requests created with this checklist. The changes apply to new requests; you can also bring them into the open ones.',
+    waiting: 'Sending the checklist to ArchivioSmart…',
+    syncFailed: 'The checklist could not be sent to ArchivioSmart: the open requests cannot be refreshed.',
+    onlyNew: 'Only for new requests',
+    refresh: 'Refresh rules of open requests',
+    queued_one: 'Refresh queued for {{count}} request.',
+    queued_other: 'Refresh queued for {{count}} requests.',
+    error: 'Could not refresh the open requests.',
+  },
   create: {
     open: 'Request documents',
     title: 'Request documents',
@@ -163,6 +207,9 @@ export const documentRequests = {
       approve: 'Item approval',
       reject: 'Item rejection',
       complete: 'Closing',
+      refresh_rules: 'Rules refresh',
+      revalidate: 'Item revalidation',
+      stop_validation: 'Validation stop',
     },
     outcome: {
       success: 'Succeeded',

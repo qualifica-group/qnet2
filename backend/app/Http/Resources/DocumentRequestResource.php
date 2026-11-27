@@ -50,6 +50,7 @@ class DocumentRequestResource extends JsonResource
                 $snapshot['sections'] ?? [],
             ),
             'items' => array_map($this->item(...), $snapshot['items'] ?? []),
+            'rules_updated_item_ids' => array_values($this->rules_updated_item_ids ?? []),
             'sent_at' => $this->sent_at,
             'last_reminded_at' => $this->last_reminded_at,
             'completed_at' => $this->completed_at,
@@ -67,6 +68,7 @@ class DocumentRequestResource extends JsonResource
                 'cancel' => $canUpdate && ! $this->isClosed(),
                 'review' => $canReview && $this->isReviewable(),
                 'complete' => $canUpdate && $this->isReviewable(),
+                'refresh_rules' => $canUpdate && $this->acceptsRulesRefresh(),
             ],
         ];
     }

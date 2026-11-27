@@ -5,6 +5,12 @@ const REMINDABLE_STATUSES: readonly DocumentRequestStatus[] = ['sent', 'in_progr
 
 const APPROVED_ITEM_STATUSES: readonly string[] = ['ok', 'approved_manually']
 const REJECTED_ITEM_STATUSES: readonly string[] = ['ko', 'rejected_manually']
+/** A file still waiting for the AI: its validation can be stopped (spec 0432). */
+const VALIDATING_ITEM_STATUSES: readonly string[] = ['uploaded', 'validating']
+/** A decision by hand, dropped by a new AI validation. */
+const MANUAL_ITEM_STATUSES: readonly string[] = ['approved_manually', 'rejected_manually']
+/** Outcomes worth a new AI validation after the rules changed. */
+const REVALIDATION_ITEM_STATUSES: readonly string[] = ['ko', 'review']
 
 /** Poll period while a call to ArchivioSmart is still queued. */
 export const PENDING_DELIVERY_REFETCH_MS = 5000
@@ -27,16 +33,38 @@ export function requestActions(request: DocumentRequest) {
     cancel: request.permissions.cancel && isOpen(request),
     refresh: request.permissions.update && !neverReachedArchivioSmart(request),
     complete: request.permissions.complete,
+    refreshRules: request.permissions.refresh_rules,
   }
 }
 
-/** Approve is offered unless the item is already approved; reject unless already rejected (spec 0429 AC-011). */
+/**
+ * Approve is offered unless the item is already approved; reject unless already rejected (spec 0429 AC-011).
+ * Revalidate needs a file; stopping the validation needs a file still waiting for the AI (spec 0432).
+ */
 export function itemReviewActions(request: DocumentRequest, item: DocumentRequestItem) {
   const reviewable = request.permissions.review && item.current_document_id !== null
   return {
     approve: reviewable && !APPROVED_ITEM_STATUSES.includes(item.status),
     reject: reviewable && !REJECTED_ITEM_STATUSES.includes(item.status),
+    revalidate: request.permissions.review && item.documents_count > 0,
+    stopValidation: request.permissions.review && VALIDATING_ITEM_STATUSES.includes(item.status),
   }
+}
+
+/** True when a new AI validation drops a decision taken by hand on the item. */
+export function hasManualDecision(item: DocumentRequestItem): boolean {
+  return MANUAL_ITEM_STATUSES.includes(item.status)
+}
+
+/** Items changed by the last rules refresh that hold files rejected or to review: the ones to validate again. */
+export function itemsToRevalidate(request: DocumentRequest): DocumentRequestItem[] {
+  if (!request.permissions.review) {
+    return []
+  }
+  const changed = new Set(request.rules_updated_item_ids)
+  return request.items.filter(
+    (item) => changed.has(Number(item.id)) && item.documents_count > 0 && REVALIDATION_ITEM_STATUSES.includes(item.status),
+  )
 }
 
 export function hasPendingDelivery(requests: readonly DocumentRequest[] | undefined): boolean {

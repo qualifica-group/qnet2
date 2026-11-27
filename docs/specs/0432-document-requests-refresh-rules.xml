@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0432-document-requests-refresh-rules" status="approved" owner="utente" date="2026-11-27">
+
+  <goal>
+    Quando un utente corregge il prompt o le regole di una checklist, può portare le regole corrette nelle richieste di
+    documenti già aperte, rivalidare con l'AI le voci cambiate e interrompere una validazione AI che non arriva, passando
+    la voce alla verifica manuale. Estende le spec 0428 e 0429.
+  </goal>
+
+  <context>
+    - ArchivioSmart copia la checklist nella richiesta alla creazione (snapshot): le modifiche successive valgono solo per
+      le nuove richieste. Ora offre tre azioni per richiesta aperta: refresh-rules, revalidate, stop-validation.
+    - Spec 0428/0429: `SyncDocumentRequestJob(id, operation, send, arguments)`, `pending_operation`, `delivery_status`,
+      sync log, `DocumentRequestActionController`, permessi `document-requests.update` e `document-requests.review`.
+    - Le voci della checklist mantengono il loro id quando si corregge la checklist (`DocumentChecklistService::replaceItems`
+      aggiorna per id), e l'`external_id` della voce verso ArchivioSmart è l'id: la correzione raggiunge le richieste aperte.
+      `validation_prompt` e `validation_rules` sono sempre nel corpo del PUT, `null` quando vuoti.
+    - `PushesToArchivioSmart::interpret` oggi tratta come successo solo 200/201/204: revalidate risponde 202.
+    - `document_request_sync_logs.operation` è varchar(10): `refresh_rules` e `stop_validation` non ci stanno.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Dopo il salvataggio di una checklist con richieste aperte (status draft, sent o in_progress) il frontend chiede subito
+      all'utente se aggiornare le regole delle richieste aperte o lasciarle solo per le nuove richieste (decisione utente
+      2026-11-27, "prima strada"). Mai in automatico. L'invio della checklist ad ArchivioSmart è in coda: il pulsante
+      "Aggiorna" resta in attesa finché la checklist risulta inviata (sync_status synced); se l'invio fallisce il dialog
+      lo dice e non aggiorna. Il backend rifiuta con 422 `checklist` un aggiornamento chiesto su una checklist non inviata.
+    </decision>
+    <decision id="D-2">
+      Aggiornamento in blocco: richiede `document-checklists.update` e `document-requests.update`; agisce su tutte le
+      richieste aperte della checklist (le regole sono della checklist, non della commessa). Una richiesta che ArchivioSmart
+      non conosce ancora (status null) è esclusa: nascerà con le regole attuali.
+    </decision>
+    <decision id="D-3">
+      Le tre azioni seguono lo schema delle altre: nuove operazioni `refresh_rules`, `revalidate`, `stop_validation` del job,
+      in coda, retry su 5xx/429, 422/409 finali con il messaggio. La risposta di ArchivioSmart sostituisce lo snapshot.
+      `meta.updated_items` di refresh_rules si salva in `document_requests.rules_updated_item_ids` (json), sostituito a ogni
+      aggiornamento; un id esce dall'elenco quando si chiede di rivalidare quella voce.
+    </decision>
+    <decision id="D-4">
+      Rivalida: un solo endpoint per una o più voci (`item_ids`), una chiamata ad ArchivioSmart per voce. Il frontend offre
+      "Rivalida con AI" sulla voce con documenti e "Rivalida le voci cambiate" in blocco con una sola conferma (decisione
+      utente 2026-11-27): le voci cambiate con documenti ed esito ko o review. Prima di rivalidare una voce approvata o
+      rifiutata a mano la conferma avvisa che la decisione manuale decade. Mai rivalidazioni automatiche (costo AI).
+    </decision>
+    <decision id="D-5">
+      Interrompi validazione: solo voci uploaded o validating; `reviewer_name` = nome dell'utente QNet, come approve.
+      Rivalida e interrompi richiedono `document-requests.review`; aggiorna le regole richiede `document-requests.update`.
+    </decision>
+    <decision id="D-6">
+      Chi ha chiesto aggiornamento, rivalidazione o interruzione, e quando, va nel registro attività (activitylog) della
+      richiesta, con evento `rules_refresh_requested`, `revalidation_requested`, `validation_stop_requested`. Il sync log
+      resta senza utente.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      Aggiornamento delle regole per richiesta e in blocco per checklist; rivalida per voce e in blocco; interrompi
+      validazione; avviso dopo il salvataggio della checklist; registro attività; guide in-app IT/EN.
+    </in>
+    <out>
+      Rivalidazione automatica; aggiornamento automatico senza chiedere; modifiche ad ArchivioSmart; nuove etichette di stato
+      della voce (gli stati arrivano dalla risposta e dai webhook già gestiti).
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="DocumentRequest (delta)">
+      aggiunge rules_updated_item_ids: number[]; permissions aggiunge refresh_rules: bool (update e status draft, sent o
+      in_progress). Le azioni sulle voci usano permissions.review (già esistente).
+    </shape>
+
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/refresh-rules">
+      <auth>document-requests.update + view sulla commessa</auth>
+      <response status="200">{ data: DocumentRequest } con pending_operation "refresh_rules"; job accodato dopo il commit</response>
+      <errors>422 `status` se la richiesta non è draft, sent o in_progress; 403 senza permesso.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/revalidate">
+      <auth>document-requests.review + view sulla commessa</auth>
+      <request>{ item_ids: number[] (1..100, distinti) }</request>
+      <response status="200">{ data: DocumentRequest } con pending_operation "revalidate"; un job per voce</response>
+      <errors>422 `status` se la richiesta non è sent o in_progress; 422 `item` se una voce non è nella richiesta; 422 `document` se una voce non ha documenti; 422 `item_ids` se assente o non valido; 403 senza permesso.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-requests/{documentRequest}/items/{item}/stop-validation">
+      <auth>document-requests.review + view sulla commessa</auth>
+      <response status="200">{ data: DocumentRequest } con pending_operation "stop_validation"</response>
+      <errors>422 `status` se la richiesta non è sent o in_progress; 422 `item` voce assente; 422 `document` se la voce non è uploaded o validating; 403.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-checklists/{documentChecklist}/open-requests">
+      <auth>document-checklists.update + document-requests.update</auth>
+      <response status="200">{ data: { count: number } } richieste con status draft, sent o in_progress</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-checklists/{documentChecklist}/refresh-open-requests">
+      <auth>document-checklists.update + document-requests.update</auth>
+      <response status="202">{ data: { queued: number } }</response>
+      <errors>422 `checklist` se la checklist non è inviata (sync_status diverso da synced); 403.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="{archivio_smart.base_url}/requests/{external_id}/refresh-rules" direction="outbound" exists="si">
+      <response status="200">{ data: forma della richiesta, meta: { updated_items: number[] } }</response>
+      <errors>422 `status` richiesta chiusa; 422 `checklist` checklist eliminata; 409 richiesta non di QNet; 404.</errors>
+    </endpoint>
+    <endpoint method="POST" path="{archivio_smart.base_url}/requests/{external_id}/items/{item_id}/revalidate" direction="outbound" exists="si">
+      <response status="202">{ data: forma della richiesta } con la voce uploaded; poi webhook document.validated</response>
+      <errors>422 `document`, `status`, `ai_validation_enabled`; 404/409.</errors>
+    </endpoint>
+    <endpoint method="POST" path="{archivio_smart.base_url}/requests/{external_id}/items/{item_id}/stop-validation" direction="outbound" exists="si">
+      <request>{ reviewer_name: string (max 255) }</request>
+      <response status="200">{ data: forma della richiesta } con la voce in verifica manuale</response>
+      <errors>422 `document`, `status`, `reviewer_name`; 404/409.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">refresh-rules con update su richiesta draft/sent/in_progress → 200, pending_operation refresh_rules, job accodato dopo il commit, voce nel registro attività con l'utente; su completed/expired/cancelled o status null → 422 `status`; senza update → 403.</criterion>
+    <criterion id="AC-002">Il job refresh_rules invia POST .../refresh-rules senza corpo; la risposta sostituisce lo snapshot e salva meta.updated_items in rules_updated_item_ids (vuoto se nessuna voce cambiata); 422/409 → failed con il messaggio.</criterion>
+    <criterion id="AC-003">revalidate con review su voci con documenti → 200, un job per voce con item_id, gli id escono da rules_updated_item_ids, registro attività; voce assente → 422 `item`; voce senza documenti → 422 `document`; richiesta chiusa → 422 `status`; senza review → 403; nessun job in caso di errore.</criterion>
+    <criterion id="AC-004">Il job revalidate invia POST .../items/{id}/revalidate; il 202 è un successo che sostituisce lo snapshot; 422 `ai_validation_enabled` → failed con il messaggio.</criterion>
+    <criterion id="AC-005">stop-validation con review su voce uploaded/validating → 200, job che invia POST .../stop-validation con reviewer_name = nome dell'utente (mai nei log); voce in altro stato → 422 `document`; richiesta chiusa → 422 `status`; senza review → 403.</criterion>
+    <criterion id="AC-006">open-requests conta solo le richieste della checklist con status draft, sent o in_progress; refresh-open-requests su checklist synced accoda refresh_rules su ciascuna e restituisce queued; su checklist pending o failed → 422 `checklist`; senza uno dei due permessi → 403.</criterion>
+    <criterion id="AC-007">La colonna sync log operation accetta refresh_rules e stop_validation; il payload della checklist mantiene external_id = id della voce dopo la correzione (non regressione §2).</criterion>
+    <criterion id="AC-008">Frontend: dopo il salvataggio di una checklist con richieste aperte compare il dialog con il numero e le due scelte; "Aggiorna" attende l'invio della checklist, poi chiama refresh-open-requests; "Solo per le nuove richieste" non chiama nulla.</criterion>
+    <criterion id="AC-009">Frontend: con permissions.refresh_rules la richiesta offre "Aggiorna le regole dalla checklist" con conferma; dopo l'aggiornamento, se ci sono voci cambiate con documenti ed esito ko o review, compare "Rivalida le voci cambiate" con una sola conferma.</criterion>
+    <criterion id="AC-010">Frontend: con permissions.review la voce con documenti offre "Rivalida con AI" (conferma, avviso sulla decisione manuale se approved_manually o rejected_manually) e, se uploaded o validating, "Interrompi validazione" con conferma.</criterion>
+    <criterion id="AC-011">Guide in-app IT/EN (commesse e checklist) aggiornate, parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessun throttle. Riuso di ArchivioSmartClient, SyncDocumentRequestJob, PushesToArchivioSmart.
+    - Authz server-side su ogni endpoint; envelope di progetto; Resource; reviewer_name mai nei log.
+    - Testi UI in italiano (IT/EN via i18n); UI compatta.
+  </constraints>
+
+  <plan>
+    <task id="BE-01" owner="backend" lane="sequenziale" write="backend/app (DocumentRequests, DocumentChecklists, Jobs, Enums, Resources, client), routes, migrazione, lang, tests, api-docs">Operazioni refresh_rules/revalidate/stop_validation, endpoint per richiesta e per checklist, 202, colonna, registro attività. AC-001..007.</task>
+    <task id="FE-01" owner="frontend" lane="dopo BE-01" write="frontend/src/features/document-requests, document-checklists, i18n, help">Dialog dopo il salvataggio, azioni su richiesta e voci. AC-008..011.</task>
+    <task id="VER" owner="verifier" lane="gate finale">Test mirati, tsc, lint.</task>
+  </plan>
+
+</spec>

@@ -7,23 +7,30 @@ namespace App\Http\Controllers\DocumentRequests;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\DocumentRequests\ApproveDocumentRequestItemRequest;
 use App\Http\Requests\DocumentRequests\RejectDocumentRequestItemRequest;
+use App\Http\Requests\DocumentRequests\RevalidateDocumentRequestItemsRequest;
 use App\Http\Resources\DocumentRequestResource;
 use App\Models\DocumentRequest;
+use App\Services\DocumentRequests\DocumentRequestRulesService;
 use App\Services\DocumentRequests\DocumentRequestService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Throwable;
 
 /**
  * Reminder, cancel, refresh and early completion of a document request (spec 0428,
  * 0429): writes on the request (`document-requests.update`) that only queue the
- * ArchivioSmart call. Approving or rejecting an item needs `document-requests.review`.
+ * ArchivioSmart call, refresh of the checklist rules included (spec 0432). Approving,
+ * rejecting, revalidating an item or stopping its validation needs `document-requests.review`.
  */
 class DocumentRequestActionController extends BaseApiController
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly DocumentRequestService $service) {}
+    public function __construct(
+        private readonly DocumentRequestService $service,
+        private readonly DocumentRequestRulesService $rules,
+    ) {}
 
     /**
      * POST /api/document-requests/{documentRequest}/remind
@@ -80,6 +87,46 @@ class DocumentRequestActionController extends BaseApiController
             return $this->ok(new DocumentRequestResource(
                 $this->service->rejectItem($documentRequest, $item, (string) $request->note(), $request->user()),
             ));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['documentRequest' => $documentRequest->id]);
+        }
+    }
+
+    /**
+     * POST /api/document-requests/{documentRequest}/refresh-rules
+     */
+    public function refreshRules(Request $request, DocumentRequest $documentRequest): JsonResponse
+    {
+        return $this->act(
+            $documentRequest,
+            fn (DocumentRequest $documentRequest): DocumentRequest => $this->rules->refreshRules($documentRequest, $request->user()),
+            __FUNCTION__,
+        );
+    }
+
+    /**
+     * POST /api/document-requests/{documentRequest}/revalidate
+     */
+    public function revalidate(RevalidateDocumentRequestItemsRequest $request, DocumentRequest $documentRequest): JsonResponse
+    {
+        try {
+            return $this->ok(new DocumentRequestResource(
+                $this->rules->revalidate($documentRequest, $request->itemIds(), $request->user()),
+            ));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['documentRequest' => $documentRequest->id]);
+        }
+    }
+
+    /**
+     * POST /api/document-requests/{documentRequest}/items/{item}/stop-validation
+     */
+    public function stopValidation(Request $request, DocumentRequest $documentRequest, int $item): JsonResponse
+    {
+        try {
+            $this->authorize('review', $documentRequest);
+
+            return $this->ok(new DocumentRequestResource($this->rules->stopValidation($documentRequest, $item, $request->user())));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['documentRequest' => $documentRequest->id]);
         }

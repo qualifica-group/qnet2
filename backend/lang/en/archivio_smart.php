@@ -29,6 +29,9 @@ return [
     'request_item_without_document' => 'The item has no uploaded file',
     'request_action_unavailable' => 'ArchivioSmart does not support this action yet',
     'request_never_delivered' => 'The request never reached ArchivioSmart: fix it with Edit and send it again, or cancel it',
+    'request_rules_not_refreshable' => 'Only the rules of a draft, sent or in progress request can be refreshed',
+    'request_item_not_stoppable' => 'The item has no file waiting for the AI validation',
+    'checklist_not_synced' => 'The checklist has not been sent to ArchivioSmart yet: the rules are refreshed after it is sent',
     'document_download_failed' => 'The file could not be downloaded from ArchivioSmart',
     'document_not_found' => 'File not found',
     'webhook_not_found' => 'Not found',
@@ -42,5 +45,6 @@ return [
         'message' => 'message',
         'document_checklist_id' => 'checklist',
         'webhook_secret' => 'webhook secret',
+        'item_ids' => 'items',
     ],
 ];

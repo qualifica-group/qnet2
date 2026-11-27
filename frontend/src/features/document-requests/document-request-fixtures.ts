@@ -40,6 +40,7 @@ export function buildRequest(overrides: Partial<DocumentRequest> = {}): Document
       buildItem({ id: 2, name: 'Statuto', status: 'ko', status_reason: 'Documento illeggibile', documents_count: 2 }),
       buildItem({ id: 3, section_index: null, name: 'Delega', status: 'pending', documents_count: 0, is_required: false }),
     ],
+    rules_updated_item_ids: [],
     sent_at: '2027-03-01T10:00:00Z',
     last_reminded_at: null,
     completed_at: null,
@@ -51,7 +52,7 @@ export function buildRequest(overrides: Partial<DocumentRequest> = {}): Document
     pending_operation: null,
     delivery_error: null,
     created_at: '2027-03-01T09:00:00Z',
-    permissions: { update: true, remind: true, cancel: true, review: false, complete: false },
+    permissions: { update: true, remind: true, cancel: true, review: false, complete: false, refresh_rules: true },
     ...overrides,
   }
 }
