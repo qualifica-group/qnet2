@@ -64,6 +64,10 @@ const guide: HelpGuide = {
             ['Campo data estratto', 'Nome del campo data che l\'AI estrae dal documento (per esempio issue_date), con lettere minuscole, cifre e _. Si compila solo con l\'età massima; se vuoto vale issue_date.'],
           ],
         },
+        {
+          type: 'paragraph',
+          text: 'Quando correggi una checklist che ha richieste di documenti aperte (in bozza, inviate o in corso), dopo il salvataggio QNet chiede se **Aggiornare le regole delle richieste aperte** o lasciarle **Solo per le nuove richieste**. Le richieste già inviate restano con le regole iniziali finché non scegli di aggiornarle; l\'aggiornamento parte quando la checklist risulta inviata ad ArchivioSmart. Correggi la voce esistente invece di eliminarla e crearne una nuova: una voce nuova non raggiunge le richieste aperte. La domanda compare solo a chi può modificare le richieste di documenti.',
+        },
       ],
     },
     {

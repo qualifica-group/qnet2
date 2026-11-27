@@ -11,7 +11,7 @@ return [
     ],
     'GET /document-requests/{documentRequest}/sync-logs' => [
         'summary' => 'List the latest ArchivioSmart calls of a document request',
-        'description' => 'Returns the most recent calls (up to 20, newest first): operation (upsert, remind, cancel, refresh, approve, reject or complete), outcome (success, failed or retrying), http_status (null when there was no HTTP response), attempt, message and created_at. Requires document-requests.view and view on the work order.',
+        'description' => 'Returns the most recent calls (up to 20, newest first): operation (upsert, remind, cancel, refresh, approve, reject, complete, refresh_rules, revalidate or stop_validation), outcome (success, failed or retrying), http_status (null when there was no HTTP response), attempt, message and created_at. Requires document-requests.view and view on the work order.',
     ],
     'POST /document-requests/{documentRequest}/remind' => [
         'summary' => 'Remind the customer of a document request',
@@ -36,6 +36,18 @@ return [
     'POST /document-requests/{documentRequest}/items/{item}/reject' => [
         'summary' => 'Reject the file of an item by hand',
         'description' => 'Same rules as approve, but the note is required (max 1000, 422 on note when missing). The item becomes rejected_manually once ArchivioSmart answers (pending_operation reject). Requires document-requests.review and view on the work order.',
+    ],
+    'POST /document-requests/{documentRequest}/refresh-rules' => [
+        'summary' => 'Copy the current checklist rules into a document request',
+        'description' => 'Takes no body. ArchivioSmart copies description, allowed file types, maximum size, validation prompt and validation rules of each item from the current checklist; outcomes already given do not change. Answers 422 on status unless the request is draft, sent or in_progress. Marks the request pending (pending_operation refresh_rules) and queues the call; the ids of the changed items come back in rules_updated_item_ids. Requires document-requests.update and view on the work order.',
+    ],
+    'POST /document-requests/{documentRequest}/revalidate' => [
+        'summary' => 'Validate items again with the AI',
+        'description' => 'Body: item_ids (1 to 100 distinct item ids). ArchivioSmart validates again all the current files of each item with its current rules; a manual decision on the item is dropped. Answers 422 on status unless the request is sent or in_progress, on item when an item is not in the request, on document when an item has no file. Queues one call per item (pending_operation revalidate) and removes the items from rules_updated_item_ids. Requires document-requests.review and view on the work order.',
+    ],
+    'POST /document-requests/{documentRequest}/items/{item}/stop-validation' => [
+        'summary' => 'Stop the AI validation of an item',
+        'description' => 'Takes no body. The files of the item still waiting for the AI go to manual review, then approve or reject decides. Answers 422 on status unless the request is sent or in_progress, on item when it is not in the request, on document unless the item is uploaded or validating. Queues the call with the name of the QNet user as reviewer (pending_operation stop_validation). Requires document-requests.review and view on the work order.',
     ],
     'GET /document-requests/{documentRequest}/documents/{document}/download' => [
         'summary' => 'Download an uploaded file of a document request',

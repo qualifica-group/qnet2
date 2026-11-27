@@ -114,6 +114,39 @@ class ArchivioSmartClient
     }
 
     /**
+     * Copies the current checklist rules into an open request (spec 0432).
+     *
+     * @throws ConnectionException
+     */
+    public function refreshRequestRules(ArchivioSmartSetting $setting, string $externalId): Response
+    {
+        return $this->request($setting)->post($this->requestPath($externalId).'/refresh-rules');
+    }
+
+    /**
+     * Queues the AI validation of the current files of an item again (spec 0432): answers 202.
+     *
+     * @throws ConnectionException
+     */
+    public function revalidateItem(ArchivioSmartSetting $setting, string $externalId, int $itemId): Response
+    {
+        return $this->request($setting)->post($this->requestPath($externalId).'/items/'.$itemId.'/revalidate');
+    }
+
+    /**
+     * Moves the files waiting for the AI to manual review (spec 0432). The name travels only in the body.
+     *
+     * @throws ConnectionException
+     */
+    public function stopItemValidation(ArchivioSmartSetting $setting, string $externalId, int $itemId, string $reviewerName): Response
+    {
+        return $this->request($setting)->post(
+            $this->requestPath($externalId).'/items/'.$itemId.'/stop-validation',
+            ['reviewer_name' => $reviewerName],
+        );
+    }
+
+    /**
      * Asks for the temporary URL of an uploaded file (spec 0429, D-1).
      *
      * @throws ConnectionException

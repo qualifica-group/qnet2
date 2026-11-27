@@ -28,7 +28,8 @@ use Throwable;
 /**
  * Runs ONE outbound operation of a document request against ArchivioSmart
  * (spec 0428, D-4): upsert, remind, cancel, refresh or, from spec 0429, approve,
- * reject and complete. Operations of the same
+ * reject and complete, and from spec 0432 refresh_rules, revalidate and
+ * stop_validation. Operations of the same
  * request run one at a time. Transient failures (network, 5xx, 429) are retried
  * with backoff; 401/409/422 and other 4xx are final. The response replaces the
  * local snapshot. Log rows never hold the token, the body or personal data.
@@ -59,7 +60,7 @@ class SyncDocumentRequestJob implements ShouldQueue
     private ?Response $response = null;
 
     /**
-     * @param  array{item_id?: int, note?: string|null, reviewer_name?: string}  $arguments  of approve and reject; the note and the name never reach a log
+     * @param  array{item_id?: int, note?: string|null, reviewer_name?: string}  $arguments  of the item operations; the note and the name never reach a log
      */
     public function __construct(
         public readonly int $documentRequestId,
@@ -118,6 +119,14 @@ class SyncDocumentRequestJob implements ShouldQueue
                     (string) $this->arguments['reviewer_name'],
                 ),
                 DocumentRequestOperation::Complete => $client->completeRequest($setting, $externalId),
+                DocumentRequestOperation::RefreshRules => $client->refreshRequestRules($setting, $externalId),
+                DocumentRequestOperation::Revalidate => $client->revalidateItem($setting, $externalId, (int) $this->arguments['item_id']),
+                DocumentRequestOperation::StopValidation => $client->stopItemValidation(
+                    $setting,
+                    $externalId,
+                    (int) $this->arguments['item_id'],
+                    (string) $this->arguments['reviewer_name'],
+                ),
             };
         });
     }
@@ -164,6 +173,9 @@ class SyncDocumentRequestJob implements ShouldQueue
         if (is_array($data)) {
             app(DocumentRequestRemoteWriter::class)->apply($record, $data);
         }
+        if ($this->operation === DocumentRequestOperation::RefreshRules) {
+            $this->keepUpdatedItems($record);
+        }
 
         // Read again: another operation may have been requested while this call was in flight.
         $latest = DocumentRequest::query()->whereKey($record->id)->value('pending_operation');
@@ -176,6 +188,17 @@ class SyncDocumentRequestJob implements ShouldQueue
         $this->log($record, $operation, DocumentChecklistSyncOutcome::Success, $status, null);
 
         return ArchivioSmartCallResult::Succeeded;
+    }
+
+    /**
+     * The items whose rules changed (`meta.updated_items`), offered for revalidation (spec 0432, D-3).
+     */
+    private function keepUpdatedItems(DocumentRequest $record): void
+    {
+        $updated = $this->response?->json('meta.updated_items');
+        $ids = is_array($updated) ? array_values(array_map('intval', array_filter($updated, 'is_numeric'))) : [];
+
+        activity()->withoutLogs(fn () => $record->forceFill(['rules_updated_item_ids' => $ids])->save());
     }
 
     protected function markFailed(Model $record, string $message): void

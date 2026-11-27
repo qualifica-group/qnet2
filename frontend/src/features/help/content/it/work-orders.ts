@@ -440,6 +440,14 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Su ogni voce, accanto al numero di file, compare **Scarica** per ciascun file caricato dal cliente (anche quelli scartati o non ancora verificati): il file si salva con il suo nome originale. Con il permesso dedicato **Revisionare** (richieste documenti, assegnabile dal ruolo) puoi **Approvare** una voce che ha un documento (nota facoltativa) oppure **Rifiutarla** (nota obbligatoria, massimo 1000 caratteri), scavalcando l'esito automatico: lo stato diventa **Approvato manualmente** o **Rifiutato manualmente**. Approva non compare se la voce è già approvata, Rifiuta se è già rifiutata; entrambe sono possibili solo con richiesta inviata o in corso. **Chiudi richiesta** (con il permesso di modifica) la chiude come completata anche se mancano voci e disattiva il link del cliente; **Annulla richiesta** invece la scarta. Le azioni vengono messe in coda verso ArchivioSmart: se falliscono, il messaggio compare sulla richiesta.",
         },
+        {
+          type: 'paragraph',
+          text: "Una richiesta usa le regole della checklist del momento in cui è stata creata. Se la checklist viene corretta, **Aggiorna le regole dalla checklist** (con il permesso di modifica, su una richiesta in bozza, inviata o in corso, dopo conferma) porta nella richiesta descrizione, formati, dimensione, prompt e regole di validazione attuali delle voci; nome, obbligatorietà e numero di file non cambiano, e gli esiti già dati restano. Se tra le voci cambiate ce ne sono con un file **Da correggere** o **Da revisionare**, compare **Rivalida le voci cambiate**, che le fa rivalutare tutte dall'AI con una sola conferma.",
+        },
+        {
+          type: 'paragraph',
+          text: "Con il permesso **Revisionare**, su una voce con file compare **Rivalida con AI**: l'AI rivaluta i file con le regole attuali e la voce torna in verifica finché arriva l'esito; se la voce era stata approvata o rifiutata a mano, la conferma avvisa che quella decisione si perde. Ogni rivalidazione è una chiamata all'AI: usala solo dove serve. Su una voce **Caricato** o **In verifica** compare **Interrompi validazione**: i file passano alla verifica manuale e poi la voce si approva o si rifiuta a mano; in ArchivioSmart resta il tuo nome. Chi chiede queste azioni, e quando, resta nel registro attività della richiesta.",
+        },
       ],
     },
     {

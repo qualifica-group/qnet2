@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Check, Download, X } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { downloadDocumentRequestFile } from '@/features/document-requests/api'
-import { DocumentRequestReviewDialog } from '@/features/document-requests/document-request-review-dialog'
-import { itemReviewActions } from '@/features/document-requests/document-request-status'
-import type {
-  DocumentRequest,
-  DocumentRequestDocument,
-  DocumentRequestItem,
-  DocumentRequestReviewDecision,
-} from '@/features/document-requests/types'
+import { DocumentRequestItemActions } from '@/features/document-requests/document-request-item-actions'
+import type { DocumentRequest, DocumentRequestDocument, DocumentRequestItem } from '@/features/document-requests/types'
 import { formatBytes } from '@/features/attachments/format-bytes'
 import { saveBlob } from '@/lib/download'
 
@@ -59,11 +53,9 @@ function DocumentFile({ requestId, document }: { requestId: number; document: Do
   )
 }
 
-/** One item: status, reason, its files (each downloadable) and the manual review actions (spec 0429). */
+/** One item: status, reason, its files (each downloadable) and its actions (spec 0429, 0432). */
 export function DocumentRequestItemRow({ request, item }: { request: DocumentRequest; item: DocumentRequestItem }) {
   const { t } = useTranslation()
-  const [decision, setDecision] = useState<DocumentRequestReviewDecision | null>(null)
-  const allowed = itemReviewActions(request, item)
 
   return (
     <li className="flex flex-col gap-1 px-3 py-1.5 text-xs">
@@ -91,31 +83,7 @@ export function DocumentRequestItemRow({ request, item }: { request: DocumentReq
           ))}
         </ul>
       ) : null}
-      {allowed.approve || allowed.reject ? (
-        <div className="flex flex-wrap gap-1.5">
-          {allowed.approve ? (
-            <Button type="button" size="sm" variant="secondary" onClick={() => setDecision('approve')}>
-              <Check aria-hidden="true" />
-              {t('documentRequests.review.approve')}
-            </Button>
-          ) : null}
-          {allowed.reject ? (
-            <Button type="button" size="sm" variant="destructive" onClick={() => setDecision('reject')}>
-              <X aria-hidden="true" />
-              {t('documentRequests.review.reject')}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {decision ? (
-        <DocumentRequestReviewDialog
-          request={request}
-          item={item}
-          decision={decision}
-          open
-          onOpenChange={(open) => (open ? undefined : setDecision(null))}
-        />
-      ) : null}
+      <DocumentRequestItemActions request={request} item={item} />
     </li>
   )
 }

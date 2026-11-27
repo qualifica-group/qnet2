@@ -440,6 +440,14 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "On each item, beside the number of files, **Download** appears for every file the customer uploaded (including rejected or not yet checked ones): the file is saved with its original name. With the dedicated **Review** permission (document requests, assignable from the role) you can **Approve** an item that has a document (optional note) or **Reject** it (mandatory note, up to 1000 characters), overriding the automatic outcome: the status becomes **Manually approved** or **Manually rejected**. Approve is not shown if the item is already approved, Reject if it is already rejected; both are only possible while the request is sent or in progress. **Close request** (with the edit permission) closes it as completed even if items are missing and disables the customer link; **Cancel request** instead discards it. The actions are queued towards ArchivioSmart: if they fail, the message appears on the request.",
         },
+        {
+          type: 'paragraph',
+          text: "A request uses the checklist rules of the moment it was created. When the checklist is corrected, **Refresh rules from the checklist** (with the edit permission, on a draft, sent or in progress request, after confirmation) brings the current description, formats, size, validation prompt and rules of the items into the request; name, required flag and number of files do not change, and the outcomes already given stay. When some changed items hold a file **To fix** or **To review**, **Revalidate changed items** appears and has the AI validate all of them again with a single confirmation.",
+        },
+        {
+          type: 'paragraph',
+          text: "With the **Review** permission, an item with files shows **Revalidate with AI**: the AI validates the files again with the current rules and the item goes back to checking until the outcome arrives; if the item had been approved or rejected by hand, the confirmation warns that the decision is lost. Every revalidation is a call to the AI: use it only where needed. On an item **Uploaded** or **Being checked**, **Stop validation** appears: the files go to manual review and the item is then approved or rejected by hand; ArchivioSmart keeps your name. Who asked for these actions, and when, stays in the activity log of the request.",
+        },
       ],
     },
     {
