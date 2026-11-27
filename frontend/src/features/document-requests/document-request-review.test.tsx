@@ -50,7 +50,7 @@ function requestWith(status: string, permissions: Partial<DocumentRequest['permi
         current_document_id: withDocument ? 77 : null,
       }),
     ],
-    permissions: { update: true, remind: true, cancel: true, review: true, complete: true, ...permissions },
+    permissions: { update: true, remind: true, cancel: true, review: true, complete: true, refresh_rules: false, ...permissions },
   })
 }
 

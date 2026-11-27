@@ -6,11 +6,16 @@ import type { ScopeSelection } from '@/features/management-control/types'
 export const CASH_FLOW_HORIZONS = [3, 6, 12, 24] as const
 export type CashFlowHorizon = (typeof CASH_FLOW_HORIZONS)[number]
 
-/** Amounts on the document total; `net` = receivable - payable - committed. */
+/**
+ * Amounts on the document total; `net` = receivable - payable - committed - salaries - f24.
+ * `salaries` and `f24` are estimated personnel outflows (spec 0434), zero when excluded.
+ */
 export interface Flow {
   receivable: number
   payable: number
   committed: number
+  salaries: number
+  f24: number
   net: number
 }
 
@@ -42,6 +47,7 @@ export interface CashFlow {
     operational_site_id: number[]
     document_type: string
     horizon_months: number
+    include_personnel: boolean
   }
   today: string
   backlog: Flow
@@ -54,6 +60,8 @@ export interface CashFlow {
 export interface CashFlowFilters extends ScopeSelection {
   documentType: ExposureDocumentType
   horizonMonths: CashFlowHorizon
+  /** Include the estimated personnel outflows (default on). */
+  includePersonnel: boolean
 }
 
 /** Request query parameters of the cash flow, named exactly as the contract. */
@@ -63,4 +71,6 @@ export interface CashFlowParams {
   operational_site_id?: number[]
   document_type: ExposureDocumentType
   horizon_months: CashFlowHorizon
+  /** Sent only when off: the server default is on. */
+  include_personnel?: false
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PurchaseOrders\PurchaseOrderBulkStatusController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderForSelectController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderFromRequestLinesController;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('purchase-orders/for-select', PurchaseOrderForSelectController::class);
+Route::post('purchase-orders/bulk-status', PurchaseOrderBulkStatusController::class);
 Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
 Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
 Route::match(['put', 'patch'], 'purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update']);

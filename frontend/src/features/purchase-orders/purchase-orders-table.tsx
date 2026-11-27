@@ -14,6 +14,7 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { purchaseOrderColumnRenderers } from '@/features/purchase-orders/column-renderers'
 import { PurchaseOrderDetailPanel } from '@/features/purchase-orders/purchase-order-detail-panel'
 import { StatusTabs } from '@/features/purchase-orders/status-tabs'
+import { usePurchaseOrderBulkStatus } from '@/features/purchase-orders/use-purchase-order-bulk-status'
 import { usePurchaseOrderDelete } from '@/features/purchase-orders/use-purchase-order-actions'
 import { usePurchaseOrderPdf } from '@/features/purchase-orders/use-purchase-order-pdf'
 import { useStatusTabFilter } from '@/features/purchase-orders/use-status-tab-filter'
@@ -47,6 +48,8 @@ export function PurchaseOrdersTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const tabs = useStatusTabFilter(tableRef, STATUS_FILTER_KEY)
+  const clearSelection = useCallback(() => tableRef.current?.clearSelection(), [])
+  const bulkStatus = usePurchaseOrderBulkStatus({ refreshGrid, clearSelection })
   const removeOrder = usePurchaseOrderDelete()
   const { download: downloadPdf } = usePurchaseOrderPdf()
 
@@ -112,10 +115,12 @@ export function PurchaseOrdersTable() {
         inlineAllActions
         onFilterModelChange={tabs.onFilterModelChange}
         isBusy={isBusy}
+        getBulkActions={bulkStatus.getBulkActions}
         masterDetail
         detailCellRenderer={renderDetail}
         detailRowAutoHeight
       />
+      {bulkStatus.dialogSlot}
 
       <ResourceActivityDialog
         resource={PURCHASE_ORDERS_DOMAIN}

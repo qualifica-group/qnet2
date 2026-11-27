@@ -98,6 +98,50 @@ export const documentRequests = {
     rejectQueued: 'Rifiuto messo in coda.',
     rejectError: 'Impossibile rifiutare la voce.',
   },
+  rules: {
+    refresh: 'Aggiorna le regole dalla checklist',
+    refreshTitle: 'Aggiornare le regole della richiesta?',
+    refreshDescription:
+      'La richiesta prenderà le regole attuali della checklist «{{name}}» (descrizione, formati, dimensione, prompt e regole di validazione). Nome, obbligatorietà e numero di file delle voci non cambiano, e gli esiti già dati restano finché non rivalidi la voce.',
+    refreshQueued: 'Aggiornamento delle regole messo in coda.',
+    refreshError: 'Impossibile aggiornare le regole della richiesta.',
+    keep: 'Annulla',
+    changedItems_one: '{{count}} voce con regole nuove ha un esito da rivedere.',
+    changedItems_other: '{{count}} voci con regole nuove hanno un esito da rivedere.',
+    revalidateAll: 'Rivalida le voci cambiate',
+    revalidateAllTitle: 'Rivalidare le voci cambiate?',
+    revalidateAllDescription_one:
+      "La voce {{names}} verrà rivalutata dall'AI con le regole nuove. Ogni rivalidazione è una chiamata al modello AI.",
+    revalidateAllDescription_other:
+      "Le {{count}} voci ({{names}}) verranno rivalutate dall'AI con le regole nuove. Ogni rivalidazione è una chiamata al modello AI.",
+    revalidate: 'Rivalida con AI',
+    revalidateTitle: 'Rivalidare la voce?',
+    revalidateDescription: "I file della voce «{{name}}» verranno rivalutati dall'AI con le regole attuali.",
+    revalidateManualDescription:
+      "I file della voce «{{name}}» verranno rivalutati dall'AI con le regole attuali: la decisione presa a mano sulla voce verrà persa.",
+    revalidateQueued: 'Rivalidazione messa in coda.',
+    revalidateError: 'Impossibile rivalidare la voce.',
+    stop: 'Interrompi validazione',
+    stopTitle: 'Interrompere la validazione?',
+    stopDescription:
+      "I file della voce «{{name}}» in attesa dell'AI passano alla verifica manuale: poi potrai approvarla o rifiutarla.",
+    stopQueued: 'Interruzione della validazione messa in coda.',
+    stopError: 'Impossibile interrompere la validazione.',
+  },
+  openRequests: {
+    title: 'Aggiornare le richieste aperte?',
+    description_one:
+      "C'è {{count}} richiesta aperta creata con questa checklist. Le modifiche valgono per le nuove richieste; puoi portarle anche in quella aperta.",
+    description_other:
+      'Ci sono {{count}} richieste aperte create con questa checklist. Le modifiche valgono per le nuove richieste; puoi portarle anche in quelle aperte.',
+    waiting: 'Invio della checklist ad ArchivioSmart in corso…',
+    syncFailed: "L'invio della checklist ad ArchivioSmart non è riuscito: le richieste aperte non si possono aggiornare.",
+    onlyNew: 'Solo per le nuove richieste',
+    refresh: 'Aggiorna le regole delle richieste aperte',
+    queued_one: 'Aggiornamento messo in coda per {{count}} richiesta.',
+    queued_other: 'Aggiornamento messo in coda per {{count}} richieste.',
+    error: 'Impossibile aggiornare le richieste aperte.',
+  },
   create: {
     open: 'Richiedi documenti',
     title: 'Richiedi documenti',
@@ -163,6 +207,9 @@ export const documentRequests = {
       approve: 'Approvazione voce',
       reject: 'Rifiuto voce',
       complete: 'Chiusura',
+      refresh_rules: 'Aggiornamento regole',
+      revalidate: 'Rivalidazione voce',
+      stop_validation: 'Interruzione validazione',
     },
     outcome: {
       success: 'Riuscita',

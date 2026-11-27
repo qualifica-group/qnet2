@@ -28,6 +28,9 @@ Route::post('document-requests/{documentRequest}/remind', [DocumentRequestAction
 Route::post('document-requests/{documentRequest}/cancel', [DocumentRequestActionController::class, 'cancel']);
 Route::post('document-requests/{documentRequest}/refresh', [DocumentRequestActionController::class, 'refresh']);
 Route::post('document-requests/{documentRequest}/complete', [DocumentRequestActionController::class, 'complete']);
+Route::post('document-requests/{documentRequest}/refresh-rules', [DocumentRequestActionController::class, 'refreshRules']);
+Route::post('document-requests/{documentRequest}/revalidate', [DocumentRequestActionController::class, 'revalidate']);
+Route::post('document-requests/{documentRequest}/items/{item}/stop-validation', [DocumentRequestActionController::class, 'stopValidation'])->whereNumber('item');
 Route::post('document-requests/{documentRequest}/items/{item}/approve', [DocumentRequestActionController::class, 'approveItem'])->whereNumber('item');
 Route::post('document-requests/{documentRequest}/items/{item}/reject', [DocumentRequestActionController::class, 'rejectItem'])->whereNumber('item');
 Route::get('document-requests/{documentRequest}/documents/{document}/download', [DocumentRequestFileController::class, 'download'])->whereNumber('document');

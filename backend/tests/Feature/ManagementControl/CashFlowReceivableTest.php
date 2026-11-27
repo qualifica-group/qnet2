@@ -38,6 +38,7 @@ it('AC-003: a partially collected installment counts only its residual', functio
     expect(array_sum(array_column($data['months'], 'receivable')) + $data['beyond']['receivable'])->toEqual(60);
 });
 
+// REQUIREMENT CHANGED (spec 0434): the flows carry salaries and f24.
 it('AC-005: net is receivable minus payable minus committed and the cumulative skips the backlog', function () {
     mcReceivable([['due' => -2, 'amount' => '500.00'], ['due' => 0, 'amount' => '100.00'], ['due' => mcMonthDue(1), 'amount' => '300.00']]);
     mcPayable([['due' => -2, 'amount' => '70.00'], ['due' => 0, 'amount' => '30.00'], ['due' => mcMonthDue(2), 'amount' => '50.00']]);
@@ -47,7 +48,7 @@ it('AC-005: net is receivable minus payable minus committed and the cumulative s
     $data = mcGet('cash-flow')->assertOk()->json('data');
     $months = $data['months'];
 
-    expect($data['backlog'])->toEqual(['receivable' => 500, 'payable' => 70, 'committed' => 10, 'net' => 420])
+    expect($data['backlog'])->toEqual(['receivable' => 500, 'payable' => 70, 'committed' => 10, 'salaries' => 0, 'f24' => 0, 'net' => 420])
         ->and($months[0])->toMatchArray(['month' => mcMonth(0), 'receivable' => 100, 'payable' => 30, 'committed' => 20, 'net' => 50, 'cumulative' => 50])
         ->and($months[1])->toMatchArray(['receivable' => 300, 'payable' => 0, 'committed' => 0, 'net' => 300, 'cumulative' => 350])
         ->and($months[2])->toMatchArray(['receivable' => 0, 'payable' => 50, 'net' => -50, 'cumulative' => 300])

@@ -1,17 +1,17 @@
 import type { CashFlow } from '@/features/management-control/cash-flow-types'
 
-/** Three months from October 2026; every figure adds up (net = receivable - payable - committed, by_company sums to the totals). */
+/** Three months from October 2026; every figure adds up (net = receivable - payable - committed - salaries - f24, by_company sums to the totals). */
 export function makeCashFlow(overrides: Partial<CashFlow> = {}): CashFlow {
   return {
-    applied: { company_id: [], company_site_id: [], operational_site_id: [], document_type: 'all', horizon_months: 3 },
+    applied: { company_id: [], company_site_id: [], operational_site_id: [], document_type: 'all', horizon_months: 3, include_personnel: true },
     today: '2026-10-16',
-    backlog: { receivable: 500, payable: 200, committed: 100, net: 200 },
+    backlog: { receivable: 500, payable: 200, committed: 100, salaries: 0, f24: 0, net: 200 },
     months: [
-      { month: '2026-10', receivable: 1000, payable: 400, committed: 100, net: 500, cumulative: 500 },
-      { month: '2026-11', receivable: 0, payable: 300, committed: 0, net: -300, cumulative: 200 },
-      { month: '2026-12', receivable: 600, payable: 100, committed: 0, net: 500, cumulative: 700 },
+      { month: '2026-10', receivable: 1000, payable: 300, committed: 100, salaries: 60, f24: 40, net: 500, cumulative: 500 },
+      { month: '2026-11', receivable: 0, payable: 200, committed: 0, salaries: 60, f24: 40, net: -300, cumulative: 200 },
+      { month: '2026-12', receivable: 600, payable: 0, committed: 0, salaries: 60, f24: 40, net: 500, cumulative: 700 },
     ],
-    beyond: { receivable: 200, payable: 0, committed: 50, net: 150 },
+    beyond: { receivable: 200, payable: 0, committed: 0, salaries: 30, f24: 20, net: 150 },
     by_company: [
       {
         key: '1',

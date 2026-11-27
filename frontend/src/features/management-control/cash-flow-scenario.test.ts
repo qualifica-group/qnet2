@@ -6,9 +6,9 @@ describe('applyBacklogScenario', () => {
   it('AC-012 moves the backlog onto the first month and recomputes the cumulative', () => {
     const scenario = applyBacklogScenario(makeCashFlow())
 
-    expect(scenario.months[0]).toMatchObject({ receivable: 1500, payable: 600, committed: 200, net: 700, cumulative: 700 })
+    expect(scenario.months[0]).toMatchObject({ receivable: 1500, payable: 500, committed: 200, salaries: 60, f24: 40, net: 700, cumulative: 700 })
     expect(scenario.months.map((month) => month.cumulative)).toEqual([700, 400, 900])
-    expect(scenario.backlog).toEqual({ receivable: 0, payable: 0, committed: 0, net: 0 })
+    expect(scenario.backlog).toEqual({ receivable: 0, payable: 0, committed: 0, salaries: 0, f24: 0, net: 0 })
   })
 
   it('AC-012 leaves the other months and the beyond unchanged', () => {
@@ -45,8 +45,8 @@ describe('applyBacklogScenario', () => {
 
   it('AC-012 rounds to the cent', () => {
     const base = makeCashFlow({
-      backlog: { receivable: 0.1, payable: 0, committed: 0, net: 0.1 },
-      months: [{ month: '2026-10', receivable: 0.2, payable: 0, committed: 0, net: 0.2, cumulative: 0.2 }],
+      backlog: { receivable: 0.1, payable: 0, committed: 0, salaries: 0, f24: 0, net: 0.1 },
+      months: [{ month: '2026-10', receivable: 0.2, payable: 0, committed: 0, salaries: 0, f24: 0, net: 0.2, cumulative: 0.2 }],
     })
 
     expect(applyBacklogScenario(base).months[0]).toMatchObject({ receivable: 0.3, net: 0.3, cumulative: 0.3 })
@@ -55,6 +55,6 @@ describe('applyBacklogScenario', () => {
 
 describe('horizonTotals', () => {
   it('AC-014 sums the months of the horizon, leaving backlog and beyond out', () => {
-    expect(horizonTotals(makeCashFlow())).toEqual({ receivable: 1600, payable: 800, committed: 100, net: 700 })
+    expect(horizonTotals(makeCashFlow())).toEqual({ receivable: 1600, payable: 500, committed: 100, salaries: 180, f24: 120, net: 700 })
   })
 })

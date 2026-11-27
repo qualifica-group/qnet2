@@ -71,6 +71,35 @@ export async function reviewDocumentRequestItem(
   await apiClient.post(`/document-requests/${id}/items/${itemId}/${decision}`, { note })
 }
 
+/** Copies the current checklist rules into the request (spec 0432). */
+export async function refreshDocumentRequestRules(id: number): Promise<void> {
+  await apiClient.post(`/document-requests/${id}/refresh-rules`)
+}
+
+/** Validates the files of these items again with the AI: one call per item. */
+export async function revalidateDocumentRequestItems(id: number, itemIds: number[]): Promise<void> {
+  await apiClient.post(`/document-requests/${id}/revalidate`, { item_ids: itemIds })
+}
+
+/** Moves the files of an item still waiting for the AI to manual review. */
+export async function stopDocumentRequestItemValidation(id: number, itemId: number | string): Promise<void> {
+  await apiClient.post(`/document-requests/${id}/items/${itemId}/stop-validation`)
+}
+
+/** Draft, sent and in progress requests of a checklist: the ones a correction can reach. */
+export async function fetchChecklistOpenRequestsCount(checklistId: number): Promise<number> {
+  const { data } = await apiClient.get<ApiResponse<{ count: number }>>(`/document-checklists/${checklistId}/open-requests`)
+  return data.data.count
+}
+
+/** Queues the refresh of the rules on every open request of the checklist; returns how many. */
+export async function refreshChecklistOpenRequests(checklistId: number): Promise<number> {
+  const { data } = await apiClient.post<ApiResponse<{ queued: number }>>(
+    `/document-checklists/${checklistId}/refresh-open-requests`,
+  )
+  return data.data.queued
+}
+
 /** One file of an item, streamed by the backend through the authenticated client (the browser never sees the ArchivioSmart URL). */
 export async function downloadDocumentRequestFile(id: number, documentId: number | string): Promise<Blob> {
   const { data } = await apiClient.get<Blob>(`/document-requests/${id}/documents/${documentId}/download`, {

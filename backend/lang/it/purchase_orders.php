@@ -5,6 +5,7 @@ return [
     'not_editable' => 'Questo ordine di acquisto non può più essere modificato.',
     'linked_to_purchase_invoice' => 'Questo ordine di acquisto è collegato a una fattura passiva.',
     'not_sendable_status' => 'Solo gli ordini di acquisto approvati o già inviati possono essere inviati al fornitore.',
+    'bulk_already_in_status' => 'L’ordine di acquisto è già in questo stato.',
     'has_receipts' => 'Un ordine di acquisto con ricezioni o residui chiusi non può tornare in bozza, in validazione né essere annullato.',
     'not_receivable' => 'Le ricezioni si registrano solo su ordini approvati, inviati o parzialmente evasi.',
     'cancelled' => 'L’ordine di acquisto è annullato.',

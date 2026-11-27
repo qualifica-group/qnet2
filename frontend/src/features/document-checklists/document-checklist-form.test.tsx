@@ -43,6 +43,8 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// A save of an existing checklist mounts the open-requests question (spec 0432): no permission here, so it stays silent.
+vi.mock('@/features/auth/use-abilities', () => ({ useAbilities: () => ({ can: () => false }) }))
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

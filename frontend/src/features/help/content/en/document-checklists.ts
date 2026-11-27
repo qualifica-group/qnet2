@@ -64,6 +64,10 @@ const guide: HelpGuide = {
             ['Extracted date field', 'Name of the date field the AI extracts from the document (for example issue_date), in lowercase letters, digits and _. Only with a maximum age; when empty it is issue_date.'],
           ],
         },
+        {
+          type: 'paragraph',
+          text: 'When you correct a checklist that has open document requests (draft, sent or in progress), after saving QNet asks whether to **Refresh rules of open requests** or keep the change **Only for new requests**. Requests already sent keep their initial rules until you choose to refresh them; the refresh starts once the checklist has been sent to ArchivioSmart. Correct the existing item instead of deleting it and creating a new one: a new item does not reach the open requests. The question is shown only to users who can edit document requests.',
+        },
       ],
     },
     {

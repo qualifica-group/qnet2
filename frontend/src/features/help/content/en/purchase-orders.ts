@@ -150,6 +150,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: '**Bulk status change**: in the list select several orders with the checkboxes on the left, open **Actions › Change status** (shown with the permission to change status or to approve), pick the status (Draft, In validation, Approved, Sent to supplier or Cancelled) and read the **N of M can move** preview. Orders that cannot move (step not allowed by the workflow, missing permission, receipts present or already in that status) **stay as they were** and are listed with the reason. **Change status** applies the change to the others, shows a summary (updated and unchanged) and refreshes the list. At most 200 orders can be selected at once; **Cancelled** frees the RDA lines as in the single change.',
+        },
+        {
+          type: 'paragraph',
           text: 'Statuses also affect the linked RDA lines (see **Link with RDA**): **Cancelled** frees them, receiving the lines moves them to **Received** (see **Line fulfilment and receipts**). Going back from **Cancelled** to **Draft** does not change the RDA.',
         },
       ],

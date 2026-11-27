@@ -1,13 +1,15 @@
 import type { CashFlow, Flow } from '@/features/management-control/cash-flow-types'
 import { roundMoney, sumMoney } from '@/features/management-control/money-math'
 
-const ZERO_FLOW: Flow = { receivable: 0, payable: 0, committed: 0, net: 0 }
+const ZERO_FLOW: Flow = { receivable: 0, payable: 0, committed: 0, salaries: 0, f24: 0, net: 0 }
 
 function addFlows(a: Flow, b: Flow): Flow {
   return {
     receivable: roundMoney(a.receivable + b.receivable),
     payable: roundMoney(a.payable + b.payable),
     committed: roundMoney(a.committed + b.committed),
+    salaries: roundMoney(a.salaries + b.salaries),
+    f24: roundMoney(a.f24 + b.f24),
     net: roundMoney(a.net + b.net),
   }
 }
@@ -43,12 +45,7 @@ export function applyBacklogScenario(data: CashFlow): CashFlow {
   }
 }
 
-export interface HorizonTotals {
-  receivable: number
-  payable: number
-  committed: number
-  net: number
-}
+export type HorizonTotals = Flow
 
 /** Figures of the months of the horizon (backlog and beyond excluded). */
 export function horizonTotals(data: CashFlow): HorizonTotals {
@@ -56,6 +53,8 @@ export function horizonTotals(data: CashFlow): HorizonTotals {
     receivable: sumMoney(data.months.map((month) => month.receivable)),
     payable: sumMoney(data.months.map((month) => month.payable)),
     committed: sumMoney(data.months.map((month) => month.committed)),
+    salaries: sumMoney(data.months.map((month) => month.salaries)),
+    f24: sumMoney(data.months.map((month) => month.f24)),
     net: sumMoney(data.months.map((month) => month.net)),
   }
 }

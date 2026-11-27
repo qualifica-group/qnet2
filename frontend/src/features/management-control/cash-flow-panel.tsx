@@ -12,7 +12,7 @@ import type { CashFlow, CashFlowFilters, Flow } from '@/features/management-cont
 import { useCashFlow } from '@/features/management-control/use-cash-flow'
 
 function isEmptyFlow(flow: Flow): boolean {
-  return flow.receivable === 0 && flow.payable === 0 && flow.committed === 0
+  return flow.receivable === 0 && flow.payable === 0 && flow.committed === 0 && flow.salaries === 0 && flow.f24 === 0
 }
 
 /** Nothing open or committed in any column: the selection has no data to show. */

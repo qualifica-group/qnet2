@@ -34,6 +34,7 @@ class CashFlowRequest extends FormRequest
             'operational_site_id.*' => ['integer', Rule::exists('operational_sites', 'id')],
             'document_type' => ['sometimes', Rule::in(ExposureFilters::DOCUMENT_TYPES)],
             'horizon_months' => ['sometimes', 'integer', 'min:1', 'max:'.CashFlowFilters::HORIZON_MAX],
+            'include_personnel' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -47,6 +48,7 @@ class CashFlowRequest extends FormRequest
             operationalSiteIds: $this->ids($data['operational_site_id'] ?? []),
             documentType: (string) ($data['document_type'] ?? ExposureFilters::TYPE_ALL),
             horizonMonths: (int) ($data['horizon_months'] ?? CashFlowFilters::HORIZON_DEFAULT),
+            includePersonnel: (bool) ($data['include_personnel'] ?? true),
         );
     }
 

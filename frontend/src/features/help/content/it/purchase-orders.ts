@@ -150,6 +150,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: '**Cambio di stato massivo**: nell’elenco seleziona più ordini con le caselle a sinistra, apri **Azioni › Cambia stato** (compare con il permesso di cambiare stato o di approvare), scegli lo stato (Bozza, In validazione, Approvato, Inviato al fornitore o Annullato) e leggi l’anteprima **N di M possono passare**. Gli ordini che non possono passare (passaggio non consentito dal flusso, permesso mancante, ricezioni presenti o già in quello stato) **restano com’erano** e sono elencati con il motivo. **Cambia stato** applica il cambio agli altri, mostra un riepilogo (aggiornati e non modificati) e aggiorna l’elenco. Si possono selezionare al massimo 200 ordini per volta; **Annullato** libera le righe RDA come nel cambio singolo.',
+        },
+        {
+          type: 'paragraph',
           text: 'Gli stati influiscono anche sulle righe RDA collegate (vedi **Collegamento con le RDA**): **Annullato** le libera, la ricezione delle righe le porta a **Ricevuta** (vedi **Evasione delle righe e ricezioni**). Tornare da **Annullato** a **Bozza** non cambia le RDA.',
         },
       ],

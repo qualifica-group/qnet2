@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0434 - Previsione delle uscite per il personale nel Cash flow previsionale (fase 3 degli statini paga).
+  Stima di stipendi netti, tredicesima, quattordicesima e F24 dei mesi futuri dai file importati (spec 0430, 0431).
+-->
+<spec id="0434-cash-flow-personnel-forecast" status="draft" owner="utente" date="2026-11-27">
+
+  <goal>
+    Il Cash flow previsionale mostra anche le uscite future per il personale, stimate dall'ultimo mese con costi e
+    netti importati: stipendi netti, tredicesima e quattordicesima, versamenti F24. La stima si spegne mese per mese
+    quando arrivano i cedolini veri e si puo' escludere con un interruttore.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-11-26/27. -->
+    <fact>Cash flow (spec 0270, 0270 D-15): `GET /api/management-control/cash-flow`, `CashFlowRequest` -&gt;
+      `CashFlowFilters` (company_id[], company_site_id[], operational_site_id[], document_type, horizon_months 1..24) -&gt;
+      `CashFlowBuilder::handle()` con tre fonti (`ReceivableFlowAggregator`, `PayableFlowAggregator`,
+      `CommittedFlowAggregator`) che restituiscono centesimi per societa' e bucket (`backlog`, "YYYY-MM", oltre
+      orizzonte = `beyond`). Flow = { receivable, payable, committed, net }; `by_company` con i net. Cache per giorno.
+      FE `features/management-control/cash-flow-*` (tabella, totali, grafico, per societa', scenario arretrato).</fact>
+    <fact>Costi del personale: `payroll_costs` (company_id, user_id, period, total_cost, hired_on, terminated_on;
+      spec 0430). Cedolini: `payslips` (company_id, user_id, period, payslip_type) + documento passivo `payslip` con una
+      rata = netto (spec 0431), gia' nel cash flow come uscita (`PayableFlowAggregator`). Dati locali: ottobre 2026,
+      107 cedolini MENSILITA_NORMALE con scadenza 15/11/2026.</fact>
+    <fact>Date di cessazione: `payroll_costs.terminated_on` (dal file), `employment_profiles.terminated_at`;
+      `employment_profiles.contract_expires_on` esiste ma e' vuoto ovunque.</fact>
+    <fact>Consulente del lavoro (2026-11-26): tredicesima pagata entro il 20 dicembre, quattordicesima entro meta'
+      luglio, con cedolino a parte; nei costi mensili sono gia' presenti come ratei, quindi incidono sulla cassa e non
+      sul costo.</fact>
+
+    <decision id="D-1">Proiezione di cassa, non budget (utente). Due nuove voci di uscita stimate nel Flow:
+      `salaries` (netti stimati, tredicesima e quattordicesima comprese) e `f24` (ritenute e contributi stimati).
+      `net` = receivable - payable - committed - salaries - f24. Contratto esteso e compatibile.</decision>
+    <decision id="D-2">Base della stima, per persona e societa': periodo base B = ultimo periodo presente sia in
+      `payroll_costs` sia nei cedolini ordinari (`payslip_type` = `config('payroll.forecast.regular_payslip_type')`,
+      default MENSILITA_NORMALE); costo base = `total_cost` di B, netto base = somma dei netti dei cedolini ordinari di B
+      (stessa societa' e persona). Persone senza cedolino ordinario in B: nessuna stima. Senza periodo B: nessuna stima.</decision>
+    <decision id="D-3">Mesi di competenza stimati: da B a quello la cui uscita cade nell'orizzonte. Per il mese c:
+      stipendio = netto base, pagato il giorno G del mese c+1 (G = giorno della scadenza delle rate dei cedolini
+      ordinari di B, il piu' frequente; senza dato `config('payroll.forecast.salary_day')` = 15), solo se per c non
+      esistono gia' cedolini ordinari della persona (allora sono rate reali). F24 del mese c pagato il 16 del mese c+1
+      (`config('payroll.forecast.f24_day')`): costo - netto - ratei, con costo e netto reali di c se importati, altrimenti
+      quelli base; ratei = netto x 2/12 (quota di tredicesima e quattordicesima gia' nel costo, decisione 2026-11-27).</decision>
+    <decision id="D-4">Tredicesima: un netto base in piu' per persona, pagato il 20 dicembre; quattordicesima: un netto
+      base in piu', pagato il 15 luglio (`config('payroll.forecast.extra_payments')`: mese, giorno). Saltate se per quel
+      mese esiste gia' un cedolino non ordinario della persona e societa'. Cosi' in un anno la stima totale e' 12 volte il
+      costo mensile (12 netti + 2 extra + 12 F24 senza ratei).</decision>
+    <decision id="D-5">Persone attive: esclusa dal mese c la persona con `payroll_costs.terminated_on` o
+      `employment_profiles.terminated_at` precedente al primo giorno di c; extra esclusi se cessata prima del giorno di
+      pagamento. Assunzioni future non stimate finche' non compaiono nei file (utente, 2A).</decision>
+    <decision id="D-6">Uscite stimate con data precedente a oggi: omesse (nessun arretrato stimato); oltre l'orizzonte:
+      in `beyond`. Attribuzione per societa' della riga di costo; il filtro societa' si applica; con filtri di sede
+      (company_site_id o operational_site_id) le stime sono escluse (il personale non ha sede). `document_type` non
+      incide sulle stime.</decision>
+    <decision id="D-9">(Build) Le stime si calcolano fino a un mese oltre l'orizzonte (`PersonnelForecast::LOOKAHEAD_MONTHS`
+      = 1) e quel mese finisce in `beyond`. Il periodo base B di D-2 e' unico per tutte le persone: se un mese ha costi di
+      alcune persone e netti di altre, B e' quel mese e la stima vale solo per chi li ha entrambi.</decision>
+    <decision id="D-7">Parametro `include_personnel` (boolean, default true): false = salaries e f24 a zero. Interruttore
+      "Includi stima personale" nella pagina, attivo di default (utente, 3A); echo in `applied` e chiave di cache.</decision>
+    <decision id="D-8">Centesimi interi, arrotondamento per persona e mese; query aggregate a numero costante.</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Stimatore `App\Services\ManagementControl\CashFlow\PersonnelForecast*` (base D-2, mesi D-3, extra D-4, attivi
+        D-5, date D-6) come quarta fonte di `CashFlowBuilder`; `CashFlowFilters` + `CashFlowRequest` con
+        `include_personnel`; `config/payroll.php` sezione `forecast`.</item>
+      <item>FE cash flow: tipi, colonne "Stipendi (stima)" e "F24 (stima)", totali, grafico e scenario con le nuove uscite,
+        interruttore "Includi stima personale"; guide in-app IT/EN del cash flow.</item>
+    </in>
+    <out>
+      <item>Budget per competenza e scenari "cosa succede se" (assunzioni, aumenti).</item>
+      <item>Stima di nuovi assunti, di ratei TFR o di conguagli; F24 reale come documento.</item>
+      <item>Esposizione, conto economico e andamento mensile (invariati).</item>
+      <item>Stime per sede.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/management-control/cash-flow">
+      <request>Come spec 0270 + `include_personnel`: boolean (opzionale, default true).</request>
+      <response status="200">
+        Come spec 0270, con:
+        Flow = { receivable, payable, committed, salaries: number, f24: number, net }
+          (net = receivable - payable - committed - salaries - f24; salaries/f24 stimati, 0 se esclusi)
+        applied += { include_personnel: boolean }
+        CompanyFlowRow invariato (i net per societa' comprendono le stime della societa').
+        Invarianti 0270 confermati: somma dei net di by_company = net del mese, idem backlog e beyond.
+      </response>
+      <errors>Come 0270; 422 se `include_personnel` non e' booleano.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Data una persona con costo 2.400,00 e cedolino ordinario 1.800,00 (scadenza giorno 15) nel
+      periodo base ottobre e oggi = 1 novembre, orizzonte 6: dicembre ha salaries 1.800,00 (netto di novembre al 15/12)
+      + 1.800,00 (tredicesima al 20/12) e f24 2.400,00 - 1.800,00 - 300,00 = 300,00 (novembre, al 16/12); novembre ha f24
+      300,00 di ottobre (16/11) e salaries 0 (il netto di ottobre e' la rata reale in payable); i mesi seguenti hanno un
+      netto e un F24 ciascuno (Pest).</criterion>
+    <criterion id="AC-002">Con oggi = 20 novembre l'F24 di ottobre (16/11) non compare ne' nei mesi ne' nell'arretrato;
+      un'uscita stimata oltre l'orizzonte finisce in `beyond` (Pest).</criterion>
+    <criterion id="AC-003">Importati i cedolini ordinari di novembre della persona, il suo netto di novembre stimato
+      sparisce (resta la rata reale) e l'F24 di novembre usa costo e netto reali se presenti; un cedolino non ordinario di
+      dicembre toglie la tredicesima stimata (Pest).</criterion>
+    <criterion id="AC-004">Persona cessata il 15/12 (terminated_on nel costo o terminated_at nel profilo): netto e F24
+      della competenza dicembre stimati (cessazione dopo il primo giorno del mese), nessuna stima per gennaio e seguenti,
+      nessuna tredicesima (cessata prima del 20/12). Persona senza cedolino ordinario nel periodo base: nessuna stima (Pest).</criterion>
+    <criterion id="AC-005">Due societa': le stime finiscono nella riga di by_company della propria societa' e gli
+      invarianti valgono; filtro societa' restringe; filtro di sede esclude le stime; `document_type=invoice` non le
+      cambia; `include_personnel=false` le azzera con net coerente; 422 su valore non booleano (Pest).</criterion>
+    <criterion id="AC-006">Arrotondamenti: somma delle stime per mese uguale alla somma per persona arrotondata al
+      centesimo; numero di query costante al crescere delle persone (Pest).</criterion>
+    <criterion id="AC-007">Frontend: colonne "Stipendi (stima)" e "F24 (stima)" in tabella e nei totali, uscite del
+      grafico comprensive delle stime, scenario arretrato invariato nelle regole ma con il nuovo net; l'interruttore
+      "Includi stima personale" (attivo di default) rifa' la richiesta con `include_personnel=false` e le colonne vanno a
+      zero (Vitest).</criterion>
+    <criterion id="AC-008">Guide in-app IT/EN del cash flow con la spiegazione della stima (base, giorni, tredicesima e
+      quattordicesima, F24, sostituzione con i dati reali, interruttore); parity verde (Vitest).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; authz invariata (`management-control.view`).</item>
+    <item>Query aggregate a numero costante; centesimi interi; nessuna query per persona.</item>
+    <item>Nessun dato personale nella risposta (solo importi aggregati per mese e societa'); fixture sintetiche.</item>
+    <item>File sotto 300 righe (500 limite), `handle()` con `// Step N`, identificatori in inglese.</item>
+    <item>Manuale: guide in-app IT/EN (CLAUDE.md 4-bis); manuale Claude Docs da segnalare.</item>
+  </constraints>
+
+</spec>

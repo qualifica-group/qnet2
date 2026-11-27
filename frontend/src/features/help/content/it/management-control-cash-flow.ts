@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'È una **fotografia a oggi** delle rate aperte e degli impegni verso i fornitori, collocati nel mese in cui si prevede che scadano. In alto trovi 6 riquadri: **Arretrato netto**, **Entrate**, **Uscite** e **Impegni** dell’orizzonte, **Saldo netto** dell’orizzonte e **Saldo netto con scenario**.',
+          text: 'È una **fotografia a oggi** delle rate aperte e degli impegni verso i fornitori, collocati nel mese in cui si prevede che scadano. In alto trovi 8 riquadri: **Arretrato netto**, **Entrate**, **Uscite**, **Impegni**, **Stipendi** e **F24** dell’orizzonte, **Saldo netto** dell’orizzonte e **Saldo netto con scenario**.',
         },
       ],
     },
@@ -33,6 +33,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Tipo documento**', 'Tutti (predefinito, proforma comprese), solo proforma o solo fatture, su entrambi i lati'],
             ['**Orizzonte**', 'Quanti mesi mostrare, a partire da quello corrente: 3, 6, 12 o 24'],
+            ['**Includi stima personale**', 'Acceso di default; spento toglie stipendi e F24 stimati (vedi Stima del personale)'],
           ],
         },
       ],
@@ -57,11 +58,39 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni mese mostra le **Entrate** (rate attive aperte), le **Uscite** (rate passive aperte, già al netto di ritenuta ed ENASARCO), gli **Impegni** (ordini a fornitore approvati e non ancora fatturati, IVA compresa come le rate), il **Netto** (entrate − uscite − impegni) e il **Cumulato**. Una rata cade nel mese della sua scadenza; un ordine cade nel mese della sua prima scadenza attesa, calcolata dalla data dell’ordine e dal metodo di pagamento (la data dell’ordine stessa se manca il metodo).',
+          text: 'Ogni mese mostra le **Entrate** (rate attive aperte), le **Uscite** (rate passive aperte, già al netto di ritenuta ed ENASARCO), gli **Impegni** (ordini a fornitore approvati e non ancora fatturati, IVA compresa come le rate), gli **Stipendi** e l’**F24** stimati (vedi Stima del personale), il **Netto** (entrate − uscite − impegni − stipendi − F24) e il **Cumulato**. Una rata cade nel mese della sua scadenza; un ordine cade nel mese della sua prima scadenza attesa, calcolata dalla data dell’ordine e dal metodo di pagamento (la data dell’ordine stessa se manca il metodo).',
         },
         {
           type: 'paragraph',
           text: 'Sotto la tabella, un grafico confronta le **entrate** con le **uscite e impegni** di ogni colonna e un secondo segue il **netto cumulato** mese per mese.',
+        },
+      ],
+    },
+    {
+      id: 'personnel-estimate',
+      title: 'Stima del personale',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Le colonne **Stipendi (stima)** e **F24 (stima)** (in corsivo) prevedono le uscite per il personale dei prossimi mesi. Sono **stime**, non documenti, e contano nel netto, nei riquadri e nel grafico come le uscite.',
+        },
+        {
+          type: 'table',
+          headers: ['Voce', 'Come viene stimata'],
+          rows: [
+            ['**Base**', 'L’ultimo mese per cui sono stati importati sia il **file dei costi** sia il **file dei netti**; ogni persona è stimata sul proprio costo e netto di quel mese'],
+            ['**Stipendio netto**', 'Un netto al mese, pagato nello **stesso giorno degli ultimi cedolini importati** (il 15 se non noto) del mese successivo'],
+            ['**Tredicesima e quattordicesima**', 'Un netto in più ciascuna: la tredicesima il **20 dicembre**, la quattordicesima il **15 luglio**'],
+            ['**F24**', 'Pagato il **16** del mese successivo: costo mensile − netto − 2/12 del netto, perché i ratei di tredicesima e quattordicesima sono già nel costo'],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Quando vengono importati i **cedolini veri**, la stima di quel mese sparisce e al suo posto ci sono le rate reali. Le persone **cessate** sono escluse dal mese di cessazione in poi; i **nuovi assunti** non sono stimati finché non compaiono nei file importati. Le stime con data **già passata** non vengono mostrate e quelle oltre l’orizzonte finiscono in **Oltre**.',
+        },
+        {
+          type: 'note',
+          text: 'Con un filtro **sede società** o **sede operativa** le stime sono **escluse**, perché il personale non ha sede. L’interruttore **Includi stima personale** nei filtri (acceso di default) le nasconde: le due colonne vanno a zero e il netto torna a comprendere solo documenti e impegni.',
         },
       ],
     },

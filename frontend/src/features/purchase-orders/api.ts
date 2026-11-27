@@ -1,6 +1,7 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import { filenameFromContentDisposition, saveBlob } from '@/lib/download'
+import type { BulkStatusPayload, BulkStatusResult } from '@/features/purchase-orders/purchase-order-bulk-status'
 import {
   PURCHASE_ORDERS_DOMAIN,
   type CreatedPurchaseOrder,
@@ -57,6 +58,12 @@ export async function changePurchaseOrderStatus(id: number, toStatus: PurchaseOr
   const { data } = await apiClient.post<ApiResponse<PurchaseOrder>>(`${ENDPOINT}/${id}/status`, {
     to_status: toStatus,
   })
+  return data.data
+}
+
+/** Partial outcome (spec 0433): orders that cannot pass are returned in `skipped`; 403 without changeStatus/approve, 422 `ids`/`to_status`. */
+export async function bulkChangePurchaseOrderStatus(payload: BulkStatusPayload): Promise<BulkStatusResult> {
+  const { data } = await apiClient.post<ApiResponse<BulkStatusResult>>(`${ENDPOINT}/bulk-status`, payload)
   return data.data
 }
 

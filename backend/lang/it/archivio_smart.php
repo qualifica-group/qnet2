@@ -29,6 +29,9 @@ return [
     'request_item_without_document' => 'La voce non ha nessun file caricato',
     'request_action_unavailable' => 'ArchivioSmart non supporta ancora questa azione',
     'request_never_delivered' => "La richiesta non e' mai arrivata ad ArchivioSmart: correggila con Modifica e inviala di nuovo, oppure annullala",
+    'request_rules_not_refreshable' => 'Si possono aggiornare le regole solo di una richiesta in bozza, inviata o in corso',
+    'request_item_not_stoppable' => 'La voce non ha file in attesa della validazione AI',
+    'checklist_not_synced' => "La checklist non e' ancora stata inviata ad ArchivioSmart: le regole si aggiornano dopo l'invio",
     'document_download_failed' => 'Impossibile scaricare il file da ArchivioSmart',
     'document_not_found' => 'File non trovato',
     'webhook_not_found' => 'Non trovato',
@@ -42,5 +45,6 @@ return [
         'message' => 'messaggio',
         'document_checklist_id' => 'checklist',
         'webhook_secret' => 'segreto del webhook',
+        'item_ids' => 'voci',
     ],
 ];

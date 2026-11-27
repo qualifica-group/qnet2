@@ -66,7 +66,7 @@ trait PushesToArchivioSmart
         $status = $response->status();
 
         return match (true) {
-            in_array($status, [200, 201, 204], true) => $this->succeed($record, $operation, $status),
+            in_array($status, [200, 201, 202, 204], true) => $this->succeed($record, $operation, $status),
             $status === 422 => $this->onUnprocessable($record, $operation, $response),
             $status === 401 => $this->failSync($record, $operation, $status, __('archivio_smart.unauthorized')),
             $status === 409 => $this->failSync($record, $operation, $status, $this->conflictMessage($record)),

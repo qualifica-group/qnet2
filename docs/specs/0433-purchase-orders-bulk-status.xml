@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0433 - Cambio di stato massivo degli ODA dal menu "Azioni" della griglia.
+-->
+<spec id="0433-purchase-orders-bulk-status" status="draft" owner="utente" date="2026-11-27">
+
+  <goal>
+    Dalla griglia degli ODA l'utente seleziona piu' ordini e, dal menu "Azioni", li porta tutti a uno stato scelto. Gli
+    ODA che possono passare passano, gli altri restano com'erano e un riepilogo dice quali e perche'.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-11-27. -->
+    <fact>Cambio di stato del singolo ODA: `POST /api/purchase-orders/{purchaseOrder}/status` ->
+      `App\Services\PurchaseOrders\PurchaseOrderStatusService::change()`: lock dell'ordine, permesso per destinazione
+      (`approve` per Approvato, `changeStatus` per gli altri; 403), matrice `PurchaseOrderStatus::allowedTransitions()`
+      (422 su `to_status`), blocco se ci sono ricevimenti o residui chiusi per Bozza/In validazione/Annullato (422),
+      propagazione dell'annullamento alle righe RDA. `transitionsFor()` filtra la matrice per permesso.</fact>
+    <fact>Stati: draft, in_validation, approved, sent_to_supplier, partially_fulfilled, fulfilled, cancelled; gli stati
+      di evasione derivano dai ricevimenti (spec 0254) e non si impostano a mano. Policy `PurchaseOrderPolicy`
+      (abilita' changeStatus, approve, ...).</fact>
+    <fact>Griglia: il menu "Azioni" della selezione multipla e' `features/table/use-bulk-actions-slot.tsx`
+      (`getBulkActions(selection)` del `TableView`; precedente `features/absences/requests/use-absence-bulk-actions.tsx`
+      con `POST /api/absence-requests/bulk-decision`). FE ODA: `features/purchase-orders/purchase-orders-table.tsx`,
+      `purchase-order-status-dialog.tsx`, `purchase-order-status-options.tsx`, catalogo nomi stato
+      `usePurchaseOrderStatusCatalog`.</fact>
+
+    <decision id="D-1">Esito parziale (utente 2026-11-27, 1A): ogni ODA passa da `PurchaseOrderStatusService::change()`
+      nella sua transazione; chi non puo' passare resta invariato e compare tra gli scartati con il motivo (messaggio
+      dell'errore 403/422 del cambio singolo, oppure "gia' in questo stato"). Nessun cambio parziale di un singolo ODA.</decision>
+    <decision id="D-2">Stati proposti (utente 2026-11-27, 2A): tutti quelli impostabili a mano (draft, in_validation,
+      approved, sent_to_supplier, cancelled); partially_fulfilled e fulfilled esclusi (422 se inviati). Prima della
+      conferma un'anteprima (`dry_run`) dice quanti ODA possono passare, senza scrivere.</decision>
+    <decision id="D-3">Massimo 200 ODA per richiesta (`config('purchase-orders.bulk_status_max')`); id duplicati
+      ignorati; id inesistenti = 422. L'endpoint richiede `purchase-orders.view` (come il cambio singolo, decisione utente 2026-11-27)
+      piu' `purchase-orders.changeStatus` o `purchase-orders.approve`; il permesso per destinazione resta deciso ordine per ordine (D-1).</decision>
+    <decision id="D-4">Il menu "Azioni" mostra "Cambia stato" solo con uno dei due permessi e almeno un ODA
+      selezionato; dopo l'applicazione la griglia si aggiorna e un riepilogo elenca aggiornati e scartati.</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Endpoint `POST /api/purchase-orders/bulk-status` (FormRequest, controller, servizio che riusa
+        `PurchaseOrderStatusService::change()`), route dichiarata prima di `purchase-orders/{purchaseOrder}`, lang,
+        documentazione API, config.</item>
+      <item>FE: voce "Cambia stato" nel menu Azioni della griglia ODA, dialog con scelta stato, anteprima, conferma e
+        riepilogo; guida in-app IT/EN degli ODA.</item>
+    </in>
+    <out>
+      <item>Cambio di stato massivo di RDA, fatture o altri moduli.</item>
+      <item>Modifica della matrice degli stati o dei permessi esistenti.</item>
+      <item>Invio massivo al fornitore via email (lo stato "Inviato al fornitore" si imposta senza inviare nulla, come oggi).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/purchase-orders/bulk-status">
+      <request>{ ids: int[] (1..200, exists purchase_orders), to_status: "draft"|"in_validation"|"approved"|"sent_to_supplier"|"cancelled", dry_run: boolean }</request>
+      <response status="200">
+        data: {
+          applied: boolean,                 (false con dry_run)
+          to_status: string,
+          total: number,                    (ODA distinti richiesti)
+          changed: [{ id: number, code: string }],      (con dry_run: quelli che passerebbero)
+          skipped: [{ id: number, code: string, reason: string }]
+        }
+      </response>
+      <errors>401; 403 senza `purchase-orders.view`, oppure senza `purchase-orders.changeStatus` e senza `purchase-orders.approve`; 422 su `ids`
+        (vuoto, oltre 200, inesistenti) e `to_status` (fuori lista o stato di evasione).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">401 anonimo; 403 senza view, oppure senza changeStatus e approve; 422 per ids vuoto, oltre il massimo,
+      inesistenti, to_status non ammesso o di evasione (Pest).</criterion>
+    <criterion id="AC-002">Dati 3 ODA in bozza e 1 annullato, verso "in_validation": `dry_run` risponde 3 changed e 1
+      skipped con motivo senza scrivere; l'applicazione porta i 3 in validazione, l'annullato resta annullato (Pest).</criterion>
+    <criterion id="AC-003">Verso "approved" un utente con changeStatus ma senza approve: tutti skipped con il motivo del
+      permesso; con approve passano quelli ammessi dalla matrice (Pest).</criterion>
+    <criterion id="AC-004">Un ODA con ricevimenti verso "cancelled" e' skipped con il messaggio dei ricevimenti; un ODA
+      gia' nello stato richiesto e' skipped "gia' in questo stato"; l'annullamento di un ODA collegato a righe RDA le
+      rilascia come nel cambio singolo; id duplicati contati una volta (Pest).</criterion>
+    <criterion id="AC-005">Frontend: "Cambia stato" compare nel menu Azioni solo con il permesso e una selezione; il
+      dialog offre i 5 stati manuali, mostra l'anteprima "N di M possono passare" e gli scartati con motivo, Conferma
+      disabilitata se N = 0; dopo l'applicazione toast di riepilogo e griglia aggiornata (Vitest).</criterion>
+    <criterion id="AC-006">Guide in-app IT/EN degli ODA con il cambio di stato massivo; parity verde (Vitest).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Riusa `PurchaseOrderStatusService::change()`: nessuna duplicazione di matrice, permessi o propagazioni.</item>
+    <item>Una transazione per ODA (lock come nel cambio singolo); query di caricamento a numero costante.</item>
+    <item>Authz server-side; FormRequest; nessuna nuova dipendenza; file sotto 300 righe; identificatori in inglese.</item>
+    <item>Manuale: guide in-app IT/EN (CLAUDE.md 4-bis); manuale Claude Docs da segnalare.</item>
+  </constraints>
+
+</spec>
