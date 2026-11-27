@@ -20,12 +20,13 @@ final class CashFlowBuilder
 {
     private const string BEYOND = 'beyond';
 
-    private const array SIDES = ['receivable', 'payable', 'committed'];
+    private const array SIDES = ['receivable', 'payable', 'committed', 'salaries', 'f24'];
 
     public function __construct(
         private readonly ReceivableFlowAggregator $receivable,
         private readonly PayableFlowAggregator $payable,
         private readonly CommittedFlowAggregator $committed,
+        private readonly PersonnelForecast $personnel,
     ) {}
 
     /**
@@ -34,11 +35,12 @@ final class CashFlowBuilder
      */
     public function handle(CashFlowFilters $filters, string $today): array
     {
-        // Step 1: the three sources, by company and expected bucket
+        // Step 1: the four sources (the personnel one is an estimate, spec 0432), by company and expected bucket
         $sources = [
             'receivable' => $this->receivable->cents($filters, $today),
             'payable' => $this->payable->cents($filters, $today),
             'committed' => $this->committed->cents($filters, $today),
+            ...$this->personnel->cents($filters, $today),
         ];
 
         // Step 2: the columns of the projection and the cells (company x column x side)
@@ -144,7 +146,7 @@ final class CashFlowBuilder
 
     /**
      * @param  array<string, int>  $sides  cents by side
-     * @return array{receivable: float, payable: float, committed: float, net: float}
+     * @return array{receivable: float, payable: float, committed: float, salaries: float, f24: float, net: float}
      */
     private function flow(array $sides): array
     {
@@ -152,6 +154,8 @@ final class CashFlowBuilder
             'receivable' => ExposureSupport::euros($sides['receivable']),
             'payable' => ExposureSupport::euros($sides['payable']),
             'committed' => ExposureSupport::euros($sides['committed']),
+            'salaries' => ExposureSupport::euros($sides['salaries']),
+            'f24' => ExposureSupport::euros($sides['f24']),
             'net' => ExposureSupport::euros($this->net($sides)),
         ];
     }
@@ -161,6 +165,6 @@ final class CashFlowBuilder
      */
     private function net(array $sides): int
     {
-        return $sides['receivable'] - $sides['payable'] - $sides['committed'];
+        return $sides['receivable'] - $sides['payable'] - $sides['committed'] - $sides['salaries'] - $sides['f24'];
     }
 }

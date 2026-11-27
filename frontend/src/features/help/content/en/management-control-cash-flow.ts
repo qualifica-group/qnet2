@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'It is a **photograph as of today** of the open installments and of the supplier commitments, placed in the month in which they are expected to fall due. At the top are 6 tiles: **Net backlog**, **Receipts**, **Payments** and **Commitments** of the horizon, **Net balance** of the horizon and **Net balance with scenario**.',
+          text: 'It is a **photograph as of today** of the open installments and of the supplier commitments, placed in the month in which they are expected to fall due. At the top are 8 tiles: **Net backlog**, **Receipts**, **Payments**, **Commitments**, **Salaries** and **F24** of the horizon, **Net balance** of the horizon and **Net balance with scenario**.',
         },
       ],
     },
@@ -33,6 +33,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Document type**', 'All (default, proforma included), proforma only or invoices only, on both sides'],
             ['**Horizon**', 'How many months to show, starting from the current one: 3, 6, 12 or 24'],
+            ['**Include personnel estimate**', 'On by default; off removes the estimated salaries and F24 (see Personnel estimate)'],
           ],
         },
       ],
@@ -57,11 +58,39 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Each month shows **Receipts** (open active installments), **Payments** (open purchase installments, already net of withholding tax and ENASARCO), **Commitments** (approved supplier orders not yet invoiced, VAT included like the installments), the **Net** (receipts − payments − commitments) and the **Cumulative**. An installment falls in the month of its due date; an order falls in the month of its first expected due date, from the order date and the payment method (the order date itself if it has no payment method).',
+          text: 'Each month shows **Receipts** (open active installments), **Payments** (open purchase installments, already net of withholding tax and ENASARCO), **Commitments** (approved supplier orders not yet invoiced, VAT included like the installments), the estimated **Salaries** and **F24** (see Personnel estimate), the **Net** (receipts − payments − commitments − salaries − F24) and the **Cumulative**. An installment falls in the month of its due date; an order falls in the month of its first expected due date, from the order date and the payment method (the order date itself if it has no payment method).',
         },
         {
           type: 'paragraph',
           text: 'Below the table, a chart compares **receipts** with **payments and commitments** for each column, and a second one follows the **cumulative net** month by month.',
+        },
+      ],
+    },
+    {
+      id: 'personnel-estimate',
+      title: 'Personnel estimate',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The **Salaries (estimate)** and **F24 (estimate)** columns (in italic) forecast the personnel outflows of the coming months. They are **estimates**, not documents, and they count in the net, the tiles and the chart like payments.',
+        },
+        {
+          type: 'table',
+          headers: ['Item', 'How it is estimated'],
+          rows: [
+            ['**Base**', 'The last month for which both the **cost file** and the **net file** have been imported; each person is estimated on their own cost and net of that month'],
+            ['**Net salary**', 'One net per month, paid on the **same day as the last imported payslips** (15 if unknown) of the following month'],
+            ['**13th and 14th**', 'One extra net each: the 13th on **20 December**, the 14th on **15 July**'],
+            ['**F24**', 'Paid on the **16th** of the following month: monthly cost − net − 2/12 of the net, because the 13th and 14th accruals are already in the cost'],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'When the **real payslips** are imported, the estimate of that month disappears and the real installments take its place. People who **left** are excluded from their leaving month on; **new hires** are not estimated until they appear in the imported files. Estimates dated **in the past** are not shown, and the ones beyond the horizon go to **Beyond**.',
+        },
+        {
+          type: 'note',
+          text: 'With a **company site** or **operational site** filter the estimates are **excluded**, because personnel has no site. The **Include personnel estimate** switch in the filters (on by default) hides them: the two columns go to zero and the net comes back to documents and commitments only.',
         },
       ],
     },

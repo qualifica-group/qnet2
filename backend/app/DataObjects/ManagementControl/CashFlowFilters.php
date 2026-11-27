@@ -27,6 +27,7 @@ final readonly class CashFlowFilters
         public array $operationalSiteIds = [],
         public string $documentType = ExposureFilters::TYPE_ALL,
         public int $horizonMonths = self::HORIZON_DEFAULT,
+        public bool $includePersonnel = true,
     ) {}
 
     /**
@@ -42,6 +43,7 @@ final readonly class CashFlowFilters
             'operational_site_id' => $this->operationalSiteIds,
             'document_type' => $this->documentType,
             'horizon_months' => $this->horizonMonths,
+            'include_personnel' => $this->includePersonnel,
         ];
     }
 }

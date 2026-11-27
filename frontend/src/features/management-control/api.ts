@@ -126,6 +126,7 @@ export function defaultCashFlowFilters(): CashFlowFilters {
     operationalSiteIds: [],
     documentType: 'all',
     horizonMonths: DEFAULT_CASH_FLOW_HORIZON,
+    includePersonnel: true,
   }
 }
 
@@ -135,6 +136,7 @@ export function toCashFlowParams(filters: CashFlowFilters): CashFlowParams {
     ...scopeParams(filters),
     document_type: filters.documentType,
     horizon_months: filters.horizonMonths,
+    ...(filters.includePersonnel ? {} : { include_personnel: false as const }),
   }
 }
 

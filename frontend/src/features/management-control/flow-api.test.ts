@@ -32,6 +32,15 @@ describe('cash flow api helpers', () => {
       operationalSiteIds: [],
       documentType: 'all',
       horizonMonths: 6,
+      includePersonnel: true, // REQUIREMENT CHANGED (spec 0432)
+    })
+  })
+
+  it('AC-007 sends include_personnel only when the estimate is off', () => {
+    expect(toCashFlowParams({ ...defaultCashFlowFilters(), includePersonnel: false })).toEqual({
+      document_type: 'all',
+      horizon_months: 6,
+      include_personnel: false,
     })
   })
 

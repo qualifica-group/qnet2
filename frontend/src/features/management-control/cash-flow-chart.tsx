@@ -6,9 +6,9 @@ import type { CashFlow, Flow } from '@/features/management-control/cash-flow-typ
 import { roundMoney } from '@/features/management-control/money-math'
 import { monthLabelFormatter } from '@/features/management-control/month-label'
 
-/** Payments for the chart: what is owed on invoices plus what is committed on orders. */
+/** Outflows for the chart: invoices owed, orders committed and the estimated personnel (salaries, F24). */
 function outflow(flow: Flow): number {
-  return roundMoney(flow.payable + flow.committed)
+  return roundMoney(flow.payable + flow.committed + flow.salaries + flow.f24)
 }
 
 /** Receipts against payments and commitments per column, and the cumulative net of the months (spec 0270 D-12). */

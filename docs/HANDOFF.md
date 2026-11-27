@@ -3,7 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Cedolini, parte B statini (spec 0431, 2026-11-25) — VERDE, NON COMMITTATO
+## Cash flow: stima uscite per il personale, fase 3 statini (spec 0432, 2026-11-27) — VERDE, NON COMMITTATO
+
+- `PersonnelForecast` + `PersonnelForecastData` (`app/Services/ManagementControl/CashFlow/`), quarta fonte di `CashFlowBuilder`: Flow += `salaries`, `f24`; net = receivable - payable - committed - salaries - f24. Base = ultimo periodo con costi e cedolini ordinari (MENSILITA_NORMALE); netto il giorno G (giorno piu' frequente delle scadenze dei cedolini base, default 15) del mese dopo; 13a 20/12, 14a 15/07 = un netto base; F24 il 16 del mese dopo = costo - netto - netto x 2/12 (ratei); sostituite dai cedolini reali; cessati esclusi; stime passate omesse; un mese oltre l'orizzonte in `beyond` (`LOOKAHEAD_MONTHS`); filtri di sede escludono le stime.
+- `include_personnel` (default true) in `CashFlowFilters`/`CashFlowRequest`, in `applied` e nella cache. `config/payroll.php` sezione `forecast`. Helper test `tests/Helpers/CashFlowPersonnelHelpers.php` caricato da `tests/Pest.php`.
+- FE: righe "Stipendi (stima)" e "F24 (stima)", 8 riquadri, grafico e scenario aggiornati, interruttore "Includi stima personale"; guida cash flow IT/EN sezione `personnel-estimate`.
+- Verifica (mirata, file per file: PHP e Node vanno in segmentation fault a caso su questo PC, anche la suite completa del verifier): ManagementControl 164/168 (i 4 rossi noti del menu), PayrollCosts 21/21, Payslips 51/51; vitest management-control+help+i18n 564/564; tsc pulito; ESLint e Pint puliti.
+- In progettazione: spec 0433 cambio di stato massivo degli ODA (decisioni utente 1A esito parziale, 2A cinque stati manuali con anteprima), non ancora approvata in forma di piano.
+
+## Cedolini, parte B statini (spec 0431, 2026-11-25) — COMMITTATO (0e659054e)
 
 - `PurchaseInvoiceType::Payslip` ('Cedolino'); tabella `payslips` (chiave societa'+utente+period+payslip_type, `purchase_invoice_id` unico), `users.supplier_registry_id`; tipo di costo `63.01.001` "Retribuzioni al personale" sotto conto 63.01 (migrazione dati); `config/payroll.php` `payslip.payment_method_code` (bonifico_bancario) e `payslip.cost_type_code`.
 - Import `POST /api/purchase-invoices/payslips/import` (`file`, `dry_run`, `payment_date`): `App\Imports\Payslips\*`; CF dalla ripartizione con TIPO "Codice fiscale"; un cedolino per riga (data fine mese, nessun numero, riga senza IVA, una rata = netto alla data di pagamento), scritto sui model riusando `PurchaseInvoiceAmountCalculator`; ricarico aggiorna i non pagati, pagati = errore; fornitore: collegato > unico con stesso CF (marcato fornitore) > nuovo; IBAN su `employment_profiles.iban` con avvisi. Codice condiviso con 0430 in `App\Imports\Support\{SpreadsheetRecords,ImportNumber,PayrollLookups}`.

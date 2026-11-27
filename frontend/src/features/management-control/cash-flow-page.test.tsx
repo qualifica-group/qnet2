@@ -59,7 +59,7 @@ const EMPTY_FOR_SELECT = {
   pagination: { total: 0, offset: 0, limit: 25, total_pages: 0, has_more: false },
 }
 
-const ZERO_FLOW = { receivable: 0, payable: 0, committed: 0, net: 0 }
+const ZERO_FLOW = { receivable: 0, payable: 0, committed: 0, salaries: 0, f24: 0, net: 0 }
 
 function mockApi(cashFlow: CashFlow = makeCashFlow()) {
   getMock.mockImplementation((url: string) =>
@@ -105,17 +105,19 @@ beforeEach(() => {
 })
 
 describe('ManagementControlCashFlowPage', () => {
-  it('AC-014 shows the six tiles with the net backlog, the horizon figures and the balance with scenario', async () => {
+  it('AC-014 shows the eight tiles with the net backlog, the horizon figures, the personnel estimate and the balance with scenario', async () => {
     mockApi()
     renderPage()
 
     const totals = await screen.findByRole('region', { name: 'Cash flow totals' })
-    expect(within(totals).getAllByRole('term')).toHaveLength(6)
+    expect(within(totals).getAllByRole('term')).toHaveLength(8) // REQUIREMENT CHANGED (spec 0432): salaries and F24 tiles
     const expected: [string, number][] = [
       ['Net backlog', 200],
       ['Receipts in the horizon', 1600],
-      ['Payments in the horizon', 800],
+      ['Payments in the horizon', 500],
       ['Commitments in the horizon', 100],
+      ['Estimated salaries in the horizon', 180],
+      ['Estimated F24 in the horizon', 120],
       ['Net balance in the horizon', 700],
       ['Net balance with scenario', 900],
     ]
@@ -124,7 +126,7 @@ describe('ManagementControlCashFlowPage', () => {
     }
   })
 
-  it('AC-014 shows the table with backlog, translated months and beyond, and the five rows', async () => {
+  it('AC-014 shows the table with backlog, translated months and beyond, and the seven rows', async () => {
     mockApi()
     renderPage()
 
@@ -134,8 +136,14 @@ describe('ManagementControlCashFlowPage', () => {
     ])
     const rows = within(table).getAllByRole('row').slice(1)
     expect(rows.map((row) => within(row).getByRole('rowheader').textContent)).toEqual([
-      'Receipts', 'Payments', 'Commitments', 'Net', 'Cumulative',
+      'Receipts', 'Payments', 'Commitments', 'Salaries (estimate)', 'F24 (estimate)', 'Net', 'Cumulative',
     ])
+    expect(cellsOf(table, /^Salaries/).map((cell) => cell.textContent)).toEqual(
+      [0, 60, 60, 60, 30].map((value) => formatEuro(value)),
+    )
+    expect(cellsOf(table, /^F24/).map((cell) => cell.textContent)).toEqual(
+      [0, 40, 40, 40, 20].map((value) => formatEuro(value)),
+    )
     expect(cellsOf(table, /^Receipts/).map((cell) => cell.textContent)).toEqual(
       [500, 1000, 0, 600, 200].map((value) => formatEuro(value)),
     )
@@ -168,7 +176,7 @@ describe('ManagementControlCashFlowPage', () => {
     renderPage()
 
     const bars = await screen.findByRole('figure', { name: 'Receipts and payments by month' })
-    expect(within(bars).getByText('Receipts / Payments and commitments')).toBeInTheDocument()
+    expect(within(bars).getByText('Receipts / Payments, commitments and personnel estimate')).toBeInTheDocument()
     expect(within(bars).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       'Backlog: 500 / 300',
       'Oct 26: 1000 / 500',
@@ -215,6 +223,34 @@ describe('ManagementControlCashFlowPage', () => {
         cashFlowCalls().some(([, c]) => (c as { params: { document_type?: string } }).params.document_type === 'invoice'),
       ).toBe(true),
     )
+  })
+
+  it('AC-007 the personnel estimate switch is on by default and turning it off refetches with include_personnel=false', async () => {
+    mockApi()
+    renderPage()
+    await findTable()
+    const personnel = screen.getByRole('switch', { name: 'Include personnel estimate' })
+    expect(personnel).toBeChecked()
+    expect(cashFlowCalls()[0]?.[1]).toMatchObject({ params: { document_type: 'all', horizon_months: 6 } })
+    expect((cashFlowCalls()[0]?.[1] as { params: object }).params).not.toHaveProperty('include_personnel')
+
+    mockApi(makeCashFlow({
+      months: makeCashFlow().months.map((month) => ({ ...month, salaries: 0, f24: 0, net: month.net + 100 })),
+    }))
+    fireEvent.click(personnel)
+
+    await waitFor(() =>
+      expect(
+        cashFlowCalls().some(([, c]) => (c as { params: { include_personnel?: boolean } }).params.include_personnel === false),
+      ).toBe(true),
+    )
+    const table = await findTable()
+    await waitFor(() =>
+      expect(cellsOf(table, /^Salaries/).map((cell) => cell.textContent)).toEqual(
+        [0, 0, 0, 0, 30].map((value) => formatEuro(value)),
+      ),
+    )
+    expect(cellsOf(table, /^F24/).slice(1, 4).map((cell) => cell.textContent)).toEqual([0, 0, 0].map((value) => formatEuro(value)))
   })
 
   it('AC-014 renders the empty state when nothing is open or committed', async () => {
