@@ -74,6 +74,7 @@ final class WorkOrderDerivedColumns
         private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
         private readonly WorkOrderLinePaymentStatusColumn $linePaymentStatusColumn,
         private readonly WorkOrderAmountColumns $amountColumns,
+        private readonly WorkOrderLastNoteColumns $lastNoteColumns,
     ) {}
 
     /**
@@ -103,6 +104,12 @@ final class WorkOrderDerivedColumns
 
         if (WorkOrderAmountColumns::handles($columnId)) {
             $this->amountColumns->applyFilter($query, $columnId, $columnConfig, $filter);
+
+            return true;
+        }
+
+        if (WorkOrderLastNoteColumns::handles($columnId)) {
+            $this->lastNoteColumns->applyFilter($query, $columnId, $columnConfig, $filter);
 
             return true;
         }
@@ -214,6 +221,12 @@ final class WorkOrderDerivedColumns
 
         if (WorkOrderAmountColumns::handles($columnId)) {
             $this->amountColumns->applySort($query, $columnId, $direction);
+
+            return true;
+        }
+
+        if (WorkOrderLastNoteColumns::handles($columnId)) {
+            $this->lastNoteColumns->applySort($query, $columnId, $direction);
 
             return true;
         }

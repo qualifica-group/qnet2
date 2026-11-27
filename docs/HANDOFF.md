@@ -3,14 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Commesse, azioni di riga: solo occhio e team sulla riga, schede sempre in modale (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO
+## Commesse, colonne "Ultima nota data" / "Ultima nota responsabile" (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Legacy: `OrdersTable` "Ultima Nota" (ultima nota/chiamata/appuntamento della commessa, risposte incluse) e "U.N. Responsabile" (`nota_contabile`: ultima nota scritta dal responsabile), data in cella + testo in tooltip.
+- Backend: `WorkOrder::latestNote()` / `latestSupervisorNote()` (`morphOne`->`ofMany` max created_at, id; la seconda solo autori presenti in `work_order_supervisor`). `Tables/WorkOrders/WorkOrderLastNoteColumns.php`: colonne `last_note_at` / `supervisor_last_note_at` (type `date`, filtro data, sort su subquery correlata, note soft-deleted escluse), riga con `<col>_author` e `<col>_excerpt` (testo piano, `MentionParser::excerptWithNames`, 300 caratteri). Cablate in `WorkOrdersTableDefinition` (eager load, columns, filters, mapRow) e `WorkOrderDerivedColumns` (filter/sort); valgono anche per `ProjectWorkOrdersTableDefinition` (eredita).
+- Frontend: `features/work-orders/last-note-cell.tsx` (data + tooltip autore/data-ora/testo), registrata in `column-renderers.tsx`. Etichette `workOrders.columns.*` + `workOrders.lastNote.hint`. Split i18n: `taskBoard` spostato in `{it,en}-work-order-task-board.ts` (file commesse erano oltre 500 righe).
+- Test: `WorkOrderLastNoteColumnsTest` (nuovo, 7), `WorkOrderTableTest` elenco colonne (REQUIREMENT CHANGED), `column-renderers.test.tsx`. Eseguiti: `tests/Feature/WorkOrders` (tutto verde tranne 5 errori PREESISTENTI e indipendenti: `WorkOrderAttributeLocksTest` "no such table product_categories", `QuoteLineWorkOrderMigrationTest` "no such column renewal_number", falliscono anche da soli), ProjectWorkOrders/CategoryTabs/Notes verdi; vitest work-orders/help/i18n verdi, eslint + `tsc -b --force` puliti.
+- Manuale: guida in-app `work-orders` IT/EN (paragrafo nella sezione colonne) + Manuale Utente QNet su Claude Docs aggiornato (dopo "Colonne Importo consulenza e Totale ricavo").
+
+## Commesse, azioni di riga: solo occhio e team sulla riga, schede sempre in modale (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Backend: `WorkOrderColumnCatalog::actions()` mette anche `info` nel menu (`'menu' => true`); sulla riga restano `view` e `team`. Test `WorkOrderRowActionsLegacyTest` aggiornato (REQUIREMENT CHANGED: menu = info, notes, delete).
 - Frontend: `useWorkOrderRowActions` usa un secondo `useModuleOpener` con `forceMode: OPEN_MODE_MODAL` per le voci di scheda (`TAB_ACTION_KEYS`: info/notes/tasks/documents): aprono sempre lo Sheet sulla scheda, mai la pagina, qualunque sia la preferenza. L'occhio segue ancora la preferenza (o il `forceMode` del chiamante). `sheet` restituito = i due Sheet insieme. Ctrl/Cmd+clic invariato (pagina sulla scheda in nuova scheda browser).
 - Manuale: guida in-app `work-orders` sezione `row-actions` IT+EN; manuale Claude Docs, paragrafo "Stesso ordine nei moduli commerciali".
 - Verifica: Pest `WorkOrderRowActionsLegacyTest` 5/5, Vitest work-orders/contracts/registries/help verdi, ESLint e `tsc -b --force` puliti.
 
-## Campi flessibili: modifica di una sezione intera in un popup, Offerte e Commesse (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO
+## Campi flessibili: modifica di una sezione intera in un popup, Offerte e Commesse (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Solo frontend, nessun endpoint nuovo: la PATCH diff di `buildUpdatePayload` (quote/work-order) manda gia' l'intera mappa `attribute_values` quando cambia un codice, quindi piu' campi salvano in una richiesta.
 - `features/attributes/attribute-layout-rows.tsx` (nuovo): righe/griglia di una `LayoutSection` estratte da `AttributeLayoutSection` (ora le usa), con `readOnlyCodes`.

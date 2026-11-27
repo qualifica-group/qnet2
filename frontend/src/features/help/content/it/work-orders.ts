@@ -87,6 +87,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Se vedi i **Dati contrattuali** delle commesse, la tabella ha anche le colonne **Importo consulenza** e **Totale ricavo**, come nel vecchio QNet. **Importo consulenza** somma l'imponibile dei prodotti di tipologia **Consulenza** della commessa. **Totale ricavo** è lo stesso totale della tab Dati contrattuali: l'imponibile di ogni prodotto, tranne quelli con provvigione fornitore **ricevuta** (di solito gli **Ente**), che contano solo per quella provvigione. Entrambe si ordinano e si filtrano per importo (uguale, maggiore, minore, compreso fra).",
         },
+        {
+          type: 'paragraph',
+          text: "Le colonne **Ultima nota data** e **Ultima nota responsabile** riprendono quelle del vecchio QNet. **Ultima nota data** mostra la data dell'ultima nota scritta nello **Storico Note** della commessa, comprese le risposte; **Ultima nota responsabile** la data dell'ultima nota scritta da uno dei **Responsabili** della commessa. Passando col mouse sulla data vedi chi ha scritto la nota, data e ora e il testo. Le note eliminate non contano; senza note la cella è vuota. Entrambe si ordinano e si filtrano per data.",
+        },
       ],
     },
     {

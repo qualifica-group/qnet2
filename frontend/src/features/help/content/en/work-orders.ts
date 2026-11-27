@@ -87,6 +87,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "If you see the work orders' **Contract data**, the table also has the **Consultancy amount** and **Total revenue** columns, as in the old QNet. **Consultancy amount** adds up the net amount of the work order's **Consulenza** products. **Total revenue** is the same total as the Contract data tab: the net amount of every product, except those with a **received** supplier commission (usually the **Ente** ones), which count only for that commission. Both can be sorted and filtered by amount (equals, greater than, less than, between).",
         },
+        {
+          type: 'paragraph',
+          text: "The **Last note date** and **Last supervisor note** columns mirror those of the old QNet. **Last note date** shows the date of the latest note written in the work order's **Notes history**, replies included; **Last supervisor note** the date of the latest note written by one of the work order's **Supervisors**. Hovering the date shows who wrote the note, its date and time and its text. Deleted notes do not count; with no notes the cell is empty. Both can be sorted and filtered by date.",
+        },
       ],
     },
     {

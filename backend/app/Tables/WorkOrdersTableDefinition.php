@@ -22,6 +22,7 @@ use App\Tables\WorkOrders\WorkOrderAmountColumns;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
+use App\Tables\WorkOrders\WorkOrderLastNoteColumns;
 use App\Tables\WorkOrders\WorkOrderLinePaymentStatusColumn;
 use App\Tables\WorkOrders\WorkOrderProformaStatusColumn;
 use App\Tables\WorkOrders\WorkOrderRenewalColumn;
@@ -76,6 +77,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderProformaStatusColumn $proformaStatusColumn,
         private readonly WorkOrderLinePaymentStatusColumn $linePaymentStatusColumn,
         private readonly WorkOrderAmountColumns $amountColumns,
+        private readonly WorkOrderLastNoteColumns $lastNoteColumns,
     ) {}
 
     /**
@@ -139,6 +141,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'quoteLines.quote.opportunity.registry',
             // The "Stato pagamento" cell: each line's status and product typology.
             ...WorkOrderLinePaymentStatusColumn::EAGER_LOADS,
+            // The "Ultima nota" cells (legacy OrdersTable).
+            ...WorkOrderLastNoteColumns::EAGER_LOADS,
         ]));
 
         // Spec 0363: badges of the `documents` and `notes` row actions.
@@ -167,6 +171,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         return [
             ...WorkOrderColumnCatalog::columns(),
+            ...WorkOrderLastNoteColumns::columns(),
             ...(WorkOrderAmountColumns::isVisibleTo($actor) ? WorkOrderAmountColumns::columns() : []),
             ...(WorkOrderProformaStatusColumn::isVisibleTo($actor) ? [WorkOrderColumnCatalog::proformaStatusColumn()] : []),
         ];
@@ -181,6 +186,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         return [
             ...WorkOrderColumnCatalog::filters(),
+            ...WorkOrderLastNoteColumns::filters(),
             ...(WorkOrderAmountColumns::isVisibleTo($actor) ? WorkOrderAmountColumns::filters() : []),
             ...(WorkOrderProformaStatusColumn::isVisibleTo($actor) ? [['columnId' => WorkOrderProformaStatusColumn::COLUMN, 'type' => 'set']] : []),
         ];
@@ -318,6 +324,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         return [
             ...$proforma,
             ...$amounts,
+            ...$this->lastNoteColumns->project($row),
             'id' => $row->id,
             'code' => $row->code,
             'title' => $row->title,
