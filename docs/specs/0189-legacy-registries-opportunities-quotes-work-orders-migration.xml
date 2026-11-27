@@ -409,6 +409,9 @@
         status_label:?string (informativa),
         stato_pagamento:?int, accordo_pagamento:?string, insoluti:bool (riga `orderisos` della commessa, spec 0201
           D-14),
+        assignment_date:?date ("Data di assegnazione": `data_inizio_lavorazione` della stessa riga `orderisos`;
+          vuota o zero -> giorno dell'ultimo tecnico aggiunto, max `responsabile_services.created_at`; per ogni
+          commessa, qualunque card. Rev. 2026-11-27: la legge solo il seeder `QualificaIsoAssignmentDateSeeder`),
         quote_line_ids:int[] (orderservices.quotation_service esistenti; fallback per service_id sull'offerta),
         supervisor_user_ids:int[] (responsabile_services.id_utente distinti, cancellato -> 999999999; [] ammesso, G-27),
         participant_user_ids:int[] (partecipant_services.id_utente distinti, cancellato -> 999999999, ordine di

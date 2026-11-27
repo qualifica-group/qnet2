@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Data di assegnazione sulle commesse ISO rimaste senza (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO, NON LANCIATO
+
+- Richiesta: tutte le commesse ISO / [OLD] ISO (sottocategorie comprese) di qnet-2 con Responsabile e "Data di
+  assegnazione" VUOTA prendono la data dal legacy; una data presente non si tocca mai (decisione utente).
+- Causa (verificata nel legacy): `orderisos.data_inizio_lavorazione` la scrivevano solo `AddTecnico` e
+  `Detail::storeTecnico`, e solo dal commit 4896aa7b del 2024-10-29. Non la scrivono `ContractplanningFast` (tecnico
+  messo alla creazione della commessa dalla pianificazione contratto), `ResponsabiliPartecipanti`,
+  `ResponsabileServices`. Delle 1.751: 1.407 tecnico prima del 29/10/2024, 288 tecnico dopo ma da un percorso che
+  non scrive la data, 54 riga ISO creata dopo il tecnico (l'update non trova la riga), 2 senza riga ISO. La migrazione
+  ha copiato fedelmente: dove il legacy aveva la data, qnet-2 ce l'ha.
+- Legacy (`../qnet`, NON committato, accanto alle modifiche locali dell'utente): `WorkOrderMigrationController` manda
+  `assignment_date` = `orderisos.data_inizio_lavorazione` o, se vuota/zero, il giorno dell'ultimo tecnico
+  (`max(responsabile_services.created_at)`, coincide sul 97,6% delle commesse con entrambe; colonna `ON UPDATE
+  current_timestamp`). Spec 0189 aggiornata. Verificato con tinker.
+- qnet-2: seeder one-shot `QualificaIsoAssignmentDateSeeder` (`php artisan db:seed --class=QualificaIsoAssignmentDateSeeder
+  --force`, serve l'API di migrazione del legacy aggiornata): codici `work-orders.assignment_date_attribute_codes`
+  applicabili, scrittura quieta (niente activity, notifiche, `updated_at`), "[OLD] PROGETTI-" esclusa, legacy senza
+  data -> warning, idempotente.
+- Prova sul DB locale in transazione annullata: 1.751 commesse scritte (43 in corso, 1.128 completate, 580 annullate),
+  0 date presenti cambiate. Elenco: `~/Downloads/commesse-iso-senza-data-match-legacy.xlsx`.
+- Test: `tests/Feature/Seeding/QualificaIsoAssignmentDateSeederTest.php` 5/5; Pint pulito. Manuale: nessun impatto.
+- Prossimo passo: ok dell'utente -> lanciare il seeder (locale o produzione) e committare legacy + qnet-2.
+
 ## Filtri della pagina Commesse come nel QNet legacy (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Legacy di riferimento: `../qnet` `Livewire/Orders/Orders.php` + `orders.blade.php` (search titolo, customer select2 ajax, mese su `datestart` anno corrente, filter_service, filterUser).
