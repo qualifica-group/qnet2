@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, FileCheck2, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText } from 'lucide-react'
+import { Euro, FileCheck2, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText, TrendingUp } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -17,6 +17,7 @@ import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-co
 import { WorkOrderPagePanel } from '@/features/work-order-page/work-order-page-panel'
 import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-order-invoices-section'
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
+import { WorkOrderProgressSection } from '@/features/work-orders/work-order-progress-section'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 import { IntegrationWorkOrderAccountingActions } from '@/integrations/integration-work-order-accounting-actions'
@@ -65,6 +66,8 @@ interface UseWorkOrderDetailTabsArgs {
   info: ReactNode
   /** Slot on the right of the strip where the Task board portals its header actions. */
   actionsContainer: HTMLElement | null
+  /** After a progress registration from Amministrazione: the host refreshes its lists. */
+  onChanged?: () => void
   /** A note may have added Participants (spec 0353): the host rereads the detail. */
   onMembersAdded: () => void
 }
@@ -81,6 +84,7 @@ export function useWorkOrderDetailTabs({
   workOrder,
   info,
   actionsContainer,
+  onChanged,
   onMembersAdded,
 }: UseWorkOrderDetailTabsArgs): WorkOrderDetailTab[] {
   const { t } = useTranslation()
@@ -146,7 +150,7 @@ export function useWorkOrderDetailTabs({
     })
   }
 
-  // Step 4: Amministrazione = Costi + proforma attive e passive.
+  // Step 4: Amministrazione = Costi + proforma attive e passive + Avanzamento commessa (legacy "€" tab).
   const accountingTabs: WorkOrderDetailTab[] = []
   if (actions.view_costs) {
     accountingTabs.push({
@@ -177,6 +181,17 @@ export function useWorkOrderDetailTabs({
         content: <WorkOrderInvoicesSection workOrderId={workOrder.id} kind="passive" />,
       },
     )
+  }
+  // The Info tab's progress section, as in the legacy "€" tab (user directive 2026-11-27): only
+  // beside the accounting tabs, so an actor who sees neither costs nor proformas gets no tab of it alone.
+  if (accountingTabs.length > 0) {
+    accountingTabs.push({
+      value: 'progress',
+      label: t('workOrders.progress.action'),
+      icon: <TrendingUp className="size-3.5" aria-hidden="true" />,
+      padded: true,
+      content: <WorkOrderProgressSection workOrder={workOrder} onChanged={onChanged} />,
+    })
   }
 
   const documentsGroup = groupTab({

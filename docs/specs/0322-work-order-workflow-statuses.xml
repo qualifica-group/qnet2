@@ -6,6 +6,16 @@
 -->
 <spec id="0322-work-order-workflow-statuses" status="draft" owner="nicola" date="2026-10-28">
 
+  <amendment date="2026-11-27" status="applied">
+    Direttiva utente 2026-11-27 (REQUIREMENT CHANGED su AC-014, solo frontend, contratto API invariato): lo Stato
+    lavorazione esce dalla scheda Info del dettaglio commessa e va nell'intestazione, accanto al badge della fase
+    (`WorkOrderWorkflowStatusMenu`): il badge apre il set risolto e la scelta salva subito con una PATCH del solo
+    `work_order_workflow_status_id` (`useWorkOrderWorkflowStatusChange`); un 422 (spec 0323 D-2) e' un toast con i
+    motivi del server. Permesso di campo: nascosto = niente badge, sola lettura = badge senza menu. Cancellati
+    `WorkOrderWorkflowStatusSection`, `work-order-workflow-status-field.tsx` e il campo dal form inline (schema,
+    default, payload). Al suo posto nella colonna sinistra c'e' "Avanzamento commessa" (spec 0321).
+  </amendment>
+
   <amendment date="2026-10-28" status="applied">
     Direttive utente dopo il commit 929156f6.
     - Righe di sistema rinominate: `completed` -> "Chiusa con esito positivo", `closed` -> "Chiusa con esito

@@ -122,7 +122,8 @@ describe('WorkOrderDetailTabs', () => {
   it('opens Info by default, in the legacy order, the other contents not mounted', () => {
     renderTabs({ view_costs: true, view_documents: true, view_activity: true })
 
-    expect(topTabs()).toEqual(['Info', 'Tasks', 'Work order documents', 'Costs', 'Notes', 'Activity log'])
+    // REQUIREMENT CHANGED (user directive 2026-11-27): Costs alone is now Administration with Work order progress.
+    expect(topTabs()).toEqual(['Info', 'Tasks', 'Work order documents', 'Administration', 'Notes', 'Activity log'])
     expect(screen.getByRole('tab', { name: 'Info' })).toHaveAttribute('data-state', 'active')
     expect(screen.getByText('info-sections')).toBeInTheDocument()
     expect(screen.queryByText('task-board')).not.toBeInTheDocument()
@@ -159,7 +160,7 @@ describe('WorkOrderDetailTabs', () => {
     expect(strip).not.toContainElement(titleTab)
     expect(strip.parentElement).toContainElement(titleTab)
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Administration' }))
     expect(screen.queryByText('info-sections')).not.toBeInTheDocument()
 
     fireEvent.click(titleTab)
@@ -194,6 +195,19 @@ describe('WorkOrderDetailTabs', () => {
     expect(screen.getByText('invoices-section passive')).toBeInTheDocument()
   })
 
+  // User directive 2026-11-27: the Info tab's "Avanzamento commessa" also closes Administration, as in the legacy "€" tab.
+  it('ends Administration with the work order progress section', () => {
+    renderTabs({ view_costs: true, view_invoices: true })
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Administration' }))
+    const subTabs = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim())
+    expect(subTabs.slice(-3)).toEqual(['Active proforma', 'Passive proforma', 'Work order progress'])
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Work order progress' }))
+    expect(screen.getByRole('heading', { level: 3, name: 'Work order progress' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Manage progress' })).toBeInTheDocument()
+  })
+
   it('shows only the proforma under Administration without view_costs', () => {
     renderTabs({ view_invoices: true })
 
@@ -208,6 +222,7 @@ describe('WorkOrderDetailTabs', () => {
 
     expect(topTabs()).not.toContain('Administration')
     expect(topTabs()).not.toContain('Costs')
+    expect(topTabs()).not.toContain('Work order progress')
   })
 
   it("groups the work order's and the registry's documents under Documents (spec 0173)", () => {

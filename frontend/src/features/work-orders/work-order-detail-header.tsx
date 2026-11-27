@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { cn } from '@/lib/utils'
 import { WorkOrderActionsMenu } from '@/features/work-orders/work-order-actions-menu'
+import { WorkOrderWorkflowStatusMenu } from '@/features/work-orders/work-order-workflow-status-menu'
 import type { WorkOrderDetailWithPermissions, WorkOrderWorkPhase } from '@/features/work-orders/types'
 
 /** Badge colour per working phase (spec 0395), the same tokens as the grid's `#[Color]` badges of `WorkOrderWorkPhase`. */
@@ -28,6 +29,8 @@ function WorkOrderStatusBadge({ status }: { status: WorkOrderWorkPhase }) {
     </Badge>
   )
 }
+
+const ACTIONS_CLASS = 'flex max-w-[45vw] flex-wrap items-center justify-end gap-1.5 sm:max-w-none'
 
 /** Spec 0267: marks a work order whose lines come from several offers. */
 function WorkOrderMultiQuoteBadge() {
@@ -52,7 +55,8 @@ interface WorkOrderDetailHeaderProps {
  * company as subtitle (user directive 2026-11-18, it replaces the code; the
  * code only when there is no client). Like the legacy "Gestione commessa"
  * (user directives 2026-11-27): no type pill, no KPI strip, no row of action
- * buttons; top-right the status pill beside the "..." menu that folds the
+ * buttons; top-right the "Stato lavorazione" pill that changes it (user
+ * directive 2026-11-27), the status pill and the "..." menu that folds the
  * record actions (`WorkOrderActionsMenu`). The fields edit in place below.
  */
 export function WorkOrderDetailHeader({ workOrder, onChanged, onDeleted }: WorkOrderDetailHeaderProps) {
@@ -66,10 +70,12 @@ export function WorkOrderDetailHeader({ workOrder, onChanged, onDeleted }: WorkO
       subtitle={workOrder.registry?.name ?? workOrder.code}
       badges={workOrder.is_multi_quote ? <WorkOrderMultiQuoteBadge /> : undefined}
       actions={
-        <>
+        // Capped on phones so the two pills wrap under each other instead of squeezing the title away.
+        <div className={ACTIONS_CLASS}>
+          <WorkOrderWorkflowStatusMenu workOrder={workOrder} onChanged={onChanged} />
           <WorkOrderStatusBadge status={workOrder.status.value} />
           <WorkOrderActionsMenu workOrder={workOrder} onChanged={onChanged} onDeleted={onDeleted} />
-        </>
+        </div>
       }
     />
   )

@@ -15,7 +15,8 @@ import { WorkOrderClientInfoSection } from '@/features/work-orders/work-order-cl
 import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
 import { WorkOrderDescriptionSections } from '@/features/work-orders/work-order-record-description'
 import { WorkOrderAmountRow } from '@/features/work-orders/work-order-amount-row'
-import { WorkOrderInternalNotesRow, WorkOrderWorkflowStatusSection } from '@/features/work-orders/work-order-record-identity'
+import { WorkOrderInternalNotesRow } from '@/features/work-orders/work-order-record-identity'
+import { WorkOrderProgressSection } from '@/features/work-orders/work-order-progress-section'
 import { WorkOrderForceCloseReasonRow, WorkOrderStartDateRow } from '@/features/work-orders/work-order-record-rows'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
@@ -47,6 +48,8 @@ function LinkedField({ label, domain, record }: { label: string; domain: string;
 interface DetailSectionProps {
   workOrder: WorkOrderDetailWithPermissions
   editor: WorkOrderDetailEditor
+  /** After a change outside the inline editor (the progress popup): the host refreshes its lists. */
+  onChanged?: () => void
 }
 
 /**
@@ -92,8 +95,9 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
  * (Importo, Data inizio, the link to the Contratto, then
  * each product with its payment fields (spec 0403) and the totals; no title
- * and no commessa-wide payment status, user directive 2026-11-16), "Stato
- * lavorazione", "Team". Right: "Riferimenti società",
+ * and no commessa-wide payment status, user directive 2026-11-16),
+ * "Avanzamento commessa" (the "Stato lavorazione" moved to the header, user
+ * directive 2026-11-27), "Team". Right: "Riferimenti società",
  * "Data richiamo", "Descrizione commessa" (Commessa n., Tipo commessa,
  * Descrizione), then the flexible fields ("Informazioni aggiuntive"). Not on
  * the commessa: Contesto (Fonte), Buoni, Documento e pagamento, Modello di
@@ -102,7 +106,7 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * completion the "Avanzamento commessa" popup. The forced closure is a record
  * action (user directive 2026-10-06), its reason a read-only row of the data.
  */
-export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProps) {
+export function WorkOrderDetailSections({ workOrder, editor, onChanged }: DetailSectionProps) {
   const { t } = useTranslation()
   const { inline } = editor
   // Spec 0267: a multi-offer work order has no single client/contract/company; each product line names its own client.
@@ -138,11 +142,7 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
           ) : null}
           <WorkOrderForceCloseReasonRow reason={workOrder.is_force_closed ? workOrder.force_close_reason : null} />
         </WorkOrderContractDataPanel>
-        <WorkOrderWorkflowStatusSection
-          workflowStatus={{ current: workOrder.work_order_workflow_status, statuses: workOrder.work_order_workflow_statuses }}
-          form={editor}
-          inline={inline}
-        />
+        <WorkOrderProgressSection workOrder={workOrder} onChanged={onChanged} />
         <WorkOrderTeamSection
           title={t('workOrders.detail.sections.detailTeam')}
           supervisors={workOrder.supervisors}

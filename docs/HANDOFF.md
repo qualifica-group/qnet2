@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa: Stato lavorazione nell'intestazione, "Avanzamento commessa" in Info e in Amministrazione (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO
+
+- Solo frontend, contratto API invariato. Intestazione: `WorkOrderWorkflowStatusMenu` (badge dello Stato lavorazione con freccia, accanto al badge della fase; la scelta salva subito via `useWorkOrderWorkflowStatusChange`, PATCH del solo `work_order_workflow_status_id`; 422 => `notifyFormErrors`; permesso di campo: hidden = niente, readonly = badge senza menu). Sotto `sm` i badge vanno a capo (`ACTIONS_CLASS`).
+- Info, colonna sinistra: `WorkOrderProgressSection` ("Avanzamento commessa": Totale % raggiunto, Ultimo avanzamento, pulsante "Gestione avanzamento" che apre `WorkOrderProgressDialog`) al posto di "Stato lavorazione". Stessa sezione come ultima sotto-scheda `progress` di Amministrazione, solo se Amministrazione esiste gia' (view_costs o view_invoices). `onChanged` passa da `WorkOrderDetailView` a sezioni e tab. La voce del menu tre puntini resta.
+- Cancellati: `WorkOrderWorkflowStatusSection`/`WorkOrderWorkflowStatusContext`, `work-order-workflow-status-field.tsx` (+ test), il campo `work_order_workflow_status_id` dal form inline (schema, default, SERVER_ERROR_FIELDS, `buildUpdatePayload`), i18n `detail.workflowStatusPlaceholder`. i18n nuove: `detail.workflowStatusChange`, `progress.manage`, `progress.lastRecordedOn`.
+- Test: nuovi `work-order-workflow-status-menu.test.tsx`, `work-order-progress-section.test.tsx`; `work-order-detail.test.tsx` (era 719 righe) diviso in `work-order-detail.test.tsx` + `work-order-detail-related.test.tsx` con fixture/render in `work-order-detail-test-utils.tsx`; REQUIREMENT CHANGED in tabs/detail/layout test. Spec 0322 e 0321 amendment 2026-11-27.
+- Verifica: Vitest work-orders 392/392, help 166/166, ESLint, `tsc -b --force` puliti. Non verificato a vista nel browser.
+- ATTENZIONE commit: `use-work-order-form.ts`, `work-order-form-payload(.test).ts`, `work-order-schema.ts`, `work-order-record-identity.tsx`, `work-order-detail-sections.tsx`, le guide e gli i18n `*-work-orders.ts` contengono anche le modifiche NON committate della sessione "Note commessa -> Descrizione": separare gli hunk.
+
 ## Commessa: tolti Linee prodotto e i totali Commissioni / Netto commissioni da "Dati contrattuali commessa" (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Solo frontend, contratto API invariato: `product_lines` (usate ancora da "Funzione aziendale") e `totals.commissions_amount` / `net_of_commissions` restano nella risposta, non piu' letti dal dettaglio.
@@ -10,7 +19,7 @@
 - Test (REQUIREMENT CHANGED): `work-order-contract-data-section.test.tsx`, `contract-data-formulas.test.ts`, nuovo caso in `work-order-detail-layout.test.tsx`. Spec 0400 D-8.
 - Verifica: Vitest work-orders + work-order-contract-data 428/428, help 166/166, ESLint e `tsc -b --force` puliti.
 - Manuale: guide in-app IT+EN `work-orders.ts` aggiornate; manuale Claude Docs DA AGGIORNARE (sezione Commessa > Dati contrattuali: niente Linee prodotto, niente Commissioni/Netto commissioni).
-- In sospeso: richiesta utente "rinominare Stato lavorazione in Avanzamento commessa e metterlo anche nel tab Amministrazione come nel vecchio QNet" da chiarire (nel legacy il blocco Amministrazione e' l'avanzamento % per mese, non lo stato lavorazione).
+- Seguito: Stato lavorazione / Avanzamento commessa, voce sopra.
 
 ## Dettaglio Commessa come il vecchio QNet: intestazione con stato + menu tre puntini, niente KPI, motivo chiusura facoltativo (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 

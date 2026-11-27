@@ -148,6 +148,7 @@ function sectionTitles(): string[] {
 
 describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
   // REQUIREMENT CHANGED (user directives 2026-11-16): the Info tab follows the legacy "Info" layout.
+  // REQUIREMENT CHANGED (user directive 2026-11-27): "Avanzamento commessa" takes the place of "Stato lavorazione".
   it('renders the sections in the legacy order, left then right', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
 
@@ -155,7 +156,7 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     const rightColumn = columnOf(/company references/i)
     expect(rightColumn).not.toBe(leftColumn)
     expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
-    expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work status', 'team'])
+    expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work order progress', 'team'])
     expect(columnTitles(rightColumn).slice(0, 4)).toEqual([
       'company references and business functions',
       'callback date',

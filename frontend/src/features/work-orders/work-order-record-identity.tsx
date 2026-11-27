@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Activity, ClipboardList } from 'lucide-react'
+import { ClipboardList } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
@@ -18,11 +18,7 @@ import {
   WorkOrderTypeRow,
 } from '@/features/work-orders/work-order-record-rows'
 import type { WorkOrderFormState } from '@/features/work-orders/use-work-order-form'
-import {
-  WorkOrderWorkflowStatusField,
-  WorkOrderWorkflowStatusValue,
-} from '@/features/work-orders/work-order-workflow-status-field'
-import type { WorkOrderType, WorkOrderWorkflowStatusRef } from '@/features/work-orders/types'
+import type { WorkOrderType } from '@/features/work-orders/types'
 
 /** What the identity rows show: the persisted record on the detail, the draft on create. */
 export interface WorkOrderIdentityValues {
@@ -35,12 +31,6 @@ export interface WorkOrderIdentityValues {
   task_template: RelationFieldRef | null
   /** Set only while the closure is forced: written by the header's action, read-only here. */
   force_close_reason: string | null
-}
-
-/** The "Stato lavorazione" of a persisted work order and its resolved set: absent on create (the server assigns `open`). */
-export interface WorkOrderWorkflowStatusContext {
-  current: WorkOrderWorkflowStatusRef
-  statuses: WorkOrderWorkflowStatusRef[]
 }
 
 interface WorkOrderIdentitySectionProps {
@@ -82,37 +72,6 @@ export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIden
           )}
         </RecordInlineField>
         <WorkOrderForceCloseReasonRow reason={values.force_close_reason} />
-      </RecordFieldList>
-    </RecordSection>
-  )
-}
-
-interface WorkOrderWorkflowStatusSectionProps {
-  workflowStatus: WorkOrderWorkflowStatusContext
-  form: WorkOrderFormState
-  inline: InlineEdit
-}
-
-/**
- * "Stato lavorazione" of a persisted work order (spec 0322) as its own
- * section, under the contract data in the detail's left column (user
- * directive 2026-11-16), still edited in place.
- */
-export function WorkOrderWorkflowStatusSection({ workflowStatus, form, inline }: WorkOrderWorkflowStatusSectionProps) {
-  const { t } = useTranslation()
-  const label = t('workOrders.detail.workflowStatus')
-
-  return (
-    <RecordSection title={label} icon={<Activity />}>
-      <RecordFieldList>
-        <RecordInlineField
-          field="work_order_workflow_status_id"
-          label={label}
-          inline={inline}
-          editor={<WorkOrderWorkflowStatusField control={form.form.control} statuses={workflowStatus.statuses} />}
-        >
-          <WorkOrderWorkflowStatusValue status={workflowStatus.current} />
-        </RecordInlineField>
       </RecordFieldList>
     </RecordSection>
   )

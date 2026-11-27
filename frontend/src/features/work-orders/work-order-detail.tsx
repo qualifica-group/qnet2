@@ -59,10 +59,11 @@ function WorkOrderDetailContent({ workOrder, onChanged, onDeleted, initialTab }:
       <WorkOrderDetailTabs
         workOrder={workOrder}
         initialTab={initialTab}
+        onChanged={onChanged}
         info={
           /* Provider only (no DOM): the inline editors share the edit form. */
           <Form {...editor.form}>
-            <WorkOrderDetailSections workOrder={workOrder} editor={editor} />
+            <WorkOrderDetailSections workOrder={workOrder} editor={editor} onChanged={onChanged} />
           </Form>
         }
       />

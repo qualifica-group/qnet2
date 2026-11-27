@@ -20,7 +20,6 @@ const formValues: WorkOrderFormValues = {
   internal_notes: null,
   quote_line_ids: [11, 12],
   task_template_id: null,
-  work_order_workflow_status_id: null,
   attribute_values: {},
 }
 
@@ -259,21 +258,5 @@ describe('buildCreatePayload / buildUpdatePayload — attribute_values (spec 009
     expect(
       buildUpdatePayload({ ...formValues, attribute_values: { site_access: 'Gate 4' } }, withAttribute),
     ).toEqual({ attribute_values: { site_access: 'Gate 4' } })
-  })
-})
-
-describe('buildUpdatePayload — Stato lavorazione (spec 0322)', () => {
-  it('sends the id only when it changed', () => {
-    const values = { ...formValues, work_order_workflow_status_id: 2 }
-    expect(buildUpdatePayload(values, original({ work_order_workflow_status_id: 1 }))).toEqual({
-      work_order_workflow_status_id: 2,
-    })
-    expect(buildUpdatePayload(values, original({ work_order_workflow_status_id: 2 }))).toEqual({})
-  })
-
-  it('never puts it in the create payload', () => {
-    expect(buildCreatePayload({ ...formValues, work_order_workflow_status_id: 2 })).not.toHaveProperty(
-      'work_order_workflow_status_id',
-    )
   })
 })
