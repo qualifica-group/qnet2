@@ -26,12 +26,12 @@ it('AC-013: a manual change to a higher percentage adds the delta entry for toda
         ->and($entry->recorded_on->toDateString())->toBe(now()->toDateString());
 });
 
-it('AC-014: a positive percentage not above the progress reached is refused with 422', function (int $percentage) {
+it('AC-014: a positive percentage below the progress reached is refused with 422', function () {
     Sanctum::actingAs(workOrderUserWith(['update']));
     $workOrder = WorkOrder::factory()->create();
     $openId = $workOrder->work_order_workflow_status_id;
     seedProgressEntry($workOrder, 20);
-    $status = globalProgressStatus($percentage);
+    $status = globalProgressStatus(10);
 
     patchWorkOrderStatus($this, $workOrder, $status->id)
         ->assertUnprocessable()
@@ -39,7 +39,19 @@ it('AC-014: a positive percentage not above the progress reached is refused with
 
     expect($workOrder->fresh()->work_order_workflow_status_id)->toBe($openId)
         ->and($workOrder->progressEntries()->count())->toBe(1);
-})->with([20, 10]);
+});
+
+it('AC-014: a percentage equal to the progress reached changes the status only', function () {
+    Sanctum::actingAs(workOrderUserWith(['update']));
+    $workOrder = WorkOrder::factory()->create();
+    seedProgressEntry($workOrder, 20);
+    $status = globalProgressStatus(20);
+
+    patchWorkOrderStatus($this, $workOrder, $status->id)->assertOk();
+
+    expect($workOrder->fresh()->work_order_workflow_status_id)->toBe($status->id)
+        ->and($workOrder->progressEntries()->count())->toBe(1);
+});
 
 it('AC-014: the 422 message names both percentages', function () {
     Sanctum::actingAs(workOrderUserWith(['update']));

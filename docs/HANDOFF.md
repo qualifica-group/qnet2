@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Stato lavorazione manuale con % uguale all'avanzamento (spec 0323 D-2 rev. 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente (commessa 12519 all'80%): scegliere a mano uno stato all'80% deve essere accettato. Il blocco 422 ora scatta solo se la % dello stato e' INFERIORE all'avanzamento (era `<=`); uguale = cambia solo lo stato, nessuna registrazione (`raiseTo` gia' non scrive). Metodo rinominato `WorkOrderProgressEntryService::assertStatusPercentageNotBelowCurrent`, chiave lang `work_orders.workflow_status.progress_below_current` (IT/EN).
+- Test: `WorkOrderManualStatusProgressTest` (AC-014 diviso: 10 su 20 -> 422, 20 su 20 -> ok senza entry; REQUIREMENT CHANGED) + `WorkOrderProgressEntriesTest` 26/26; Pint pulito; help Vitest 166/166.
+- Manuale: guida in-app `work-orders.ts` IT/EN; Claude Docs paragrafo "Stato lavorazione e avanzamento" (rev 1045).
+
 ## Commesse, colonne "Ultima nota data" / "Ultima nota responsabile" (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Legacy: `OrdersTable` "Ultima Nota" (ultima nota/chiamata/appuntamento della commessa, risposte incluse) e "U.N. Responsabile" (`nota_contabile`: ultima nota scritta dal responsabile), data in cella + testo in tooltip.

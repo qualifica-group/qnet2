@@ -54,7 +54,9 @@
     D-1 (utente) Stato del task fuori dal set risolto della commessa al momento della chiusura: si IGNORA
         (il task si chiude, Stato lavorazione e avanzamento invariati, nessun errore).
     D-2 (utente) Anche il cambio MANUALE dello Stato lavorazione muove l'avanzamento, CON il blocco legacy:
-        nuovo stato con `progress_percentage` > 0 e <= avanzamento raggiunto -> 422, stato invariato.
+        nuovo stato con `progress_percentage` > 0 e < avanzamento raggiunto -> 422, stato invariato.
+        Revisione 2026-11-27 (utente): uguale all'avanzamento raggiunto -> accettato, cambia solo lo stato,
+        nessuna registrazione (come D-6). Era `<=`, la commessa all'80% non poteva scegliere uno stato all'80%.
     D-3 (utente) Migrazione inclusa: collegamento sulle righe dei modelli e sui task.
     D-4 Colonne nuove nullable `task_template_items.work_order_workflow_status_id` e
         `tasks.work_order_workflow_status_id`, FK `nullOnDelete` (cancellare uno stato o un workflow scollega,
@@ -154,8 +156,8 @@
 
     <endpoint method="PUT|PATCH" path="/api/work-orders/{workOrder}">
       <request>work_order_workflow_status_id invariato.</request>
-      <errors>422 `work_order_workflow_status_id`: "Lo stato porta l'avanzamento al X%, che non supera
-        l'avanzamento gia' raggiunto (Y%)." (chiave i18n backend `work_orders.workflow_status.progress_not_above_current`).
+      <errors>422 `work_order_workflow_status_id`: "Lo stato porta l'avanzamento al X%, che e' inferiore
+        all'avanzamento gia' raggiunto (Y%)." (chiave i18n backend `work_orders.workflow_status.progress_below_current`, rev. 2026-11-27).
         Nessuna scrittura (transaction).</errors>
     </endpoint>
 
