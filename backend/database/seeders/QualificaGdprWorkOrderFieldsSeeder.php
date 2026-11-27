@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\DB;
  * (GdprWorkOrderCatalogue) with their form, inherited by "GDPR - GDPR" and
  * "GDPR - Nomina DPO", and each legacy field is linked to the new one it
  * continues, as ISO does (spec 0429), so the grids show the pair in one
- * column. The legacy fields stay on the [OLD] categories with their values.
+ * column; the compatible [OLD] GDPR offer fields are linked to the current
+ * offer fields too (GdprCatalogue::QUOTE_LINKS). The legacy fields stay on
+ * the [OLD] categories with their values.
  *
  * Idempotent and non-destructive: fields keyed on `code`, assignments and
  * options additive, a Commessa form already configured on the root left
@@ -47,8 +49,8 @@ class QualificaGdprWorkOrderFieldsSeeder extends Seeder
             // Step 2: the form, unless one is already configured
             $form = $this->seedForm($root);
 
-            // Step 3: the legacy fields point at the new ones
-            $linked = $this->linkLegacyAttributes(GdprWorkOrderCatalogue::LINKS);
+            // Step 3: the legacy Commessa and Offerta fields point at the current ones
+            $linked = $this->linkLegacyAttributes([...GdprWorkOrderCatalogue::LINKS, ...GdprCatalogue::QUOTE_LINKS]);
 
             $this->command?->info(sprintf('GDPR Commessa: %d campi, form %s, %d campi collegati.', count(GdprWorkOrderCatalogue::ATTRIBUTES), $form ? 'creato' : 'gia\' presente', $linked));
         });

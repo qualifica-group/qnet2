@@ -60,6 +60,22 @@ it('links each legacy field to its new field, the enums left apart', function ()
     expect(Attribute::query()->where('code', 'gdpr_intervista')->value('current_attribute_id'))->toBeNull();
 });
 
+it('links the compatible [OLD] GDPR offer fields to the current ones, the checklist enum left apart', function () {
+    $employees = Attribute::factory()->ofType('integer')->create(['code' => 'gdpr_employee_count']);
+    $activity = Attribute::factory()->ofType('textarea')->create(['code' => 'gdpr_business_activity']);
+    Attribute::factory()->ofType('boolean')->create(['code' => 'gdpr_checklist']);
+    Attribute::factory()->ofType('integer')->create(['code' => 'numero_dipendenti']);
+    Attribute::factory()->ofType('text')->create(['code' => 'attivita_prevalente']);
+    Attribute::factory()->enum(2)->create(['code' => 'check_list']);
+
+    $this->seed(QualificaGdprWorkOrderFieldsSeeder::class);
+
+    expect(array_keys(GdprCatalogue::QUOTE_LINKS))->toBe(['numero_dipendenti', 'attivita_prevalente'])
+        ->and(Attribute::query()->where('code', 'numero_dipendenti')->value('current_attribute_id'))->toBe($employees->id)
+        ->and(Attribute::query()->where('code', 'attivita_prevalente')->value('current_attribute_id'))->toBe($activity->id)
+        ->and(Attribute::query()->where('code', 'check_list')->value('current_attribute_id'))->toBeNull();
+});
+
 it('keeps a form configured by hand and an existing link', function () {
     $other = Attribute::factory()->ofType('date')->create();
     Attribute::query()->where('code', 'gdpr_richiamo')->update(['current_attribute_id' => $other->id]);
