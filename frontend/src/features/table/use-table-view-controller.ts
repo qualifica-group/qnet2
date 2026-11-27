@@ -39,6 +39,8 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   advancedFiltersOverride?: AdvancedFilterValues | null
   onAdvancedFiltersOverrideCleared?: () => void
   hiddenAdvancedFilters?: readonly string[]
+  /** See `TableViewProps.pinnedFilters`. */
+  pinnedFilters?: boolean
   treeData?: boolean
   /** The loaded config (or `undefined` while pending/erroring) — fetched by the caller so its narrowing stays local to `table-view.tsx`. */
   config: TableConfig | undefined
@@ -123,6 +125,7 @@ export function useTableViewController(
     advancedFiltersOverride,
     onAdvancedFiltersOverrideCleared,
     hiddenAdvancedFilters,
+    pinnedFilters,
     treeData,
     config,
     refetchConfig,
@@ -149,6 +152,7 @@ export function useTableViewController(
       advancedFiltersOverride,
       onAdvancedFiltersOverrideCleared,
       hiddenAdvancedFilters,
+      pinnedFilters,
       treeData,
       config,
     },

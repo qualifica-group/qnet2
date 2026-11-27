@@ -99,6 +99,14 @@ export const workOrders = {
     parentCategory: 'Categoria madre',
     productCategory: 'Categoria prodotto',
     registry: 'Anagrafica',
+    registryPlaceholder: 'Seleziona anagrafica…',
+    // Filtri della pagina Commesse ripresi da QNet (richiesta utente 2026-11-27).
+    title: 'Titolo',
+    titlePlaceholder: 'Cerca per titolo',
+    month: 'Mese',
+    monthPlaceholder: 'Tutti i mesi',
+    teamMembers: 'Utenti',
+    teamMembersPlaceholder: 'Responsabili o partecipanti…',
   },
   detail: {
     actionsMenu: 'Azioni commessa',

@@ -34,16 +34,21 @@ interface AdvancedFilterPanelProps {
   filters: UseAdvancedFiltersResult
   /** Frame adjustments of the host (e.g. which edge carries the hairline). */
   className?: string
+  /**
+   * Fields alone, straight on the page: no card frame and no Reset/Apply bar,
+   * for filters that apply by themselves (`liveApply`, the Commesse page).
+   */
+  bare?: boolean
 }
 
 /**
  * The generic, backend-driven advanced-filters panel (spec 0032): renders
  * every visible descriptor via the type -> field registry, ordered by
  * `order`, with an accessible required-error triad and a Reset/Applica
- * footer. Domain-agnostic: the same component serves all 21 domains, driven
+ * footer (none when `bare`). Domain-agnostic: the same component serves all 21 domains, driven
  * entirely by the descriptor catalog `TableView` passes in.
  */
-export function AdvancedFilterPanel({ descriptors, filters, className }: AdvancedFilterPanelProps) {
+export function AdvancedFilterPanel({ descriptors, filters, className, bare = false }: AdvancedFilterPanelProps) {
   const { t } = useTranslation()
   const panelId = useId()
 
@@ -52,54 +57,53 @@ export function AdvancedFilterPanel({ descriptors, filters, className }: Advance
     [descriptors],
   )
 
+  const fields = visible.map((descriptor) => {
+    const fieldId = `${panelId}-${descriptor.name}`
+    const errorId = `${fieldId}-error`
+    const invalid = filters.isFieldInvalid(descriptor)
+    const FieldComponent = ADVANCED_FILTER_FIELD_REGISTRY[descriptor.type]
+
+    return (
+      <div key={descriptor.name} className={cn('flex flex-col gap-1', WIDTH_CLASS[descriptor.width])}>
+        <Label htmlFor={fieldId} className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <span className="truncate">{t(descriptor.label)}</span>
+          {descriptor.required ? (
+            <span aria-hidden="true" className="text-destructive">
+              *
+            </span>
+          ) : null}
+        </Label>
+        <FieldComponent
+          descriptor={descriptor}
+          value={filters.draft[descriptor.name] ?? null}
+          onChange={(value) => filters.setFieldValue(descriptor.name, value)}
+          // A live-applied field saves while the user types: locking it would steal the focus.
+          disabled={filters.isFieldDisabled(descriptor) || (filters.isSaving && !bare)}
+          id={fieldId}
+          describedBy={invalid ? errorId : undefined}
+          invalid={invalid}
+          dependencyParams={filters.dependencyParamsFor(descriptor)}
+        />
+        {invalid ? (
+          <span id={errorId} role="alert" className="text-xs text-destructive">
+            {t('table.advancedFilters.requiredError')}
+          </span>
+        ) : null}
+      </div>
+    )
+  })
+
+  if (bare) {
+    return <div className={cn('flex flex-wrap gap-3', className)}>{fields}</div>
+  }
+
   return (
     // Opaque card surface, not a translucent tint: the panel reads as a sheet
     // laid over the page, and the fields' own `--field` fill (94%) only reads as
     // "editable" against it — on the previous `bg-muted/30` the two tones nearly
     // matched and the inputs lost their edge.
     <div className={cn('border-b border-border bg-card', className)}>
-      <div className="flex flex-wrap gap-3 p-3">
-        {visible.map((descriptor) => {
-          const fieldId = `${panelId}-${descriptor.name}`
-          const errorId = `${fieldId}-error`
-          const invalid = filters.isFieldInvalid(descriptor)
-          const FieldComponent = ADVANCED_FILTER_FIELD_REGISTRY[descriptor.type]
-
-          return (
-            <div
-              key={descriptor.name}
-              className={cn('flex flex-col gap-1', WIDTH_CLASS[descriptor.width])}
-            >
-              <Label
-                htmlFor={fieldId}
-                className="flex items-center gap-1 text-xs font-medium text-muted-foreground"
-              >
-                <span className="truncate">{t(descriptor.label)}</span>
-                {descriptor.required ? (
-                  <span aria-hidden="true" className="text-destructive">
-                    *
-                  </span>
-                ) : null}
-              </Label>
-              <FieldComponent
-                descriptor={descriptor}
-                value={filters.draft[descriptor.name] ?? null}
-                onChange={(value) => filters.setFieldValue(descriptor.name, value)}
-                disabled={filters.isFieldDisabled(descriptor) || filters.isSaving}
-                id={fieldId}
-                describedBy={invalid ? errorId : undefined}
-                invalid={invalid}
-                dependencyParams={filters.dependencyParamsFor(descriptor)}
-              />
-              {invalid ? (
-                <span id={errorId} role="alert" className="text-xs text-destructive">
-                  {t('table.advancedFilters.requiredError')}
-                </span>
-              ) : null}
-            </div>
-          )
-        })}
-      </div>
+      <div className="flex flex-wrap gap-3 p-3">{fields}</div>
 
       {/* Action bar on `--surface`, the scale's intermediate rung: apart from
           both the white panel and the page body around the filter block.

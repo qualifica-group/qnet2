@@ -19,6 +19,9 @@ use Laravel\Sanctum\Sanctum;
 // and empty means every parent category of the actor.
 // REQUIREMENT CHANGED (user directive 2026-11-16): an actor with `work-orders.viewAll` is never limited by the
 // competence (an admin with an ISO competence still sees every parent category); the limit applies only without it.
+// REQUIREMENT CHANGED (user request 2026-11-27): the Commesse page takes the filters of the legacy QNet page,
+// always in view: title, Anagrafica, month, parent category and users (Responsabili or Partecipanti); the
+// supervisors/participants/product category pickers leave it.
 
 uses(RefreshDatabase::class);
 
@@ -70,7 +73,7 @@ it('offers the parent category preset with the other filters, without an assignm
 
     $filters = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'));
 
-    expect($filters->pluck('name')->all())->toBe(['supervisors', 'participants', 'parent_category', 'product_category', 'registry'])
+    expect($filters->pluck('name')->all())->toBe(['title', 'registry', 'month', 'parent_category', 'team_members'])
         ->and($filters->firstWhere('name', 'parent_category'))->toMatchArray(['type' => 'relation', 'multiple' => true, 'required' => false, 'sendDefault' => true, 'defaultValue' => []])
         // REQUIREMENT CHANGED (spec 0374 rev.3, D-12): the picker hides the linked legacy roots; (2026-11-12) and lists the actor's roots only.
         ->and($filters->firstWhere('name', 'parent_category')['source'])->toBe(['resource' => 'product-category-roots', 'params' => ['hide_linked_legacy' => 1, 'actor_roots' => ParentCategoryListModule::WorkOrders->value]]);
@@ -212,12 +215,12 @@ it('drops a saved "Tutte" from the parent category, empty now meaning every root
 it('refuses an empty list on a filter whose default is not empty', function () {
     Sanctum::actingAs(categoryTabGridActor('work-orders'));
 
-    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['product_category' => []]])
+    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['team_members' => []]])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['advancedFilters.product_category']);
+        ->assertJsonValidationErrors(['advancedFilters.team_members']);
 });
 
-it('filters by parent category through the whole branch and by product category on that category alone', function () {
+it('filters by parent category through the whole branch', function () {
     [$root, $child, $grandchild, $unrelated] = categoryTabTree();
     $onChild = categoryTabWorkOrder([$child]);
     $onGrandchild = categoryTabWorkOrder([$grandchild]);
@@ -225,8 +228,38 @@ it('filters by parent category through the whole branch and by product category 
     categoryTabWorkOrder([$child], cost: true);
     Sanctum::actingAs(categoryTabGridActor('work-orders'));
 
-    expect(commessePageIds([...personalViewOff(), 'parent_category' => [$root->id]]))->toBe([$onChild->id, $onGrandchild->id])
-        ->and(commessePageIds([...personalViewOff(), 'product_category' => [$child->id]]))->toBe([$onChild->id]);
+    expect(commessePageIds([...personalViewOff(), 'parent_category' => [$root->id]]))->toBe([$onChild->id, $onGrandchild->id]);
+});
+
+it('no longer offers the product category on the Commesse page', function () {
+    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+
+    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['product_category' => [ProductCategory::factory()->create()->id]]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['advancedFilters.product_category']);
+});
+
+it('searches by title alone', function () {
+    $matching = WorkOrder::factory()->create(['type' => WorkOrderType::Processing, 'title' => 'Certificazione ISO 9001']);
+    WorkOrder::factory()->create(['type' => WorkOrderType::Processing, 'title' => 'Sicurezza cantiere', 'code' => 'COM-ISO-1']);
+    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+
+    expect(commessePageIds([...personalViewOff(), 'title' => 'iso 9001']))->toBe([$matching->id]);
+});
+
+it('offers the twelve months and filters by the start date month of the current year, as the legacy QNet', function () {
+    $thisYear = (int) now()->year;
+    $inMarch = WorkOrder::factory()->create(['type' => WorkOrderType::Processing, 'start_date' => "{$thisYear}-03-01"]);
+    $endOfMarch = WorkOrder::factory()->create(['type' => WorkOrderType::Processing, 'start_date' => "{$thisYear}-03-31"]);
+    WorkOrder::factory()->create(['type' => WorkOrderType::Processing, 'start_date' => ($thisYear - 1).'-03-15']);
+    WorkOrder::factory()->create(['type' => WorkOrderType::Processing, 'start_date' => "{$thisYear}-04-01"]);
+    Sanctum::actingAs(categoryTabGridActor('work-orders'));
+
+    $month = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'month');
+
+    expect($month['type'])->toBe('select')
+        ->and(array_column($month['options'], 'value'))->toBe(range(1, 12))
+        ->and(commessePageIds([...personalViewOff(), 'month' => 3]))->toBe([$inMarch->id, $endOfMarch->id]);
 });
 
 it('filters by registry, reaching a multi-offer commessa through the offers of its lines', function () {

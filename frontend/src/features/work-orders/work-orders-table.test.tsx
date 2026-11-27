@@ -57,12 +57,18 @@ const ROW: TableRow = { id: 1, actions: ['team'], title: 'Installazione impianto
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
     { refresh: () => void },
-    { domain: string; scope?: { attributeColumnsFromFilters?: boolean }; onAction?: (action: TableActionDefinition, row: TableRow) => void }
-  >(function TableViewStub({ domain, scope, onAction }, ref) {
+    {
+      domain: string
+      scope?: { attributeColumnsFromFilters?: boolean }
+      pinnedFilters?: boolean
+      onAction?: (action: TableActionDefinition, row: TableRow) => void
+    }
+  >(function TableViewStub({ domain, scope, pinnedFilters, onAction }, ref) {
     useImperativeHandle(ref, () => ({ refresh: () => {} }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
         <p>{scope?.attributeColumnsFromFilters ? 'attr-columns-from-filters' : 'no-attr-columns'}</p>
+        <p>{pinnedFilters ? 'pinned-filters' : 'toggled-filters'}</p>
         <button type="button" onClick={() => onAction?.(TEAM_ACTION, ROW)}>
           team row
         </button>
@@ -119,6 +125,8 @@ describe('WorkOrdersPage — permission gating (AC-070)', () => {
 
     expect(screen.getByRole('region', { name: 'table-work-orders' })).toBeInTheDocument()
     expect(screen.getByText('attr-columns-from-filters')).toBeInTheDocument()
+    // User request 2026-11-27: the legacy Commesse filters always in view.
+    expect(screen.getByText('pinned-filters')).toBeInTheDocument()
   })
 })
 

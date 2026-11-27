@@ -14,7 +14,7 @@ it('lists the WorkOrder-context attributes of the filtered category and not the 
     [$category] = categoryTabAttribute(AttributeContext::WorkOrder, 'text', ['code' => 'wo_field', 'name' => 'Campo commessa']);
     categoryTabAttribute(AttributeContext::Quote, 'text', ['code' => 'quote_only'], $category);
     Sanctum::actingAs(workOrderUserWith(['viewAny', 'update']));
-    categoryTabSaveFilters('work-orders', categoryTabFilters($category))->assertOk();
+    categoryTabSaveFilters('work-orders', workOrderCategoryFilters($category))->assertOk();
 
     $columns = categoryTabConfigColumns('work-orders');
 
@@ -31,7 +31,7 @@ it('reads work_orders.attribute_values, filters, sorts and lists distinct values
     $beta->forceFill(['attribute_values' => ['wo_field' => 'beta']])->save();
     $alpha->forceFill(['attribute_values' => ['wo_field' => 'alpha']])->save();
     Sanctum::actingAs(workOrderUserWith(['viewAny']));
-    $page = ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => categoryTabFilters($category)];
+    $page = ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => workOrderCategoryFilters($category)];
 
     $rows = $this->postJson('/api/tables/work-orders/rows', $page)->assertOk()->json('items');
     expect(collect($rows)->mapWithKeys(fn (array $row): array => [$row['id'] => $row['attr.wo_field']])->all())
@@ -99,7 +99,7 @@ it('shows rows and distinct values of the visible work orders only (AC-012)', fu
     categoryTabMultiWorkOrder(categoryTabQuote([$category]))->forceFill(['attribute_values' => ['wo_field' => 'hidden-value']])->save();
     Sanctum::actingAs($actor);
 
-    $rows = $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => categoryTabFilters($category)])->assertOk()->json('items');
+    $rows = $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => workOrderCategoryFilters($category)])->assertOk()->json('items');
     $values = $this->postJson('/api/tables/work-orders/values', ['columnId' => 'attr.wo_field'])->assertOk()->json('data.values');
 
     expect(array_column($rows, 'id'))->toBe([$mine->id])

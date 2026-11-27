@@ -129,6 +129,16 @@ export interface TableViewProps extends RowActionsOptions {
   /** Names of the domain's advanced filters this grid does not offer: never shown, never sent. Keep the array stable. */
   hiddenAdvancedFilters?: readonly string[]
   /**
+   * The page's filters always in view (the legacy Commesse page): the advanced
+   * filters sit straight on the page, with no frame or Reset/Apply, apply by
+   * themselves after a short pause, and stand in for the quick search, whose
+   * term is neither shown nor restored nor sent. A funnel in the table header
+   * shows/hides them; the choice is kept per user and grid in the browser. The
+   * applied-filter chips sit in the header beside the row count, not in a row
+   * of their own.
+   */
+  pinnedFilters?: boolean
+  /**
    * Invoked once the user exercises the normal Apply/Reset flow in the
    * advanced-filters panel, so the caller can drop `advancedFiltersOverride`
    * (e.g. strip the query params from the URL) now that the persisted state

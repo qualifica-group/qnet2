@@ -54,6 +54,8 @@ export interface UseTableViewGridStateArgs {
   advancedFiltersOverride?: AdvancedFilterValues | null
   onAdvancedFiltersOverrideCleared?: () => void
   hiddenAdvancedFilters?: readonly string[]
+  /** See `TableViewProps.pinnedFilters`: no quick-search at all. */
+  pinnedFilters?: boolean
   treeData?: boolean
   /** The loaded config (or `undefined` while pending/erroring). */
   config: TableConfig | undefined
@@ -116,6 +118,7 @@ export function useTableViewGridState(
     advancedFiltersOverride,
     onAdvancedFiltersOverrideCleared,
     hiddenAdvancedFilters,
+    pinnedFilters = false,
     treeData,
     config,
   } = args
@@ -193,7 +196,9 @@ export function useTableViewGridState(
     () => config?.searchable ?? [],
     [config?.searchable],
   )
-  const searchEnabled = searchable.length > 0
+  // Pinned filters carry the page's own text search: a term restored from an
+  // earlier visit would narrow the rows with no field to clear it.
+  const searchEnabled = searchable.length > 0 && !pinnedFilters
 
   // The quick search and active custom filter kept in the browser across a
   // reload; column/advanced filters are restored from the config instead.
@@ -208,7 +213,7 @@ export function useTableViewGridState(
   const toolbar = useTableToolbarState({
     gridApi,
     searchEnabled,
-    initialSearch: localFilters.initial.search,
+    initialSearch: pinnedFilters ? '' : localFilters.initial.search,
     searchMinLength: config?.searchMinLength,
     advancedFiltersOpenKey,
   })
@@ -261,6 +266,7 @@ export function useTableViewGridState(
       },
       override: advancedFiltersOverride,
       onOverrideCleared: onAdvancedFiltersOverrideCleared,
+      liveApply: pinnedFilters,
       hidden: hiddenAdvancedFilters,
     })
 

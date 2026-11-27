@@ -1,11 +1,14 @@
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { FilterChip } from '@/features/table/custom-filters/use-active-filter-chips'
 
 interface ActiveFilterChipsProps {
   chips: FilterChip[]
   onClearAll: () => void
+  /** Inside the table header, beside the row count, instead of a row of its own under it (the Commesse page). */
+  inline?: boolean
 }
 
 /**
@@ -15,7 +18,7 @@ interface ActiveFilterChipsProps {
  * nothing when there is no active filter. Compact by default (ui-design.md
  * §2): `text-xs`, `size-3.5` icons, a `size-6` (24px) tap target on the "x".
  */
-export function ActiveFilterChips({ chips, onClearAll }: ActiveFilterChipsProps) {
+export function ActiveFilterChips({ chips, onClearAll, inline = false }: ActiveFilterChipsProps) {
   const { t } = useTranslation()
 
   if (chips.length === 0) {
@@ -26,7 +29,10 @@ export function ActiveFilterChips({ chips, onClearAll }: ActiveFilterChipsProps)
     <div
       role="list"
       aria-label={t('table.customFilters.activeFiltersLabel')}
-      className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card px-2.5 py-1.5"
+      className={cn(
+        'flex flex-wrap items-center gap-1.5',
+        inline ? 'min-w-0' : 'border-b border-border bg-card px-2.5 py-1.5',
+      )}
     >
       {chips.map((chip) => (
         <span

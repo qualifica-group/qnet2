@@ -12,6 +12,7 @@ import type { User } from '@/features/auth/types'
 import { TableView } from '@/features/table/table-view'
 import { fetchTableConfig, fetchTableRows } from '@/features/table/api'
 import { tableLocalFiltersKey } from '@/features/table/table-local-filters-storage'
+import { advancedFiltersOpenKey } from '@/features/table/table-advanced-filters-open-storage'
 import type { FilterRules, TableConfig, TableRow } from '@/features/table/types'
 
 /**
@@ -110,10 +111,10 @@ function Providers({ children }: { children: ReactNode }) {
   )
 }
 
-function renderTableView() {
+function renderTableView(pinnedFilters = false) {
   render(
     <Providers>
-      <TableView domain="quotes" onAction={vi.fn()} />
+      <TableView domain="quotes" onAction={vi.fn()} pinnedFilters={pinnedFilters} />
     </Providers>,
   )
 }
@@ -147,6 +148,53 @@ describe('TableView — filters kept across a reload', () => {
 
     expect(await firstRowsRequest()).toEqual(expect.objectContaining({ search: 'rossi' }))
     expect(screen.getByRole('searchbox')).toHaveValue('rossi')
+  })
+
+  // User request 2026-11-27 (the Commesse page): pinned filters replace the quick search.
+  it('has no quick search with pinned filters, nor sends a stored term it could not clear', async () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ search: 'rossi', customFilter: null }))
+    renderTableView(true)
+
+    expect(await firstRowsRequest()).not.toHaveProperty('search')
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+  })
+
+  // User request 2026-11-27: the funnel beside the three dots shows/hides the pinned filters, kept open across visits.
+  it('shows and hides pinned filters from the funnel, keeping the choice for the next visit', async () => {
+    fetchTableConfigMock.mockResolvedValue({
+      ...CONFIG,
+      advancedFilters: [
+        { name: 'title', label: 'Title', type: 'text', order: 1, required: false, visible: true, width: 'md', multiple: false },
+      ],
+    })
+    renderTableView(true)
+
+    const funnel = await screen.findByRole('button', { name: 'Show filters' })
+    expect(screen.queryByRole('textbox', { name: 'Title' })).not.toBeInTheDocument()
+
+    fireEvent.click(funnel)
+
+    expect(await screen.findByRole('textbox', { name: 'Title' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hide filters' })).toHaveAttribute('aria-pressed', 'true')
+    expect(window.localStorage.getItem(advancedFiltersOpenKey(USER_ID, 'quotes'))).toBe('1')
+  })
+
+  it('puts the applied-filter chips of pinned filters in the table header, not in a row of their own', async () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ search: '', customFilter: { rules: RULES, viewId: 3, name: 'Mine' } }))
+    fetchTableConfigMock.mockResolvedValue({
+      ...CONFIG,
+      advancedFilters: [
+        { name: 'title', label: 'Title', type: 'text', order: 1, required: false, visible: true, width: 'md', multiple: false },
+      ],
+    })
+    renderTableView(true)
+
+    const header = (await screen.findByRole('button', { name: 'Show filters' })).parentElement?.parentElement
+    const chips = await screen.findAllByRole('list', { name: 'Active filters' })
+
+    expect(chips).toHaveLength(1)
+    expect(header).toContainElement(chips[0])
+    expect(header).toContainElement(screen.getByRole('button', { name: 'Clear all' }))
   })
 
   it('restores the stored custom filter into the first rows request', async () => {

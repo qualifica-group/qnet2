@@ -25,6 +25,8 @@ interface UseTableAdvancedFiltersArgs {
   onOverrideCleared?: () => void
   /** Names of the filters this grid does not offer: never shown, never sent. */
   hidden?: readonly string[]
+  /** Forwarded verbatim to `useAdvancedFilters`: no Apply button, the draft applies by itself. */
+  liveApply?: boolean
 }
 
 export interface TableAdvancedFiltersState {
@@ -48,6 +50,7 @@ export function useTableAdvancedFilters({
   override,
   onOverrideCleared,
   hidden,
+  liveApply,
 }: UseTableAdvancedFiltersArgs): TableAdvancedFiltersState {
   const resolvedDescriptors = useMemo(
     () => (descriptors ?? []).filter((descriptor) => !hidden?.includes(descriptor.name)),
@@ -61,6 +64,7 @@ export function useTableAdvancedFilters({
     onApplied,
     override,
     onOverrideCleared,
+    liveApply,
   })
 
   return { descriptors: resolvedDescriptors, filters }

@@ -132,4 +132,37 @@ describe('TableFilterBar', () => {
 
     expect(screen.getByRole('button', { name: 'Advanced filters, 3 active filters' })).toHaveAttribute('aria-pressed', 'false')
   })
+
+  // User request 2026-11-27: the Commesse filters straight on the page, as on the legacy QNet page:
+  // REQUIREMENT CHANGED the same day, no frame and no Apply/Reset, the filters apply by themselves.
+  // REQUIREMENT CHANGED again the same day: the funnel in the table header shows/hides them (stored open state).
+  const PINNED_TITLE: AdvancedFilterDescriptor = { ...DESCRIPTOR, name: 'title', type: 'text', label: 'Title', visible: true }
+
+  it('renders open pinned filters as bare fields beside the saved filters: no toggle, no Apply or Reset', () => {
+    renderBar({
+      advancedFiltersPinned: true,
+      advancedFiltersOpen: true,
+      advancedFilterDescriptors: [PINNED_TITLE],
+      savedViewsSlot: <button type="button">Saved filters</button>,
+    })
+
+    expect(screen.getByRole('textbox', { name: 'Title' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Saved filters' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Advanced filters/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
+  })
+
+  // REQUIREMENT CHANGED (same day): the saved filters close with them.
+  it('hides closed pinned filters together with the saved-filters control', () => {
+    renderBar({
+      advancedFiltersPinned: true,
+      advancedFiltersOpen: false,
+      advancedFilterDescriptors: [PINNED_TITLE],
+      savedViewsSlot: <button type="button">Saved filters</button>,
+    })
+
+    expect(screen.queryByRole('textbox', { name: 'Title' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Saved filters' })).not.toBeInTheDocument()
+  })
 })

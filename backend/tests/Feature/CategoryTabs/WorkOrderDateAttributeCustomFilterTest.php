@@ -40,7 +40,7 @@ function dateAttributeRows(ProductCategory $category, array $workOrders, array $
 {
     $ids = test()->postJson('/api/tables/work-orders/rows', [
         'startRow' => 0, 'endRow' => 25,
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
         ...$request,
     ])->assertOk()->json('items.*.id');
     $names = array_flip(array_map(static fn (WorkOrder $workOrder): int => $workOrder->id, $workOrders));

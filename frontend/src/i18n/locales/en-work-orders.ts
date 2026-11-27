@@ -99,6 +99,14 @@ export const workOrders = {
     parentCategory: 'Parent category',
     productCategory: 'Product category',
     registry: 'Client',
+    registryPlaceholder: 'Select a client…',
+    // The Commesse page filters taken from the legacy QNet (user request 2026-11-27).
+    title: 'Title',
+    titlePlaceholder: 'Search by title',
+    month: 'Month',
+    monthPlaceholder: 'All months',
+    teamMembers: 'Users',
+    teamMembersPlaceholder: 'Supervisors or participants…',
   },
   detail: {
     actionsMenu: 'Work order actions',

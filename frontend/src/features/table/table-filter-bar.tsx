@@ -33,6 +33,13 @@ export interface TableFilterBarProps {
   advancedFilters: UseAdvancedFiltersResult
   advancedFiltersOpen: boolean
   onToggleAdvancedFilters: () => void
+  /**
+   * The filters straight on the page, with no frame or Reset/Apply
+   * (`TableViewProps.pinnedFilters`): they apply by themselves, and the funnel
+   * in the table header (`TableToolbar.filtersToggle`) shows/hides them,
+   * saved filters included, through `advancedFiltersOpen`.
+   */
+  advancedFiltersPinned?: boolean
   /** Saved-views control (rendered by the caller, which owns the grid API). */
   savedViewsSlot?: ReactNode
 }
@@ -55,6 +62,7 @@ export function TableFilterBar({
   advancedFilters,
   advancedFiltersOpen,
   onToggleAdvancedFilters,
+  advancedFiltersPinned = false,
   savedViewsSlot,
 }: TableFilterBarProps) {
   const { t } = useTranslation()
@@ -68,6 +76,20 @@ export function TableFilterBar({
 
   if (!searchEnabled && !advancedFiltersEnabled && savedViewsSlot == null) {
     return null
+  }
+
+  if (advancedFiltersPinned && advancedFiltersEnabled) {
+    // The saved filters show and hide with the fields (user request 2026-11-27).
+    return (
+      <Collapsible open={advancedFiltersOpen}>
+        <CollapsibleContent className={ADVANCED_FILTER_PANEL_ANIMATION}>
+          <div className="flex flex-wrap items-end gap-3">
+            <AdvancedFilterPanel descriptors={advancedFilterDescriptors} filters={advancedFilters} bare className="min-w-0 flex-1" />
+            {savedViewsSlot ? <div className="ml-auto flex items-center gap-2">{savedViewsSlot}</div> : null}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    )
   }
 
   return (

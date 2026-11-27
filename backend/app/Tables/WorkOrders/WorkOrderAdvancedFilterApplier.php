@@ -11,6 +11,7 @@ use App\Tables\Shared\ParentCategoryListModule;
 use App\Tables\Shared\PresetListFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * The derived advanced filters of the `work-orders` domain: a commessa has no
@@ -21,13 +22,17 @@ use Illuminate\Database\Eloquent\Model;
  * the commesse where they are Responsabile or Partecipante whatever their
  * category (task 431114, 2026-11-20): being assigned a commessa outside one's
  * competence must not hide it from the list. A pick narrows to the picked roots alone.
+ *
+ * The month and the users are the legacy Commesse filters (user request
+ * 2026-11-27): the month is the start date's in the current year, as in QNet;
+ * a user matches as Responsabile or as Partecipante.
  */
 final class WorkOrderAdvancedFilterApplier
 {
     public function __construct(private readonly PresetListFilters $presets) {}
 
     /**
-     * The filters of the Commesse page: the domain's catalogue with the parent
+     * The filters of the Commesse page: the legacy QNet set with the parent
      * category preset. Which commesse the actor sees is WorkOrderVisibilityScope's
      * alone (user directive 2026-11-12, no "Assegnazione" filter).
      *
@@ -37,7 +42,7 @@ final class WorkOrderAdvancedFilterApplier
     {
         return array_map(
             static fn (array $filter): array => $filter['name'] === PresetListFilters::PARENT_CATEGORY ? PresetListFilters::presetParentCategory($filter) : $filter,
-            WorkOrderAdvancedFilterCatalog::advancedFilters(),
+            WorkOrderAdvancedFilterCatalog::commessePageFilters(),
         );
     }
 
@@ -55,6 +60,8 @@ final class WorkOrderAdvancedFilterApplier
             PresetListFilters::PARENT_CATEGORY => $this->applyParentCategory($query, $value, $actor),
             PresetListFilters::PRODUCT_CATEGORY => $this->applyRevenueCategories($query, PresetListFilters::ids($value)),
             WorkOrderAdvancedFilterCatalog::REGISTRY => $this->applyRegistries($query, PresetListFilters::ids($value)),
+            WorkOrderAdvancedFilterCatalog::MONTH => $this->applyMonth($query, $value),
+            WorkOrderAdvancedFilterCatalog::TEAM_MEMBERS => $this->applyTeamMembers($query, PresetListFilters::ids($value)),
         };
 
         return true;
@@ -98,5 +105,38 @@ final class WorkOrderAdvancedFilterApplier
         if ($registryIds !== []) {
             $query->withQuoteLineOfRegistry($registryIds);
         }
+    }
+
+    /**
+     * A range on the start date, not MONTH(): keeps `work_orders_start_date_index` usable.
+     *
+     * @param  Builder<Model>  $query
+     */
+    private function applyMonth(Builder $query, mixed $value): void
+    {
+        $month = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => WorkOrderAdvancedFilterCatalog::MONTHS_IN_YEAR]]);
+
+        if ($month === false) {
+            return;
+        }
+
+        $start = Carbon::create(null, $month, 1);
+
+        $query->whereBetween('work_orders.start_date', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()]);
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     * @param  array<int, int>  $userIds
+     */
+    private function applyTeamMembers(Builder $query, array $userIds): void
+    {
+        if ($userIds === []) {
+            return;
+        }
+
+        $query->where(static fn (Builder $team) => $team
+            ->whereHas('supervisors', static fn (Builder $supervisors) => $supervisors->whereKey($userIds))
+            ->orWhereHas('participants', static fn (Builder $participants) => $participants->whereKey($userIds)));
     }
 }

@@ -14,6 +14,8 @@ interface WorkOrdersGridProps {
   scope?: TableConfigScope
   /** Shows the working-phase tabs at the top right; only the "Commesse" page has them. */
   showWorkPhaseTabs?: boolean
+  /** The legacy Commesse filters always in view, no quick-search (user request 2026-11-27); only the "Commesse" page. */
+  pinnedFilters?: boolean
 }
 
 /**
@@ -21,7 +23,7 @@ interface WorkOrdersGridProps {
  * (the eye, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
  * and its dialogs. Permission gating is an affordance only; the backend re-authorizes each call.
  */
-export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false }: WorkOrdersGridProps) {
+export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false, pinnedFilters = false }: WorkOrdersGridProps) {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => {
     tableRef.current?.refresh()
@@ -51,6 +53,7 @@ export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false }: Wor
         ref={tableRef}
         domain={domain}
         scope={scope}
+        pinnedFilters={pinnedFilters}
         onFilterModelChange={workPhaseTabs.onFilterModelChange}
         onAggregatesChange={workPhaseTabs.onAggregatesChange}
         renderers={renderers}
@@ -67,5 +70,5 @@ export function WorkOrdersGrid({ domain, scope, showWorkPhaseTabs = false }: Wor
 
 /** "Commesse" adapter: the `work-orders` grid with every work order type, processing and project (user decision 2026-11-17, supersedes spec 0359 D-2). */
 export function WorkOrdersTable() {
-  return <WorkOrdersGrid domain={WORK_ORDERS_DOMAIN} scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE} showWorkPhaseTabs />
+  return <WorkOrdersGrid domain={WORK_ORDERS_DOMAIN} scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE} showWorkPhaseTabs pinnedFilters />
 }

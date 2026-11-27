@@ -65,54 +65,48 @@ it('returns the participants in the row in their position order, with the avatar
     ]);
 });
 
-it('offers supervisors and participants as multi-value person pickers in the advanced filters', function () {
+// REQUIREMENT CHANGED (user request 2026-11-27): the Commesse page takes the legacy
+// QNet filters, a single "Utenti" picker matching Responsabili or Partecipanti; the
+// two separate pickers stay on the Progetti grid only.
+it('offers supervisors and participants as separate pickers on the Progetti grid only', function () {
     Sanctum::actingAs(workOrderUserWith(['viewAny']));
 
-    $filters = array_values(array_filter(
-        $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'),
-        static fn (array $filter): bool => in_array($filter['name'], ['supervisors', 'participants'], true),
-    ));
+    $names = static fn (string $domain): array => array_column(test()->getJson("/api/tables/{$domain}/columns")->assertOk()->json('data.advancedFilters'), 'name');
 
-    expect(array_column($filters, 'name'))->toBe(['supervisors', 'participants'])
-        ->and(array_column($filters, 'label'))->toBe(['workOrders.advancedFilters.supervisors', 'workOrders.advancedFilters.participants']);
-
-    foreach ($filters as $filter) {
-        expect($filter['type'])->toBe('relation')
-            ->and($filter['multiple'])->toBeTrue()
-            ->and($filter['source'])->toBe(['resource' => 'users']);
-    }
+    expect($names('project-work-orders'))->toContain('supervisors', 'participants')
+        ->and($names('work-orders'))->not->toContain('supervisors')
+        ->and($names('work-orders'))->not->toContain('participants');
 });
 
-it('filters by participant, matching a work order when any picked person takes part', function () {
+it('offers on the Commesse page one multi-value users picker', function () {
+    Sanctum::actingAs(workOrderUserWith(['viewAny']));
+
+    $filter = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.advancedFilters'))->firstWhere('name', 'team_members');
+
+    expect($filter)->toMatchArray([
+        'label' => 'workOrders.advancedFilters.teamMembers',
+        'type' => 'relation',
+        'multiple' => true,
+        'source' => ['resource' => 'users'],
+    ]);
+});
+
+it('filters by user, matching a work order where any picked person is supervisor or participant', function () {
     Sanctum::actingAs(workOrderUserWith(['viewAny']));
     $picked = User::factory()->create();
     $alsoPicked = User::factory()->create();
-    $first = workOrderWithParticipant($picked);
-    $second = workOrderWithParticipant($alsoPicked);
+    $asParticipant = workOrderWithParticipant($picked);
+    $asSupervisor = WorkOrder::factory()->create();
+    $asSupervisor->supervisors()->attach($alsoPicked->id);
     workOrderWithParticipant(User::factory()->create());
     WorkOrder::factory()->create();
 
-    expect(workOrderIdsMatching(['advancedFilters' => ['participants' => [$picked->id, $alsoPicked->id]]]))
-        ->toBe([$first->id, $second->id]);
+    expect(workOrderIdsMatching(['advancedFilters' => ['team_members' => [$picked->id]]]))->toBe([$asParticipant->id])
+        ->and(workOrderIdsMatching(['advancedFilters' => ['team_members' => [$picked->id, $alsoPicked->id]]]))
+        ->toBe([$asParticipant->id, $asSupervisor->id]);
 });
 
-it('filters by supervisor without matching the participants, and combines the two in AND', function () {
-    Sanctum::actingAs(workOrderUserWith(['viewAny']));
-    $person = User::factory()->create();
-    $otherPerson = User::factory()->create();
-    $supervised = WorkOrder::factory()->create();
-    $supervised->supervisors()->attach($person->id);
-    workOrderWithParticipant($person);
-    $both = workOrderWithParticipant($otherPerson);
-    $both->supervisors()->attach($person->id);
-
-    expect(workOrderIdsMatching(['advancedFilters' => ['supervisors' => [$person->id]]]))
-        ->toBe([$supervised->id, $both->id])
-        ->and(workOrderIdsMatching(['advancedFilters' => ['supervisors' => [$person->id], 'participants' => [$otherPerson->id]]]))
-        ->toBe([$both->id]);
-});
-
-it('keeps the advanced filters inside the visibility scope', function () {
+it('keeps the users filter inside the visibility scope', function () {
     $actor = workOrderUserWith(['viewAny']);
     $actor->revokePermissionTo('work-orders.viewAll');
     Sanctum::actingAs($actor);
@@ -121,7 +115,7 @@ it('keeps the advanced filters inside the visibility scope', function () {
     $mine = workOrderWithParticipant($person);
     $mine->supervisors()->attach($actor->id);
 
-    expect(workOrderIdsMatching(['advancedFilters' => ['participants' => [$person->id]]]))->toBe([$mine->id]);
+    expect(workOrderIdsMatching(['advancedFilters' => ['team_members' => [$person->id]]]))->toBe([$mine->id]);
 });
 
 it('filters the participants column by name and by the blank entry', function () {
@@ -184,10 +178,10 @@ it('refuses the participants cell edit without the update permission', function 
     expect($workOrder->fresh()->participants)->toBeEmpty();
 });
 
-it('refuses an unknown advanced filter value shape on participants', function () {
+it('refuses an unknown advanced filter value shape on the users filter', function () {
     Sanctum::actingAs(workOrderUserWith(['viewAny']));
 
-    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['participants' => 'not-a-list']])
+    $this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 50, 'advancedFilters' => ['team_members' => 'not-a-list']])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('advancedFilters.participants');
+        ->assertJsonValidationErrors('advancedFilters.team_members');
 });
