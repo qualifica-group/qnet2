@@ -22,7 +22,11 @@ use Illuminate\Validation\Rule;
  * `opportunity_id` (user report 2026-11-11) adds the picked Opportunity's
  * product-line categories, the same union a save resolves
  * (App\Quotes\QuoteAttributeResolver): without it the preview would drop
- * every field the record's own classification brings.
+ * every field the record's own classification brings. `quote_id` (user
+ * report 2026-11-27, offer 31044) is the offer being edited: a bound one
+ * (spec 0411) reads only the opportunity lines under its root, or the
+ * preview would show the fields of the request's other offers and the save
+ * would refuse them.
  *
  * Deliberately LENIENT on absence: a row with no `product_id` yet (the
  * operator just added a blank line) is DROPPED, never a 422 — it simply
@@ -46,6 +50,8 @@ class QuoteFormContextRequest extends FormRequest
     {
         return [
             'opportunity_id' => ['nullable', 'integer', Rule::exists('opportunities', 'id')],
+            // Spec 0411, D-3: the offer being edited, whose root scopes the opportunity lines.
+            'quote_id' => ['nullable', 'integer', Rule::exists('quotes', 'id')],
             // Spec 0396, D-7: categories of an opportunity not saved yet.
             'product_category_ids' => ['sometimes', 'array'],
             'product_category_ids.*' => ['integer', Rule::exists('product_categories', 'id')],
@@ -59,6 +65,13 @@ class QuoteFormContextRequest extends FormRequest
         $opportunityId = $this->validated('opportunity_id');
 
         return $opportunityId === null ? null : (int) $opportunityId;
+    }
+
+    public function quoteId(): ?int
+    {
+        $quoteId = $this->validated('quote_id');
+
+        return $quoteId === null ? null : (int) $quoteId;
     }
 
     /**

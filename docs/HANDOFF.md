@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Bug offerta 31044: "attribute is not part of the applicable attribute set" in modifica (segnalazione utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Causa: richiesta con righe di due categorie madri -> due offerte legate (spec 0411; 31043 Sicurezza, 31044 Gare). In modifica, appena cambiano i prodotti delle righe offerta, il form chiama `POST /api/quotes/form-context` con il solo `opportunity_id`, e `QuoteAttributeResolver::formContext()` univa TUTTE le righe dell'opportunita' (12 campi `safety_*` anche sull'offerta Gare). Il salvataggio (`resolve()`, via `QuoteRootScope::linesOf`) le filtra per radice -> 422 su ogni campo Sicurezza.
+- Fix: `form-context` accetta `quote_id` opzionale (`exists:quotes,id`, `authorize('view', $quote)` oltre a `create`); `formContext(..., ?int $rootId)` filtra le righe con `QuoteRootScope::filterLines`. Frontend: `PersistedQuoteContext.quoteId`, `fetchQuoteFormContext(opportunityId, productIds, categoryIds, quoteId)`, `quote_id` inviato solo se valorizzato e nella query key.
+- Test: `tests/Feature/Quotes/QuoteFormContextRootScopeTest.php` (fallisce senza il fix); 3 test FE aggiornati solo per la nuova firma (REQUIREMENT CHANGED: argomento in piu'), quello di modifica verifica `record.id`. Quotes BE 554/558 (4 ambientali: LibreOffice assente, drop FK su SQLite), Quotes FE 543/543, tsc -b pulito, Pint/ESLint puliti. Verificato su qnet2: 31044 ora risolve solo i 6 `tender_*`.
+- Manuale: nessun impatto.
+
 ## ISO e [OLD] ISO, Commessa: via "Standard ISO", nuovo "Scopo" dopo "Data urgenza emissione", ISO identica a [OLD] ISO (richieste utente 2026-11-27) — VERDE MIRATO, COMMITTATO, SEEDER NON LANCIATO SU qnet2
 
 - Seeder one-shot `QualificaIsoWorkDetailsSeeder` (`php artisan db:seed --class=QualificaIsoWorkDetailsSeeder --force`), radici "ISO" e "[OLD] ISO" + discendenti, contesto work_order, in transazione:
@@ -247,7 +254,7 @@
 - Test: `tests/Feature/Seeding/QualificaSafetyHaccpLayoutRevisionSeederTest.php` (4). Verdi: Seeding 309, DocumentLayouts Feature 149, Unit 93/94 (rosso noto `ProductsTableRendererTest` cost_lines AC-245, non toccato). Pint pulito.
 - Manuale: nessun impatto (cambia solo il contenuto del documento generato).
 
-## Indirizzi: Nazione/Regione/Provincia sempre visibili (segnalazione utente 2026-11-25, /referents) — VERDE MIRATO, NON COMMITTATO
+## Indirizzi: Nazione/Regione/Provincia sempre visibili (segnalazione utente 2026-11-25, /referents) — VERDE MIRATO, COMMITTATO
 
 - Causa: il layout `compact` di `GeoSelect` (tutti i form indirizzo: anagrafiche, referenti, societa', sedi operative, conti finanziari) nascondeva Nazione/Regione/Provincia dietro il link con freccia "Modifica area geografica": nessuno apriva la freccia, quindi gli indirizzi esteri non venivano compilati.
 - Fix: `features/geo/geo-compact-fields.tsx` senza Collapsible: riga Nazione/Regione/Provincia (3 colonne da `sm`) + Comune sotto, sempre visibili. Supera la decisione 2026-09-07 ("antenati dietro disclosure"). Prop `collapsible` e chiavi i18n `geo.editArea`/`geo.hideArea` rimosse. Il comune resta ricercabile da solo e compila gli antenati (`cityFirst` in `GeoSelect` invariato).
@@ -332,7 +339,7 @@
 - Guide IT/EN: `quotes.ts` (catalogo), `parts/work-orders-costs.ts`; manuale Claude Docs: paragrafo catalogo offerta.
 - Prossimo: eseguire `costs:clear-vat` su qnet2 (e staging/prod al deploy, dopo aver verificato che "IVA al 0%" esista); commit qnet-2 + legacy su richiesta, esclusi i file Formalab di un altro lavoro in corso.
 
-## Formalab: partner del prospetto = Partner commerciale dell'offerta del discente (spec 0427 D-2 revised, 2026-11-24) — VERDE MIRATO, NON COMMITTATO
+## Formalab: partner del prospetto = Partner commerciale dell'offerta del discente (spec 0427 D-2 revised, 2026-11-24) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: "bisogna prendere il campo partner commerciale che si trova sulla offerta del discente. nient'altro". Nel legacy il partner era solo testo libero `pre_info_formaziones.partner_commerciale` (import GOL, creazione opportunita' GOL, info preliminari).
 - `CommissionBook::offerPartners`: CF -> anagrafiche (`personal_data`) -> opportunita' (`registry_id`) -> offerte; vale la piu' recente (id maggiore) con `commercial_partner_id`. Nessun fallback (ne' testo legacy ne' Partner commerciale dell'anagrafica). Colonna `formalab_learner_commissions.partner_name` rimossa: migrazione nuova `2026_11_24_110000_drop_partner_name_...` (NON eseguita su qnet2: va lanciata con `migrate`; la tabella e' vuota). ST-2 non migra piu' il testo `partner_commerciale`.
@@ -352,7 +359,7 @@
 - DA FARE: ST-2 migrazione dati partner dal legacy (pre_info_formaziones: 6.826 con partner, 3.364 con %, 1.108 con fornitore; il legacy legge la PRIMA riga per CF). ST-3 azioni: Genera Notula/e, Genera ODA Partner (con scadenze), Importa discenti, selezioni. ST-4 modulo Notule discenti (prerequisito di "Importa liquidazioni" e dello stato ODA discente).
 - Differenze dichiarate dal legacy: la lettura non riallinea gli importi salvati (non influenza i calcoli); colonna ODA discente senza stato (arriva con ST-4); refresh classe esplicito.
 
-## Formalab: polling leggero e backfill senza N+1 (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+## Formalab: polling leggero e backfill senza N+1 (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, COMMITTATO
 
 - Misura sulla copia di prod: `GET /status` (e la fase backfill del sync) facevano 5.504 query / 7 s per le 464 commesse non collegate (~12 query a commessa: mappa categoria + attributi applicabili); il polling ogni 5 s lo martellava.
 - `LinkBackfill::eachUnlinked`: `with('quoteLines.product.category')` + `keyCodeOf` una volta per combinazione ordinata di categorie, poi `CourseFieldWriter::editionIdAt($workOrder, $code)` (nuovo; `editionIdOf` lo usa). Ora 95 query / 0,19 s, stesso risultato.
@@ -547,7 +554,7 @@
 - Manuale: guida in-app `general.ts` IT/EN (sezione note); Claude Docs rev 950 (sezione Note, paragrafo "Con Rispondi...").
 - Nessun seeder ne' migrazione: basta il deploy.
 
-## Commesse: Responsabile/Partecipante gestisce la commessa anche senza `work-orders.update` (spec 0387 D-7, 0379 AC-005 rev., decisione utente 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+## Commesse: Responsabile/Partecipante gestisce la commessa anche senza `work-orders.update` (spec 0387 D-7, 0379 AC-005 rev., decisione utente 2026-11-23) — VERDE MIRATO, COMMITTATO
 
 - `WorkOrderPolicy::manage` (non e' un permesso, fuori da `abilities()`): `update` oppure `view` + membro (`WorkOrderVisibilityScope::isMember`, in memoria se `supervisors`/`participants` sono caricati). Usato da: PATCH con sole chiavi di chiusura (`UpdateWorkOrderRequest::isClosureOnly`, altrimenti `update`), azioni `force_close`/`reopen` e campi `is_force_closed`/`force_close_reason`, nuova azione `record_progress` + endpoint avanzamento, fasi (`WorkOrderStageController`), `is_read_only` del board, ricarica Modello di Task. Restano a `update`: form e copia attributi offerta.
 - Task: `TaskRecordRoles::isWorkOrderManager` (membro non assegnatario) entra in `canUpdate`/mandato via `TaskAbilityResolver::managesTheTask`; `claimsByCompleting` tiene la rivendicazione della 0387 (diventa assegnatario al completamento e va in validazione se richiesta). `TaskBoardQuery::tasks` imposta la relazione `workOrder` con i membri caricati (AC-007 0163: 19 query).
@@ -867,7 +874,7 @@
 - Al commit: solo i file di questa spec; il working tree contiene la spec 0410 e il lavoro seeder 0408 di altre sessioni. COMMITTATO in `4159d7c3c` (per hunk).
 - Dopo il commit (NON committato): le frasi guida di "Linee di prodotto" (hint del campo, riga singola, hint della richiesta/opportunita', `rootLocked`) sono un unico riquadro con icona ed elenco puntato, `ProductLinesHints` (`ProductLinesField.extraHints`), usato da tutti i form che montano il campo; nel pannello Lavora l'hint non e' piu' un tooltip di `MetaField`. Fixture dei test 0411 rese indipendenti dai campi della 0410 (`Partial<ProductCategoryTreeNode>`). Manuale: nessun impatto (solo grafica).
 
-## Tab degli stati di sistema in Opportunita' e Offerte (spec 0409, 2026-11-18) — VERDE MIRATO, NON COMMITTATO
+## Tab degli stati di sistema in Opportunita' e Offerte (spec 0409, 2026-11-18) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: filtri a tab "come in Contratti/Commesse" sugli stati di sistema delle offerte (`quote_system_statuses`), in Offerte e in Opportunita'. Riprende la parte G della 0404 (eliminata il 2026-11-16), ora sugli stati di sistema.
 - BE Offerte: trait `Tables/Quotes/Concerns/HasQuoteSystemStatusTabs` (aggregates per nome stato di sistema, ignora il filtro `quote_system_status`).
@@ -1110,7 +1117,7 @@
 - Manuale: guide IT/EN nuova `quote-system-statuses` (+HELP_GUIDE_KEYS 109), `quotes`, `quote-workflows`; Claude Docs rev 834 (configuratore workflow, paragrafo "Stati di sistema offerta", Offerte, Gestione Iscritti, colonna Gestione Richieste).
 - Aperti: filtro set della colonna `behavior` mostra i valori grezzi come oggi `group` degli Stati Contratto; statistiche/report restano sui gruppi (fuori scope spec). HANDOFF e' ~1.3 MB, oltre la soglia di 50 KB: da archiviare.
 
-## Filtro personalizzato sui campi flessibili (attr.*) e "Vuoto/Non vuoto" sulle date (2026-11-16) — VERDE MIRATO, NON COMMITTATO
+## Filtro personalizzato sui campi flessibili (attr.*) e "Vuoto/Non vuoto" sulle date (2026-11-16) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente: "Data verifica ispettiva" + "Non vuoto" (filtro personalizzato) non cambiava nulla. Root cause: `AttributeColumnBuilder::raw()` (la dichiarazione in `filterableColumnMap()`) non aveva `filterType` -> `CustomFilterRuleValidator::resolveType()` null -> ogni regola su un `attr.*` rifiutata con 422 ("cannot be used in a custom filter rule"), per TUTTI i campi flessibili. Ora `raw()` porta il `filterType` della tabella di mapping (lo stesso di `resolved()`).
 - Secondo buco, stessa area: `AttributeDateFilterApplier` ignorava Set e multi (dateFrom assente): blank/not_blank del filtro personalizzato (`values:[null]`) e la checklist della griglia sugli attributi data non filtravano. Ora `apply()` gestisce multi (AND), set (valori esatti + "(Vuoti)" = null/'') e condizione data; `AttributeSummaryDateColumn::applyFilter` delega tutto a lui (tolto il trait `AppliesSetFilter`).
@@ -1761,7 +1768,7 @@
   Vale per tutte le tabelle generiche. Test: `RequestManagementCallbackTest` (#428096, anche OR combinato).
 - La parte "il filtro si toglie da solo" e' il task 428054: vedi la sua voce (filtro personalizzato).
 
-## Ticket da QNet (lotto 2026-11-13) — VERDE MIRATO, NON COMMITTATO
+## Ticket da QNet (lotto 2026-11-13) — VERDE MIRATO, COMMITTATO
 
 - **#428417 import contatti:** `config/imports.php` `column_aliases.phone` + 'phone number', 'telephone', 'mobile',
   'mobile phone', 'numero di telefono', 'numero telefono'. Test: `ColumnMapperTest` (dataset).

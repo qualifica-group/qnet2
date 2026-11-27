@@ -162,7 +162,7 @@ describe('useQuoteWithOpportunity — step 2', () => {
 
     await reachQuoteStep(rendered)
 
-    await waitFor(() => expect(fetchQuoteFormContext).toHaveBeenCalledWith(null, [], [21]))
+    await waitFor(() => expect(fetchQuoteFormContext).toHaveBeenCalledWith(null, [], [21], null))
   })
 
   it('D-5: coming back and forward realigns only what the offer did not touch by hand', async () => {

@@ -403,7 +403,7 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected' }))
 
     expect(await screen.findByRole('textbox', { name: 'Sites' })).toHaveValue('Two sites')
-    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith(55, expect.arrayContaining([77]))
+    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith(55, expect.arrayContaining([77]), [], record.id)
 
     pressRowButton('Save')
 

@@ -224,7 +224,7 @@ describe('QuoteFormBody — the detail replica (spec 0197)', () => {
     )
 
     expect(await screen.findByText('Additional information')).toBeInTheDocument()
-    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith(55, [])
+    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith(55, [], [], null)
   })
 })
 

@@ -71,12 +71,13 @@ final class QuoteAttributeResolver
      *
      * @param  array<int, int>  $productIds
      * @param  array<int, int>  $extraCategoryIds  categories of an opportunity not saved yet (spec 0396, D-7)
+     * @param  int|null  $rootId  the root an edited offer is bound to (spec 0411, D-3): only the opportunity lines under it count, as on save
      * @return array{applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
      */
-    public function formContext(?int $opportunityId, array $productIds, FormMode $formMode, array $extraCategoryIds = []): array
+    public function formContext(?int $opportunityId, array $productIds, FormMode $formMode, array $extraCategoryIds = [], ?int $rootId = null): array
     {
         $categoryIds = $this->unionOf(
-            [...$this->categoryIdsForOpportunityId($opportunityId), ...$extraCategoryIds],
+            [...$this->categoryIdsForOpportunityId($opportunityId, $rootId), ...$extraCategoryIds],
             $this->categoryIdsForProductIds($productIds),
         );
 
@@ -103,17 +104,18 @@ final class QuoteAttributeResolver
     /**
      * @return array<int, int>
      */
-    private function categoryIdsForOpportunityId(?int $opportunityId): array
+    private function categoryIdsForOpportunityId(?int $opportunityId, ?int $rootId): array
     {
         if ($opportunityId === null) {
             return [];
         }
 
-        return OpportunityProductLine::query()
+        $lines = OpportunityProductLine::query()
             ->where('opportunity_id', $opportunityId)
             ->orderBy('id')
-            ->pluck('product_category_id')
-            ->all();
+            ->get(['id', 'product_category_id']);
+
+        return $this->rootScope->filterLines($lines, $rootId)->pluck('product_category_id')->all();
     }
 
     /**
