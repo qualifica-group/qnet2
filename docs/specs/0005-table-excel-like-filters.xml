@@ -80,7 +80,7 @@
         <!-- content-type application/json -->
         columnId: string            <!-- required; DEVE essere una colonna filterable (whitelist) -->
         search: string|null         <!-- optional; substring case-insensitive sui valori distinti; max 255 -->
-        limit: integer|null         <!-- optional; default 200, min 1, cap 200 -->
+        limit: integer|null         <!-- optional; default 2000, min 1, cap 2000 (era 200, alzato il 2026-11-27) -->
         filterModel: object|null    <!-- optional; stessi filtri attivi sulle ALTRE colonne (map colId -> filterEntry).
                                           La colonna target, se presente, viene IGNORATA server-side (comportamento Excel). -->
       </request>
@@ -155,7 +155,8 @@
     <criterion id="AC-012">Dato una colonna con filterType text/number/date, allora resolveFilter restituisce `agMultiColumnFilter` con sub-filtri [SetFilter, filtro tipizzato]; per set/enum/boolean restituisce `agSetColumnFilter`.</criterion>
     <criterion id="AC-013">Dato l'apertura del Set Filter di una colonna, allora il values-callback chiama fetchTableColumnValues con { columnId, filterModel = filtri correnti sulle ALTRE colonne } e popola la lista con la response; su errore params.fail-equivalent senza crash.</criterion>
     <criterion id="AC-014">Dato un filterModel combinato prodotto dalla griglia, allora ssrm-datasource lo inoltra intatto (map by colId, inclusa la shape multi) a POST /rows; l'Advanced Filter (array model) resta escluso.</criterion>
-    <criterion id="AC-015">Dato data.hasMore==true, allora la UI segnala che la lista e' troncata (uso condizioni per il long-tail).</criterion>
+    <criterion id="AC-015">Dato data.hasMore==true, allora la UI NON mostra alcun avviso: la ricerca nella casella Cerca della colonna va al server e trova anche i valori oltre il cap (task 427169). Requisito cambiato il 2026-11-27 (richiesta utente: l'avviso "solo i primi valori" non deve piu' comparire; cap alzato a 2000).</criterion>
+    <criterion id="AC-015b">Dato una colonna testo/numero/data filtrabile con piu' valori distinti del cap (`config('table-filter-values.limit')`, 2000), quando GET /columns (o il config restituito da POST preferences/filters), allora la colonna porta `tooManyFilterValues: true` e la griglia offre solo il filtro a condizione (Contiene, data, numero); entro il cap resta la checklist Excel. Calcolo per utente e per scope di categoria, prima degli scope di riga, in cache stale-while-revalidate (1 h fresco, 24 h stale). Un filterModel salvato multi su quelle colonne tiene la sola condizione (`toTypedOnlyFilterModels`). Decisione utente 2026-11-27.</criterion>
     <!-- BUGFIX colonne derivate computed -->
     <criterion id="AC-016">Dato POST /values su una colonna DERIVATA computed (users.primary_address, users.primary_contact, roles.users_count), allora risposta 200 con { values: [], hasMore: false } — MAI 500/"Unknown column"; il motore non esegue distinctFromColumn su una colonna non reale.</criterion>
     <criterion id="AC-017">Dato un filtro a CONDIZIONI su quelle colonne (address `contains`, users_count `greaterThan`/inRange), allora POST /rows filtra correttamente via applyDerivedFilter (nessuna regressione).</criterion>
@@ -171,7 +172,7 @@
   <constraints>
     <item>Solo librerie gia' presenti (AG Grid Enterprise incluso). Nessuna nuova dipendenza.</item>
     <item>Sicurezza: allow-list colonne per DISTINCT/filtri/sort; nessun whereRaw/orderByRaw su input; valori sempre bound; LIKE con escapeLike; authz server-side su OGNI endpoint (authorizeViewAny); FormRequest su ogni input.</item>
-    <item>Performance: DISTINCT con LIMIT N (cap 200) + ORDER BY; ricerca via LIKE su colonna preferibilmente indicizzata; il DB agent verifica/aggiunge indici. Filtro cross-colonna riusa esattamente la pipeline `applyFilters` (nessuna duplicazione della logica anti-injection).</item>
+    <item>Performance: DISTINCT con LIMIT N (cap 2000; misurato sul DB locale: stessi ms di 200) + ORDER BY; ricerca via LIKE su colonna preferibilmente indicizzata; il DB agent verifica/aggiunge indici. Filtro cross-colonna riusa esattamente la pipeline `applyFilters` (nessuna duplicazione della logica anti-injection).</item>
     <item>Layering invariato: Controller thin -> FormRequest -> TableService/definition. La logica SSRM resta in UN solo posto (TableService); le colonne derivate restano nelle definition via hook, come applyDerivedFilter/applyDerivedSort.</item>
     <item>Envelope: /values usa ok() ({success,message,data}); /rows e /columns invariati.</item>
     <item>Identificatori in inglese; naming riusato esattamente da TableDefinition/TableService esistenti. File entro 300/500 righe: se TableService supera, valutare estrazione dei rami filtro in un collaboratore dedicato.</item>

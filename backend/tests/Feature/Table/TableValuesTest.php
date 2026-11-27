@@ -195,11 +195,11 @@ it('caps distinct values to the requested limit and flags hasMore', function () 
         ->and($response->json('data.hasMore'))->toBeTrue();
 });
 
-it('returns 422 when limit exceeds the cap (200)', function () {
+it('returns 422 when limit exceeds the cap (2000)', function () {
     $actor = userWithUserAbilities(['viewAny']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/tables/users/values', ['columnId' => 'email', 'limit' => 201])
+    $this->postJson('/api/tables/users/values', ['columnId' => 'email', 'limit' => 2001])
         ->assertStatus(422)->assertJsonValidationErrors('limit');
 });
 

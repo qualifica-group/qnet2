@@ -32,8 +32,9 @@ import { formatDate, formatDateTimeOptionalTime } from '@/lib/formatting/date-di
  * (0004). text/number/date(-time) columns get the combined `agMultiColumnFilter`
  * (Set Filter + a typed condition, see `resolveTypedFilter`) UNLESS the column
  * is computed/derived without a queryable value list (`hasFilterValues ===
- * false`, 0005 — e.g. a concatenated address), in which case they fall back to
- * the plain typed condition filter alone, with no Set tab.
+ * false`, 0005 — e.g. a concatenated address) or has more values than the
+ * checklist lists (`tooManyFilterValues`), in which case they fall back to the
+ * plain typed condition filter alone, with no Set tab.
  */
 export function resolveFilter(column: TableColumn): ColDef['filter'] {
   if (!column.filterable) {
@@ -48,10 +49,15 @@ export function resolveFilter(column: TableColumn): ColDef['filter'] {
     case 'boolean':
       return 'agSetColumnFilter'
     default:
-      return column.hasFilterValues === false
+      return hasTypedFilterOnly(column)
         ? resolveTypedFilter(column)
         : 'agMultiColumnFilter'
   }
+}
+
+/** A text/number/date column that gets the condition filter alone, with no checklist. */
+export function hasTypedFilterOnly(column: TableColumn): boolean {
+  return column.hasFilterValues === false || column.tooManyFilterValues === true
 }
 
 /**
@@ -102,7 +108,6 @@ export function resolveTypedFilter(
 export function createColumnValuesGetter(
   domain: string,
   columnId: string,
-  onTruncated: () => void,
   productCategoryId?: number,
   opportunityId?: number,
   quoteId?: number,
@@ -130,7 +135,6 @@ export function createColumnValuesGetter(
       })
       if (response.hasMore) {
         markSetFilterTruncated(params.api, columnId)
-        onTruncated()
       }
       params.success(withPresetSetFilterValues(params.api, columnId, response.values))
       if (search !== null) {
@@ -160,7 +164,6 @@ export function createColumnValuesGetter(
 export function buildSetFilterParams(
   domain: string,
   column: TableColumn,
-  onTruncated: () => void,
   translate: (key: string) => string,
   productCategoryId?: number,
   opportunityId?: number,
@@ -174,7 +177,6 @@ export function buildSetFilterParams(
     values: createColumnValuesGetter(
       domain,
       column.id,
-      onTruncated,
       productCategoryId,
       opportunityId,
       quoteId,
@@ -294,7 +296,6 @@ const TYPED_FILTER_TITLE_KEY: Record<
 export function buildColumnFilter(
   domain: string,
   column: TableColumn,
-  onTruncated: () => void,
   translate: (key: string) => string,
   productCategoryId?: number,
   opportunityId?: number,
@@ -307,7 +308,7 @@ export function buildColumnFilter(
   if (filter === 'agSetColumnFilter') {
     return {
       filter,
-      filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId, registryId, referentId, productCategoryBranchId),
+      filterParams: buildSetFilterParams(domain, column, translate, productCategoryId, opportunityId, quoteId, registryId, referentId, productCategoryBranchId),
     }
   }
   if (filter === 'agMultiColumnFilter') {
@@ -316,7 +317,7 @@ export function buildColumnFilter(
       filters: [
         {
           filter: 'agSetColumnFilter',
-          filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId, registryId, referentId, productCategoryBranchId),
+          filterParams: buildSetFilterParams(domain, column, translate, productCategoryId, opportunityId, quoteId, registryId, referentId, productCategoryBranchId),
         },
         {
           filter: typedFilter,

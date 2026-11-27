@@ -68,8 +68,6 @@ export interface BuildColDefsParams {
   treeGroupColumnId?: string
   /** Opt-in server-side row grouping (spec 0197); absent or disabled ⇒ columns are built exactly as before. */
   rowGrouping?: TableRowGroupingConfig
-  /** A column's Set Filter value list came back truncated; the caller decides whether to tell the user. */
-  onFilterValuesTruncated?: (columnId: string) => void
   t: TFunction
 }
 
@@ -96,7 +94,6 @@ export function buildColDefs({
   masterDetail,
   treeGroupColumnId,
   rowGrouping,
-  onFilterValuesTruncated,
   t,
 }: BuildColDefsParams): ColDef[] {
   const mapped: ColDef[] = columns.map((column) => {
@@ -116,7 +113,6 @@ export function buildColDefs({
     const { filter, filterParams } = buildColumnFilter(
       domain,
       column,
-      () => onFilterValuesTruncated?.(column.id),
       t,
       productCategoryId,
       opportunityId,

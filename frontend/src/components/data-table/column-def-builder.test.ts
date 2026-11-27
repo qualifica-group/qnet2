@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { TFunction } from 'i18next'
-import type { ISetFilterParams, SetFilterValuesFunc, SetFilterValuesFuncParams } from 'ag-grid-community'
 import { buildColDefs } from '@/components/data-table/column-def-builder'
 import { ACTIONS_COLUMN_ID } from '@/components/data-table/data-table-overlays'
-import { fetchTableColumnValues } from '@/features/table/api'
 
 vi.mock('@/features/table/api', () => ({
   fetchTableColumnValues: vi.fn(),
@@ -51,27 +49,5 @@ describe('buildColDefs tree data', () => {
   it('leaves every column visible as usual when no tree group column is given', () => {
     const defs = buildColDefs({ domain: 'tasks', columns, t })
     expect(defs.find((def) => def.colId === 'title')?.initialHide).toBe(false)
-  })
-})
-
-describe('buildColDefs set filter truncation', () => {
-  const columns = [
-    { id: 'status', label: 'tasks.columns.status', type: 'enum' as const, visible: true, width: null, order: 0, sortable: true, filterable: true },
-  ]
-
-  it('reports a truncated value list with the column id, leaving the notice to the caller', async () => {
-    vi.mocked(fetchTableColumnValues).mockResolvedValue({ values: ['open'], hasMore: true })
-    const onFilterValuesTruncated = vi.fn()
-    const defs = buildColDefs({ domain: 'tasks', columns, onFilterValuesTruncated, t })
-    const values = (defs[0].filterParams as ISetFilterParams).values as SetFilterValuesFunc
-    const success = vi.fn()
-
-    values({
-      api: { getFilterModel: () => ({}), getGridOption: () => undefined },
-      success,
-    } as unknown as SetFilterValuesFuncParams)
-
-    await vi.waitFor(() => expect(success).toHaveBeenCalled())
-    expect(onFilterValuesTruncated).toHaveBeenCalledExactlyOnceWith('status')
   })
 })

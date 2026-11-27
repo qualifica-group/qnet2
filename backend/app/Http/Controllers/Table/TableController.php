@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\TableBulkDeleteService;
 use App\Services\TableCellUpdateService;
 use App\Services\TableFilterStateService;
+use App\Services\TableLargeValueColumnsService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
 use App\Support\Cache\AggregateCache;
@@ -54,6 +55,7 @@ class TableController extends BaseApiController
         private readonly TableBulkDeleteService $bulkDelete,
         private readonly TableCellUpdateService $cellUpdate,
         private readonly AggregateCache $aggregateCache,
+        private readonly TableLargeValueColumnsService $largeColumns,
     ) {}
 
     /**
@@ -74,12 +76,13 @@ class TableController extends BaseApiController
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
             $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
+            $largeIds = $this->largeColumns->ids($definition, $actor, [$request->productCategoryId(), $request->productCategoryBranchId()]);
             $this->scopeToOpportunity($definition, $request->opportunityId());
             $this->scopeToQuote($definition, $request->quoteId());
             $this->scopeToRegistry($definition, $request->registryId());
             $this->scopeAttributeColumnsForConfig($definition, $actor, $request->attributeColumnsFromFilters());
 
-            return $this->ok($this->resolvedConfig($definition, $actor));
+            return $this->ok($this->resolvedConfig($definition, $actor, $largeIds));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -108,9 +111,10 @@ class TableController extends BaseApiController
 
             $this->preferences->save($definition, $actor, $request->columnsState());
             $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
+            $largeIds = $this->largeColumns->ids($definition, $actor, [$request->productCategoryId(), $request->productCategoryBranchId()]);
             $this->scopeAttributeColumnsForConfig($definition, $actor, $request->attributeColumnsFromFilters());
 
-            return $this->ok($this->resolvedConfig($definition, $actor), 'Preferences saved');
+            return $this->ok($this->resolvedConfig($definition, $actor, $largeIds), 'Preferences saved');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -161,9 +165,10 @@ class TableController extends BaseApiController
 
             $this->filters->save($definition, $actor, $request->filterModel(), $request->advancedFilters());
             $this->scopeToProductCategory($definition, $request->productCategoryId(), $request->productCategoryBranchId());
+            $largeIds = $this->largeColumns->ids($definition, $actor, [$request->productCategoryId(), $request->productCategoryBranchId()]);
             $this->scopeAttributeColumnsForConfig($definition, $actor, $request->attributeColumnsFromFilters());
 
-            return $this->ok($this->resolvedConfig($definition, $actor), 'Filters saved');
+            return $this->ok($this->resolvedConfig($definition, $actor, $largeIds), 'Filters saved');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -192,11 +197,13 @@ class TableController extends BaseApiController
 
     /**
      * Resolve the definition's default config and merge the actor's preferences
-     * (column layout) and saved filter state.
+     * (column layout), saved filter state and the columns with too many values
+     * for a checklist.
      *
+     * @param  list<string>  $largeIds
      * @return array<string, mixed>
      */
-    private function resolvedConfig(TableDefinition $definition, User $actor): array
+    private function resolvedConfig(TableDefinition $definition, User $actor, array $largeIds): array
     {
         $config = $this->preferences->applyTo(
             $definition->resolveConfig($actor),
@@ -204,7 +211,7 @@ class TableController extends BaseApiController
             $actor,
         );
 
-        return $this->filters->applyTo($config, $definition, $actor);
+        return $this->largeColumns->markColumns($this->filters->applyTo($config, $definition, $actor), $largeIds);
     }
 
     /**
