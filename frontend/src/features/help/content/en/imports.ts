@@ -84,7 +84,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The **Source** is always required, even when the campaign comes from the file, and applies to every imported row. If you pick the Campaign here (not from the file), the Source is prefilled from the campaign's own, if it has one, and stays editable.",
+          text: "The **Source** is always required, even when the campaign comes from the file, and applies to every imported row. It starts set to **Social**. If you pick the Campaign here (not from the file), the Source is prefilled from the campaign's own, if it has one. Either way it stays editable.",
         },
         {
           type: 'tip',

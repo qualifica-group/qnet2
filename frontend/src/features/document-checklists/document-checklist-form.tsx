@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { ListChecks } from 'lucide-react'
@@ -12,6 +13,7 @@ import { ChecklistSyncLogsSection } from '@/features/document-checklists/checkli
 import { DocumentChecklistFormBody } from '@/features/document-checklists/document-checklist-form-body'
 import { documentChecklistKeys } from '@/features/document-checklists/query-keys'
 import { useDocumentChecklistForm } from '@/features/document-checklists/use-document-checklist-form'
+import { ChecklistOpenRequestsDialog } from '@/features/document-requests/checklist-open-requests-dialog'
 import type { DocumentChecklist, DocumentChecklistWithPermissions } from '@/features/document-checklists/types'
 
 const DOCUMENT_CHECKLIST_FORM_ID = 'document-checklist-form'
@@ -33,7 +35,17 @@ interface DocumentChecklistFormProps {
  */
 export function DocumentChecklistForm({ checklist, canEdit = true, onSuccess, onCancel }: DocumentChecklistFormProps) {
   const { t } = useTranslation()
-  const { form, serverError, onSubmit, resetToSaved } = useDocumentChecklistForm({ checklist, onSuccess })
+  // Bumped after every save of an existing checklist: remounts the open-requests question (spec 0432, D-1).
+  const [savedCount, setSavedCount] = useState(0)
+  const { form, serverError, onSubmit, resetToSaved } = useDocumentChecklistForm({
+    checklist,
+    onSuccess: (saved) => {
+      if (checklist) {
+        setSavedCount((count) => count + 1)
+      }
+      onSuccess(saved)
+    },
+  })
   const name = useWatch({ control: form.control, name: 'name' })
   const isEdit = checklist !== undefined
   const heading = name.trim() || t(isEdit ? 'documentChecklists.form.editTitle' : 'documentChecklists.form.createTitle')
@@ -79,6 +91,9 @@ export function DocumentChecklistForm({ checklist, canEdit = true, onSuccess, on
               fetchLogs={() => fetchDocumentChecklistSyncLogs(checklist.id)}
             />
           </RecordSectionsGrid>
+        ) : null}
+        {checklist && savedCount > 0 ? (
+          <ChecklistOpenRequestsDialog key={savedCount} checklistId={checklist.id} onClose={() => setSavedCount(0)} />
         ) : null}
       </RecordCreateLayout>
     </Form>

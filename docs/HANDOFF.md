@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Merge di `main` in `staging` (richiesta utente 2026-11-27) — VERDE
+
+- 17 file in conflitto, tutti nell'area Commesse. Regola seguita: si tengono le Commesse di Progetto senza offerta (spec 0431), il dock chat (0432) e "Fatta con MCP AI" (0434) di staging insieme al nuovo dettaglio commessa di main (intestazione con tre puntini, Descrizione al posto delle Note commessa, niente Importo, niente Linee prodotto nei dati contrattuali, Stato lavorazione fuori dal form, schede del menu sempre in modale, filtri legacy fissati).
+- Adattamenti oltre i conflitti testuali: `WorkOrderDetailRelations` (estratta su staging) prende `supervisors.avatar`/`participants.avatar` di main; tolto `internalNotes` da `CreateWorkOrderData::forStandaloneProject` e `internal_notes`/`work_order_workflow_status_id` da `work-order-form-defaults.ts`; le chiavi Roadmap del task board vanno nel nuovo `{it,en}-work-order-task-board.ts`; `use-work-order-row-actions` ha quattro opener (per tipo, vista e schede in modale); guida in-app `work-orders` IT/EN, sezione di apertura, fonde l'intestazione di main con Appunti/Chat dock di staging.
+- Test adattati (REQUIREMENT CHANGED dall'altro lato): `WorkOrderMetaTest` (senza `internal_notes`, con i riferimenti 0431), `work-order-form-payload.test.ts` (tolto il blocco Stato lavorazione, rimosso da main), `work-order-detail-inline-edit.test.tsx` (niente `amount` nel tipo), `WorkOrderTeamColumnsTest` (la griglia di progetto vuole `project-work-orders.viewAny`), mock di `use-work-order-row-actions.test.tsx` che unisce dominio e modale.
+- Verifica: `tsc -b --force` e ESLint puliti, Pint pulito; Vitest completa 1489 file / 11153 test verdi; Pest verdi `ProjectWorkOrders`, `WorkOrderChat`, `McpLinks`, `ActivityLog`, `TimeEntries`, `Contracts`, `CategoryTabs`, `Projects`, `DocumentRequests`, `WorkOrderWorkflows`, `WorkOrderPaymentStatuses`; `WorkOrders` 639/644 (i 5 preesistenti `QuoteLineWorkOrderMigrationTest`/`WorkOrderAttributeLocksTest`).
+- Rossi PREESISTENTI, non toccati: `ManagementControl` 4 (chiave di navigazione `management-control-section` assente da prima della base), `TableDefinitionContractTest` hidden field (da main c33e600ef: `WorkOrderLastNoteColumns::project()` usa `getRelation` su un modello senza eager load), `TableBulkDeleteTest` super-admin, `PurchaseOrders`/`Quotes` rollback FK su SQLite, `Quotes` PDF (LibreOffice assente).
+- Da sapere: numeri di spec doppi gia' presenti (0432 x3, 0434 x2: MCP AI e cash flow personale). HANDOFF oltre 1,6 MB, da archiviare.
+- Manuale: guida in-app aggiornata (sopra); manuale Claude Docs da riallineare al dettaglio commessa di main + Commesse di Progetto.
+
 ## Dicitura "Fatta con MCP AI" nella Cronologia attivita', spec 0434 (richiesta utente 2026-11-26) — VERDE
 
 - Backend: `EnforceMcpLinkLife` mette l'id del collegamento vivo nell'attributo di richiesta `McpLink::REQUEST_ATTRIBUTE` (`mcp_link_id`); `McpLinksServiceProvider` (ascoltatore `Activity::creating`) lo copia nelle `properties` come `McpLink::ACTIVITY_PROPERTY`. `ActivityLogEntryResource` espone `via`: `'mcp'` | null. Il segno e' il collegamento (abilita' `mcp-link:<id>`), NON `api_client_id`: la chiave del client e il login da client restano `via` null. Nessuna migrazione; righe precedenti senza segno; scritture fuori richiesta (code, comandi) senza segno, come `api_client_id`.
@@ -22,6 +32,240 @@
 - Verifica: Pest `WorkOrderChat` + `ProjectWorkOrders` verdi; suite Vitest COMPLETA 1479 file / 11050 test verdi; ESLint e `tsc -b --force` puliti. NON visto nel browser (nessun browser in sessione): controllare a 375/768/1024. `ApiDocsDescriptionsTest` resta rosso per 12 operazioni PREESISTENTI non descritte (attachments read/archive, notes read, merge referenti/anagrafiche, page/polls), non di questa modifica.
 - Voce "Chat" nella riga dei tab del dettaglio (D-14): `WorkOrderChatTabButton` (pallino `RecordTabCount` dal `unread_count` della lista) chiama `useChatDock().openChannel()`; stato finestre in `ChatDockProvider` (`layouts/app-layout.tsx`, avvolge `Outlet` e `ChatDock`). Commessa fuori dalla lista (super-admin fuori team): canale costruito dal dettaglio in `extraChannels`, finestra senza realtime della lista. Il punto aperto sul super-admin e' CHIUSO.
 - Manuale: guide in-app IT/EN `project-work-orders`, `work-orders` e `ai-assistant` aggiornate; Manuale Claude Docs aggiornato (Assistente AI, Commessa, Commesse e Commesse di Progetto, nuovo "Chat dei progetti"); il PDF va rigenerato.
+
+## Cambio di stato massivo degli ODA (spec 0433, 2026-11-27) — COMMITTATO (43dd11f2d)
+
+- `POST /api/purchase-orders/bulk-status` `{ids, to_status, dry_run}` -> `{applied, to_status, total, changed[{id,code}], skipped[{id,code,reason}]}`; `PurchaseOrderBulkStatusService` riusa `PurchaseOrderStatusService::change()` per ODA (transazione propria); nuovo `PurchaseOrderStatusService::check()` (permesso, matrice, guard ricevimenti, senza scrivere) usato da change() e dall'anteprima. Esito parziale; id duplicati contati una volta; 5 stati manuali; max `config('purchase-orders.bulk_status_max')` = 200. Permesso: `view` piu' changeStatus o approve (come il cambio singolo, decisione utente 2026-11-27). ApiDocsDescriptionsTest rosso preesistente: 12 operazioni senza descrizione da main (attachments, notes, merge referenti/anagrafiche, pagina commessa).
+- FE: "Cambia stato" nel menu Azioni della griglia ODA (`use-purchase-order-bulk-status.tsx`, `purchase-order-bulk-status-dialog.tsx`), anteprima "N di M possono passare", riepilogo, refresh griglia e invalidazione ODA/RDA; guida ODA IT/EN (sezione status).
+- Verifica: backend PurchaseOrders 269/270 (rosso PurchaseOrderMigrationTest, preesistente: il `down()` di `2026_12_24_100000_create_document_checklist_sections_table.php` (spec 0427, gia' su main/staging) fa `dropForeign('dc_items_section_fk')` per nome, che SQLite non supporta; corretto su main in 59f229331, non ancora pushato ne' portato su questo branch; lo stesso commit aggiorna l'atteso dei tipi di costo con "Retribuzioni al personale" della 0431), ApiDocsParity verde con memory_limit 2G; FE purchase-orders+help+i18n 526/526; tsc, ESLint, Pint puliti.
+
+## Cash flow: stima uscite per il personale, fase 3 statini (spec 0434, ex 0432 rinumerata per collisione con la 0432 richieste documentali del remoto, 2026-11-27) — COMMITTATO (f2ed769b2)
+
+- `PersonnelForecast` + `PersonnelForecastData` (`app/Services/ManagementControl/CashFlow/`), quarta fonte di `CashFlowBuilder`: Flow += `salaries`, `f24`; net = receivable - payable - committed - salaries - f24. Base = ultimo periodo con costi e cedolini ordinari (MENSILITA_NORMALE); netto il giorno G (giorno piu' frequente delle scadenze dei cedolini base, default 15) del mese dopo; 13a 20/12, 14a 15/07 = un netto base; F24 il 16 del mese dopo = costo - netto - netto x 2/12 (ratei); sostituite dai cedolini reali; cessati esclusi; stime passate omesse; un mese oltre l'orizzonte in `beyond` (`LOOKAHEAD_MONTHS`); filtri di sede escludono le stime.
+- `include_personnel` (default true) in `CashFlowFilters`/`CashFlowRequest`, in `applied` e nella cache. `config/payroll.php` sezione `forecast`. Helper test `tests/Helpers/CashFlowPersonnelHelpers.php` caricato da `tests/Pest.php`.
+- FE: righe "Stipendi (stima)" e "F24 (stima)", 8 riquadri, grafico e scenario aggiornati, interruttore "Includi stima personale"; guida cash flow IT/EN sezione `personnel-estimate`.
+- Verifica (mirata, file per file: PHP e Node vanno in segmentation fault a caso su questo PC, anche la suite completa del verifier): ManagementControl 164/168 (i 4 rossi noti del menu), PayrollCosts 21/21, Payslips 51/51; vitest management-control+help+i18n 564/564; tsc pulito; ESLint e Pint puliti.
+
+## Regole corrette sulle richieste aperte (spec 0432, 2026-11-27) — VERDE, COMMITTATO
+
+- Nuove operazioni del job `refresh_rules` / `revalidate` / `stop_validation` (`DocumentRequestOperation`), client `refreshRequestRules` / `revalidateItem` / `stopItemValidation`; `PushesToArchivioSmart` accetta anche 202 (revalidate). `meta.updated_items` salvato in `document_requests.rules_updated_item_ids` (json); migrazione `2026_12_28_100000` allarga `document_request_sync_logs.operation` a 20.
+- `DocumentRequestRulesService` (refreshRules, revalidate per `item_ids`, stopValidation con `reviewer_name`, openRequestsCount, refreshOpenRequests che vuole la checklist `synced`, altrimenti 422 `checklist`); registro attivita' con eventi `rules_refresh_requested` / `revalidation_requested` / `validation_stop_requested`. Rotte: `POST document-requests/{id}/refresh-rules` (update), `POST .../revalidate` body `item_ids` (review), `POST .../items/{item}/stop-validation` (review), `GET document-checklists/{id}/open-requests` e `POST .../refresh-open-requests` (checklist update + `document-requests.update`). Resource: `rules_updated_item_ids`, `permissions.refresh_rules`. `DocumentRequest::acceptsRulesRefresh()` / `snapshotItem()`, `DocumentRequestStatus::open()`.
+- FE: `ChecklistOpenRequestsDialog` montato dal form checklist dopo ogni salvataggio in modifica (key incrementale; tace senza `document-requests.update` o senza richieste aperte; "Aggiorna" attende `sync_status` synced con polling), `DocumentRequestRefreshRulesButton`, `DocumentRequestRevalidateNotice` (voci cambiate ko/review, una conferma), `DocumentRequestItemActions` (approva/rifiuta estratti dalla riga + Rivalida con AI con avviso sulla decisione manuale + Interrompi validazione). Hook in `use-document-request-rules.ts`. Guide work-orders e document-checklists IT/EN aggiornate.
+- Test: Pest `DocumentRequestRulesTest` (AC-001..007), `DocumentRequests` 213 verdi, `DocumentChecklists` 154 verdi; Vitest `document-request-rules.test.tsx` + richieste/checklist/help 287 verdi; tsc, ESLint, Pint puliti. REQUIREMENT CHANGED: shape `permissions` (Endpoints test) e `requestActions` (schema test); i test del form checklist mockano `useAbilities` (il dialog lo usa).
+- Non della feature: `ApiDocsDescriptionsTest` rosso per 12 rotte senza descrizione (attachments/read+archive, notes/read, merge referents/registries, pagina commessa); `PermissionCatalogueEndpointTest` AC-004 (756 vs 736), `ProductsTableRendererTest` AC-245, `EmploymentProductLineTest`.
+- Suite backend completa NON eseguita: su questa macchina Windows i worker paralleli partono con memory_limit 128M (php.ini) e si fermano al caricamento; eseguiti Authorization + Unit + Tasks notifiche + DocumentRequests + DocumentChecklists + ApiDocs.
+- Dopo il deploy: `migrate`. Manuale Claude Docs da aggiornare: Commesse > Richieste documenti, Checklist documentali > Voci.
+
+## Cedolini, parte B statini (spec 0431, 2026-11-25) — COMMITTATO (0e659054e)
+## Data di assegnazione sulle commesse ISO rimaste senza (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO, NON LANCIATO
+
+- Richiesta: tutte le commesse ISO / [OLD] ISO (sottocategorie comprese) di qnet-2 con Responsabile e "Data di
+  assegnazione" VUOTA prendono la data dal legacy; una data presente non si tocca mai (decisione utente).
+- Causa (verificata nel legacy): `orderisos.data_inizio_lavorazione` la scrivevano solo `AddTecnico` e
+  `Detail::storeTecnico`, e solo dal commit 4896aa7b del 2024-10-29. Non la scrivono `ContractplanningFast` (tecnico
+  messo alla creazione della commessa dalla pianificazione contratto), `ResponsabiliPartecipanti`,
+  `ResponsabileServices`. Delle 1.751: 1.407 tecnico prima del 29/10/2024, 288 tecnico dopo ma da un percorso che
+  non scrive la data, 54 riga ISO creata dopo il tecnico (l'update non trova la riga), 2 senza riga ISO. La migrazione
+  ha copiato fedelmente: dove il legacy aveva la data, qnet-2 ce l'ha.
+- Legacy (`../qnet`, NON committato, accanto alle modifiche locali dell'utente): `WorkOrderMigrationController` manda
+  `assignment_date` = `orderisos.data_inizio_lavorazione` o, se vuota/zero, il giorno dell'ultimo tecnico
+  (`max(responsabile_services.created_at)`, coincide sul 97,6% delle commesse con entrambe; colonna `ON UPDATE
+  current_timestamp`). Spec 0189 aggiornata. Verificato con tinker.
+- qnet-2: seeder one-shot `QualificaIsoAssignmentDateSeeder` (`php artisan db:seed --class=QualificaIsoAssignmentDateSeeder
+  --force`, serve l'API di migrazione del legacy aggiornata): codici `work-orders.assignment_date_attribute_codes`
+  applicabili, scrittura quieta (niente activity, notifiche, `updated_at`), "[OLD] PROGETTI-" esclusa, legacy senza
+  data -> warning, idempotente.
+- Prova sul DB locale in transazione annullata: 1.751 commesse scritte (43 in corso, 1.128 completate, 580 annullate),
+  0 date presenti cambiate. Elenco: `~/Downloads/commesse-iso-senza-data-match-legacy.xlsx`.
+- Test: `tests/Feature/Seeding/QualificaIsoAssignmentDateSeederTest.php` 5/5; Pint pulito. Manuale: nessun impatto.
+- Prossimo passo: ok dell'utente -> lanciare il seeder (locale o produzione) e committare legacy + qnet-2.
+
+## Filtri della pagina Commesse come nel QNet legacy (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Legacy di riferimento: `../qnet` `Livewire/Orders/Orders.php` + `orders.blade.php` (search titolo, customer select2 ajax, mese su `datestart` anno corrente, filter_service, filterUser).
+- BE: `WorkOrderAdvancedFilterCatalog::commessePageFilters()` = `title` (text, target `work_orders.title`), `registry`, `month` (`select`, opzioni 1..12 nominate con Carbon nella lingua dell'utente), `parent_category` (preset invariato), `team_members` (relation users multipla). `WorkOrderAdvancedFilterApplier` applica `month` (range su `start_date` nel mese dell'anno corrente, indice usabile) e `team_members` (Responsabile OR Partecipante). `advancedFilters()` (supervisors/participants/parent/product category/registry) resta SOLO per `project-work-orders`.
+- FE: nuova prop `TableView.pinnedFilters` (Commesse soltanto, via `WorkOrdersGrid pinnedFilters`): i campi stanno direttamente sulla pagina, senza riquadro, toggle ne' Applica/Azzera (`TableFilterBar advancedFiltersPinned` -> `AdvancedFilterPanel bare`), e si applicano da soli dopo 350 ms dall'ultima modifica (`useAdvancedFilters liveApply`; l'eco del proprio salvataggio, `ownSaveEchoRef`, non riallinea la bozza cosi' i caratteri digitati durante il salvataggio restano; in `bare` i campi non si disabilitano durante il salvataggio). Niente quick search e nessun termine ripristinato/inviato (`use-table-view-grid-state`). REQUIREMENT CHANGED lo stesso giorno: prima pannello aperto con Applica/Azzera. Poi: imbuto (`Funnel`) nell'header della tabella accanto ai tre puntini (`TableToolbar.filtersToggle`, solo con `pinnedFilters`) che mostra/nasconde i campi; lo stato aperto riusa `table-advanced-filters-open-storage` (localStorage per utente+dominio, default chiuso); da chiuso l'imbuto conta i filtri attivi; anche i filtri salvati (`savedViewsSlot`) stanno dentro la parte che si apre/chiude; i chip dei filtri applicati + "Azzera tutto" stanno nell'header accanto al numero di righe (`TableToolbar.filterChipsSlot`, `ActiveFilterChips inline`), senza la riga separata sotto (solo con `pinnedFilters`); i18n `table.showFilters`/`table.hideFilters`. Il tipo filtro `select` ora usa `SearchableSelect` (non era usato da nessun catalogo). i18n `workOrders.advancedFilters.{title,titlePlaceholder,month,monthPlaceholder,teamMembers,teamMembersPlaceholder,registryPlaceholder}`.
+- Effetto voluto: sulla pagina Commesse non si sceglie piu' `product_category` (422 se inviato) -> le colonne campi flessibili si guidano solo con Categoria madre; una categoria [OLD] vale per tutto il gruppo. Test CategoryTabs su `work-orders` ora usano l'helper `workOrderCategoryFilters()` (parent_category).
+- Test: `WorkOrderListFiltersTest`, `WorkOrderTeamColumnsTest` (REQUIREMENT CHANGED dichiarati), `LinkedAttributeColumnsTest` AC-001 (REQUIREMENT CHANGED); `tests/Feature/CategoryTabs` 106/106, `Projects` 100/100, `CommercialListFiltersTest`+`TaskWorkOrderVisibilityTest` verdi; `tests/Feature/WorkOrders` 639/644: i 5 rossi (`WorkOrderAttributeLocksTest`, `QuoteLineWorkOrderMigrationTest`) non toccano tabelle/filtri, preesistenti. `tests/Feature/Table`: 2 rossi preesistenti fuori scope (`TableBulkDeleteTest` guard super-admin, `TableDefinitionContractTest` chiave `latestNote`). Pint pulito; Vitest table+work-orders 826/826 (live apply +3, barra fissa aperta/chiusa, imbuto toolbar +3, TableView imbuto+persistenza), help 166/166; `tsc -b --force` pulito; ESLint pulito.
+- Manuale: guida in-app `work-orders.ts` IT/EN (people-filters, work-phase-tabs, list-filters); Claude Docs sezione Commesse (rev 1059).
+- Da verificare a mano: pagina Commesse a 375/768/1024, tendina Mese con ricerca, filtro Utenti.
+
+## Import lead: Fonte predefinita "Social" (spec 0176 D-9, richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- BE: `LeadImportFieldCatalog::globalConfig()` mette nel `default` di `source_id` l'id della fonte con nome `config('imports.leads_default_source')` (env `IMPORT_LEADS_DEFAULT_SOURCE`, default "Social"); nome non trovato -> null. Il FE onorava gia' `field.default` (`resolveGlobalConfigValue`): nessuna modifica FE. La scelta della campagna con Fonte la sostituisce (D-5, invariato).
+- Test: `LeadImportSourceTest` +3 (default da config, nome configurato diverso, nome assente -> null); `tests/Feature/Imports` + `tests/Unit` 1685/1687 — i 2 rossi (`ProductsTableRendererTest` AC-245, `EmploymentProductLineTest` fillable) sono fuori da questo scope, da verificare; Pint pulito; Vitest help+imports 432/432; `tsc -b --force` pulito.
+- Manuale: guida in-app `imports.ts` IT/EN; Claude Docs paragrafo "Configurazione globale" dell'import lead (rev 1049).
+
+## Stato lavorazione manuale con % uguale all'avanzamento (spec 0323 D-2 rev. 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Richiesta utente (commessa 12519 all'80%): scegliere a mano uno stato all'80% deve essere accettato. Il blocco 422 ora scatta solo se la % dello stato e' INFERIORE all'avanzamento (era `<=`); uguale = cambia solo lo stato, nessuna registrazione (`raiseTo` gia' non scrive). Metodo rinominato `WorkOrderProgressEntryService::assertStatusPercentageNotBelowCurrent`, chiave lang `work_orders.workflow_status.progress_below_current` (IT/EN).
+- Test: `WorkOrderManualStatusProgressTest` (AC-014 diviso: 10 su 20 -> 422, 20 su 20 -> ok senza entry; REQUIREMENT CHANGED) + `WorkOrderProgressEntriesTest` 26/26; Pint pulito; help Vitest 166/166.
+- Manuale: guida in-app `work-orders.ts` IT/EN; Claude Docs paragrafo "Stato lavorazione e avanzamento" (rev 1045).
+
+## Costi commessa: "Sincronizza con l'offerta" (spec 0436, richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- BE: `POST /api/work-orders/{workOrder}/costs/sync-from-quote` (`WorkOrderCostController::syncFromQuote`, gate `manageCosts`: chi inserisce i costi sincronizza, decisione utente). `WorkOrderCostQuoteSync` mappa le righe di budget su costi (prodotto, qta, prezzo, IVA, fornitore o predefinito del prodotto, `quote_line_id` = `offer_line_id`, `cost_type_id` del prodotto, data oggi, descrizione) e passa per `WorkOrderCostWriter` (sostituzione completa, ODA/fatture passive intatti). 422 `lines` se nessuna riga di costo o prodotti non piu' COST (con i nomi). Selezione budget estratta in `WorkOrderBudgetLines::for()` (usata anche da `WorkOrderCostOverviewBuilder`). Lang `work_order_costs.sync_*`, api-docs aggiornata.
+- FE: `WorkOrderCostsQuoteSyncButton` + `use-work-order-costs-quote-sync.ts` solo in "Costi effettivi", a destra di "Costi effettivi (N)" (nuova prop `headerAction` di `WorkOrderCostsLinesField` -> `QuoteLineEditorFrame`), solo `canManage`, size `xs`; senza budget sempre cliccabile e il popup spiega `quoteSync.noBudget` con solo Chiudi (solo ~1.560 commesse su 16.780 hanno righe costo nell'offerta: prima era nascosto e l'utente non lo vedeva); AlertDialog sempre, testo di sostituzione con N costi presenti. Mutation `useSyncWorkOrderCostsFromQuote` (stesso aggiornamento cache del PUT). i18n `workOrders.costs.quoteSync.*`.
+- Test: Pest `WorkOrderCostsSyncFromQuoteTest` 6/6, cartella costi 39/39; Vitest work-order-costs 50 (nuovo `work-order-costs-quote-sync-button.test.tsx` + 1 test nella sezione), help 166; `tsc -b --force` EXIT 0; ESLint e Pint puliti. `ApiDocsDescriptionsTest` rosso preesistente (altre rotte: attachments/notes/merge/page).
+- Manuale: guida in-app `parts/work-orders-costs.ts` IT/EN; Claude Docs paragrafo "Costi effettivi: sincronizza con l'offerta" dopo "Dati contrattuali senza il permesso costi" (rev 1048).
+- Da provare nel browser.
+
+## Commesse, colonne "Ultima nota data" / "Ultima nota responsabile" (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Legacy: `OrdersTable` "Ultima Nota" (ultima nota/chiamata/appuntamento della commessa, risposte incluse) e "U.N. Responsabile" (`nota_contabile`: ultima nota scritta dal responsabile), data in cella + testo in tooltip.
+- Backend: `WorkOrder::latestNote()` / `latestSupervisorNote()` (`morphOne`->`ofMany` max created_at, id; la seconda solo autori presenti in `work_order_supervisor`). `Tables/WorkOrders/WorkOrderLastNoteColumns.php`: colonne `last_note_at` / `supervisor_last_note_at` (type `date`, filtro data, sort su subquery correlata, note soft-deleted escluse), riga con `<col>_author` e `<col>_excerpt` (testo piano, `MentionParser::excerptWithNames`, 300 caratteri). Cablate in `WorkOrdersTableDefinition` (eager load, columns, filters, mapRow) e `WorkOrderDerivedColumns` (filter/sort); valgono anche per `ProjectWorkOrdersTableDefinition` (eredita).
+- Frontend: `features/work-orders/last-note-cell.tsx` (data + tooltip autore/data-ora/testo), registrata in `column-renderers.tsx`. Etichette `workOrders.columns.*` + `workOrders.lastNote.hint`. Split i18n: `taskBoard` spostato in `{it,en}-work-order-task-board.ts` (file commesse erano oltre 500 righe).
+- Test: `WorkOrderLastNoteColumnsTest` (nuovo, 7), `WorkOrderTableTest` elenco colonne (REQUIREMENT CHANGED), `column-renderers.test.tsx`. Eseguiti: `tests/Feature/WorkOrders` (tutto verde tranne 5 errori PREESISTENTI e indipendenti: `WorkOrderAttributeLocksTest` "no such table product_categories", `QuoteLineWorkOrderMigrationTest` "no such column renewal_number", falliscono anche da soli), ProjectWorkOrders/CategoryTabs/Notes verdi; vitest work-orders/help/i18n verdi, eslint + `tsc -b --force` puliti.
+- Manuale: guida in-app `work-orders` IT/EN (paragrafo nella sezione colonne) + Manuale Utente QNet su Claude Docs aggiornato (dopo "Colonne Importo consulenza e Totale ricavo").
+
+## Commesse, azioni di riga: solo occhio e team sulla riga, schede sempre in modale (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Backend: `WorkOrderColumnCatalog::actions()` mette anche `info` nel menu (`'menu' => true`); sulla riga restano `view` e `team`. Test `WorkOrderRowActionsLegacyTest` aggiornato (REQUIREMENT CHANGED: menu = info, notes, delete).
+- Frontend: `useWorkOrderRowActions` usa un secondo `useModuleOpener` con `forceMode: OPEN_MODE_MODAL` per le voci di scheda (`TAB_ACTION_KEYS`: info/notes/tasks/documents): aprono sempre lo Sheet sulla scheda, mai la pagina, qualunque sia la preferenza. L'occhio segue ancora la preferenza (o il `forceMode` del chiamante). `sheet` restituito = i due Sheet insieme. Ctrl/Cmd+clic invariato (pagina sulla scheda in nuova scheda browser).
+- Manuale: guida in-app `work-orders` sezione `row-actions` IT+EN; manuale Claude Docs, paragrafo "Stesso ordine nei moduli commerciali".
+- Verifica: Pest `WorkOrderRowActionsLegacyTest` 5/5, Vitest work-orders/contracts/registries/help verdi, ESLint e `tsc -b --force` puliti.
+
+## Campi flessibili: modifica di una sezione intera in un popup, Offerte e Commesse (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Solo frontend, nessun endpoint nuovo: la PATCH diff di `buildUpdatePayload` (quote/work-order) manda gia' l'intera mappa `attribute_values` quando cambia un codice, quindi piu' campi salvano in una richiesta.
+- `features/attributes/attribute-layout-rows.tsx` (nuovo): righe/griglia di una `LayoutSection` estratte da `AttributeLayoutSection` (ora le usa), con `readOnlyCodes`.
+- `attribute-section-edit-dialog.tsx` (nuovo): matita `icon-xs` nella fascia del titolo + Dialog (size `xl` con un attributo `table`, `lg` con columns>=2, altrimenti `md`); e' un editor del normale `InlineEdit` con chiave `attribute_sections.<section.id>` (mai un path del form: nessuna riga si apre insieme). Salva = `inline.save`, chiusura/Annulla = `inline.cancel` (non durante il salvataggio).
+- `use-attribute-section-edit-action.tsx` (nuovo): `useAttributeSectionEditAction({ enabled, attributesByCode, readOnlyCodes, control, inline })` -> `renderSectionAction` per `AttributeLayoutView` (nuova prop), gate sul permesso campo `attribute_values`; nessuna matita se la sezione non ha campi modificabili.
+- Cablato con `sectionEdit` su `WorkOrderAttributesSection` (locked_attributes in sola lettura nel popup) e `QuoteAttributesSection`, acceso solo nei dettagli (`work-order-detail-sections.tsx`, `quote-detail-sections.tsx`); non nella creazione e non nei Prodotti (fuori scope, attivabile con lo stesso hook).
+- Nota: con la chiave di sezione l'`handleInvalid` degli hook inline mostra anche il toast oltre al messaggio sotto il campo nel popup (comportamento invariato degli hook).
+- i18n `attributes.layout.editSection` / `editSectionDescription` (IT/EN). Guide in-app IT/EN `work-orders` e `quotes` aggiornate; manuale Claude Docs rev 1040 (paragrafo "Modificare una sezione intera" dopo "Informazioni aggiuntive collassabili").
+- Test: `work-order-detail-inline-edit.test.tsx` (+4: una PATCH con due campi, Annulla senza richieste, campo bloccato readonly, nessuna matita senza permesso), `quote-detail-inline-edit.test.tsx` (+1). Vitest attributes/work-orders/quotes/products/product-categories 1563/1563, help 166/166, ESLint e `tsc -b --force` puliti.
+
+## Bug offerta 31044: "attribute is not part of the applicable attribute set" in modifica (segnalazione utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Causa: richiesta con righe di due categorie madri -> due offerte legate (spec 0411; 31043 Sicurezza, 31044 Gare). In modifica, appena cambiano i prodotti delle righe offerta, il form chiama `POST /api/quotes/form-context` con il solo `opportunity_id`, e `QuoteAttributeResolver::formContext()` univa TUTTE le righe dell'opportunita' (12 campi `safety_*` anche sull'offerta Gare). Il salvataggio (`resolve()`, via `QuoteRootScope::linesOf`) le filtra per radice -> 422 su ogni campo Sicurezza.
+- Fix: `form-context` accetta `quote_id` opzionale (`exists:quotes,id`, `authorize('view', $quote)` oltre a `create`); `formContext(..., ?int $rootId)` filtra le righe con `QuoteRootScope::filterLines`. Frontend: `PersistedQuoteContext.quoteId`, `fetchQuoteFormContext(opportunityId, productIds, categoryIds, quoteId)`, `quote_id` inviato solo se valorizzato e nella query key.
+- Test: `tests/Feature/Quotes/QuoteFormContextRootScopeTest.php` (fallisce senza il fix); 3 test FE aggiornati solo per la nuova firma (REQUIREMENT CHANGED: argomento in piu'), quello di modifica verifica `record.id`. Quotes BE 554/558 (4 ambientali: LibreOffice assente, drop FK su SQLite), Quotes FE 543/543, tsc -b pulito, Pint/ESLint puliti. Verificato su qnet2: 31044 ora risolve solo i 6 `tender_*`.
+- Manuale: nessun impatto.
+
+## ISO e [OLD] ISO, Commessa: via "Standard ISO", nuovo "Scopo" dopo "Data urgenza emissione", ISO identica a [OLD] ISO (richieste utente 2026-11-27) — VERDE MIRATO, COMMITTATO, SEEDER NON LANCIATO SU qnet2
+
+- Seeder one-shot `QualificaIsoWorkDetailsSeeder` (`php artisan db:seed --class=QualificaIsoWorkDetailsSeeder --force`), radici "ISO" e "[OLD] ISO" + discendenti, contesto work_order, in transazione:
+  1. "Standard ISO" staccato dalla Commessa (`STANDARD_CODES`: `iso_standards`, `standard`), valori in `attribute_values` intatti; [OLD] PROGETTI- (cat 188) tiene `standard`.
+  2. Nuovo attributo `iso_visit_scope` "Scopo" textarea (lo `scopo_visita` del legacy, mai migrato: vuoto), stesso campo nei due alberi: sulla radice ISO (ereditato da "ISO - Ente"/"ISO - Consulenza") e in [OLD] ISO dove e' assegnata `data_urgenza_emissione`, con lo stesso sort_order.
+  3. Etichette di [OLD] ISO (`RELABELED_CODES`, nomi dal catalogo): `iso_scope` "Scopo proposto" (collegato a `scopo`), `iso_interview_location` "Intervista in sede" (decisione utente: vince [OLD] ISO).
+  4. Form [OLD] ISO (55): `standard` tolto (`AttributeLayoutPruner`), `iso_visit_scope` su riga piena dopo la riga della data urgenza (id `<section>-iso_visit_scope`).
+  5. Form ISO (radice, layout 9) riscritto da `IsoWorkOrderCatalogue::SECTIONS` via `AttributeLayoutService::upsert` (saltato se `composesAs`): 4 sezioni come [OLD] ISO — Dettagli lavorazioni (certificati; ultimo audit + annualita'; urgenza + data urgenza; Scopo), Focus lavorazione ISO (... ; Quotazione da sola), Verifiche ispettive (solo tabella), Dettagli lavorazioni ISO (Scopo proposto, Scopo confermato, Scopo in uscita, Note consulente, Data verifica effettiva). Idempotente.
+- Decisione utente: prima "sposto quello esistente" (`iso_scope` dopo l'urgenza), superata dalla richiesta "ISO uguale a [OLD] ISO": in [OLD] ISO lo "Scopo proposto" e' un altro campo, quindi ISO prende lo stesso `iso_visit_scope`.
+- `IsoWorkOrderCatalogue`: tolti `iso_standards` e il suo `STANDARD_OPTIONS` privato, aggiunto `iso_visit_scope`, `iso_scope` "Scopo proposto", SECTIONS a 4 sezioni. `QualificaIsoCatalogueTest`: REQUIREMENT CHANGED, titoli attesi con la quarta sezione.
+- Differenze che restano (decisione utente: va rettificata solo "Intervista"): etichette ISO "Fine lavorazione" (OLD "Data fine lavorazione"), "Note consulente" (OLD "Note"), maiuscole; i campi soli sulla riga sono larghi in ISO e mezzi in OLD; codici diversi per i campi non collegabili (tabelle, scelte, ore testo/decimale). "[OLD] STANDARD MULTIPLI" (253) ha in piu' la sezione SOA "Pianificazione (da commesse precedenti)".
+- Verifica: Pest `Seeding/QualificaIsoWorkDetailsSeederTest` 5/5 + `QualificaIsoCatalogueTest` + `QualificaContactProcessingSeederTest` + `QualificaOldIsoWorkOrderFieldsRemovalSeederTest` (26 verdi), Pint pulito. Simulazione su qnet2 in transazione annullata: ISO e [OLD] ISO con stesse sezioni, stesse righe, stessi campi (via `current_attribute_id`) nello stesso ordine; secondo giro senza scritture ne' log.
+- Aperto: il legacy (`MigrationAttributeCards`/`MigrationLayoutSections::iso()`) manda ancora `standard` e non manda `scopo_visita`: una ri-migrazione di layout/link lo rimetterebbe. Da allineare se l'utente lo chiede (ed eventualmente migrare `scopo_visita` in `iso_visit_scope`).
+
+## Commessa: popup "Responsabili e Partecipanti" rifatto come pannello team da CRM (richiesta utente 2026-11-27, "come i migliori CRM") — VERDE, COMMITTATO
+
+- Stesso `WorkOrderTeamDialog` per riga di tabella e tre puntini del dettaglio. Corpo = `WorkOrderTeamPanel` (`work-order-team-panel.tsx`): due gruppi (Responsabili / Partecipanti) con intestazione, badge conteggio e "Aggiungi" (popover con `TaskBoardOptionList` sugli utenti, spunta = gia' nel team, un clic aggiunge o toglie e resta aperto); righe `RecordPerson` (avatar + hover card); Responsabili: X su hover; Partecipanti: numero del posto, "Posto libero" per i buchi, menu riga Sposta su/giu'/Rimuovi. Stato vuoto con icona e suggerimento; scheletro di caricamento.
+- Logica: `useWorkOrderTeamEditor` (PATCH del solo `supervisor_ids` o `participant_slots`, record salvato in cache dettaglio, toast "Team aggiornato." con Annulla che rimanda il payload precedente; clic ignorati durante un salvataggio; permessi di campo: hidden = gruppo assente, non editable = sola lettura). Funzioni pure in `work-order-team-slots.ts` (primo buco libero, buco lasciato alla rimozione, scambio col vicino, max `MAX_MANAGER_SLOTS`). Errori: `work-order-save-errors.ts` `notifyWorkOrderSaveError`, condiviso con `useWorkOrderWorkflowStatusChange`.
+- Backend (additivo): `WorkOrderResource` supervisors/participants con `avatar_url` (`avatarDataUri()`), `DETAIL_RELATIONS` con `supervisors.avatar`/`participants.avatar`. Test REQUIREMENT CHANGED sulla forma esatta (2 in `WorkOrderTeamTest`, 1 in `ContractWorkOrderGenerationTest`) + nuovo test avatar.
+- Fix "la select degli utenti non scrolla": il popover di Aggiungi era portalato su `body`, fuori dal Dialog modale che blocca la rotella fuori da se'; ora va nel nodo `dialog-content` (come `AsyncPaginatedSelect`), via la nuova prop opzionale `container` di `components/ui/popover.tsx` `PopoverContent` (default invariato). Test: la lista sta dentro il dialog.
+- Fix "escono i campi fuori dal popup": la descrizione con `truncate` (nowrap) allargava la griglia del `DialogContent` oltre `max-w`; ora `line-clamp-2 break-words` e `DialogContent` `grid-cols-1` (minmax(0,1fr)). La descrizione non ripete il codice quando il titolo generato inizia gia' con esso (`workOrderCaption`).
+- `WorkOrderTeamFields` tolto: `WorkOrderTeamSection` (form di creazione) torna un componente solo. i18n `workOrders.actions.teamPanel.*` IT/EN. Guide IT/EN e manuale Claude Docs aggiornati.
+- Verifica: Vitest suite intera 11019/11019, `tsc -b --force` e ESLint puliti; Pest WorkOrders+Contracts verdi tranne 5 errori preesistenti (`QuoteLineWorkOrderMigrationTest`, `WorkOrderAttributeLocksTest`: falliscono uguali su HEAD), Pint pulito. Non verificato a vista nel browser.
+
+## Commessa: Team nei tre puntini, popup "Responsabili e Partecipanti" migliorato, via l'Importo (richiesta utente 2026-11-27) — VERDE, COMMITTATO (9e225a02d)
+
+- Solo frontend, contratto API invariato. Info non ha piu' la sezione "Team": il menu tre puntini (`useWorkOrderActionsMenu`, voce `team`, sempre visibile, icona `Contact`, dopo Avanzamento) apre `WorkOrderTeamDialog`, lo STESSO popup dell'azione di riga `team` della tabella (`useWorkOrderRowActions`).
+- `work-order-record-team.tsx`: `WorkOrderTeamFields` (le due righe in-place, con il conteggio "(n)" accanto all'etichetta e "Partecipante n" sulla stessa riga della persona) + `WorkOrderTeamSection` (RecordSection titolata, usata solo dal create form). Prop `title` e chiave i18n `workOrders.detail.sections.detailTeam` rimosse.
+- Popup: niente titolo di sezione doppione, descrizione = `{{code}} · {{title}}` (`workOrders.actions.team.description`), corpo con scroll interno `max-h-[70vh]` (mai overflow sul `DialogContent`), `size="sm"`.
+- "Importo" tolto dai Dati contrattuali commessa: eliminati `work-order-amount-row.tsx`, `amount` dal tipo `WorkOrderDetail`, chiave `workOrders.detail.amount`. Il backend manda ancora `amount` (`WorkOrderResource`, trait `SummarizesWorkOrderPayment`, spec 0402): da togliere solo se nessun client API esterno lo usa (da decidere con l'utente).
+- Test: `work-order-actions-menu`, `work-order-team-dialog` (gap dei partecipanti spostato qui, conteggi, intestazione), `work-order-detail-layout`, `work-order-detail-related`, `work-order-detail-inline-edit`. Guide IT/EN e manuale Claude Docs aggiornati.
+
+## Commessa: Stato lavorazione nell'intestazione, "Avanzamento commessa" in Info e in Amministrazione (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO (27e0f0869 + seguito)
+
+- Seguito (richiesta utente "deve stare pure nel tab amministrazione": la sotto-scheda in fondo non si notava): in Amministrazione "Avanzamento commessa" non e' piu' una sotto-scheda ma il `footer` del gruppo (`WorkOrderDetailTab.footer`, reso da `WorkOrderDetailSubTabs` sotto la sotto-scheda aperta, come in fondo alla pagina "€" legacy); con una sola sotto-scheda (solo Costi) il footer va sotto il suo contenuto. Test tabs/related riallineati (Costs da solo torna tab "Costs").
+
+- Solo frontend, contratto API invariato. Intestazione: `WorkOrderWorkflowStatusMenu` (badge dello Stato lavorazione con freccia, accanto al badge della fase; la scelta salva subito via `useWorkOrderWorkflowStatusChange`, PATCH del solo `work_order_workflow_status_id`; 422 => `notifyFormErrors`; permesso di campo: hidden = niente, readonly = badge senza menu). Sotto `sm` i badge vanno a capo (`ACTIONS_CLASS`).
+- Info, colonna sinistra: `WorkOrderProgressSection` ("Avanzamento commessa": Totale % raggiunto, Ultimo avanzamento, pulsante "Gestione avanzamento" che apre `WorkOrderProgressDialog`) al posto di "Stato lavorazione". Stessa sezione in Amministrazione (vedi Seguito), solo se Amministrazione esiste gia' (view_costs o view_invoices). `onChanged` passa da `WorkOrderDetailView` a sezioni e tab. La voce del menu tre puntini resta.
+- Cancellati: `WorkOrderWorkflowStatusSection`/`WorkOrderWorkflowStatusContext`, `work-order-workflow-status-field.tsx` (+ test), il campo `work_order_workflow_status_id` dal form inline (schema, default, SERVER_ERROR_FIELDS, `buildUpdatePayload`), i18n `detail.workflowStatusPlaceholder`. i18n nuove: `detail.workflowStatusChange`, `progress.manage`, `progress.lastRecordedOn`.
+- Test: nuovi `work-order-workflow-status-menu.test.tsx`, `work-order-progress-section.test.tsx`; `work-order-detail.test.tsx` (era 719 righe) diviso in `work-order-detail.test.tsx` + `work-order-detail-related.test.tsx` con fixture/render in `work-order-detail-test-utils.tsx`; REQUIREMENT CHANGED in tabs/detail/layout test. Spec 0322 e 0321 amendment 2026-11-27.
+- Verifica: Vitest work-orders 392/392, help 166/166, ESLint, `tsc -b --force` puliti. Non verificato a vista nel browser.
+- ATTENZIONE commit: `use-work-order-form.ts`, `work-order-form-payload(.test).ts`, `work-order-schema.ts`, `work-order-record-identity.tsx`, `work-order-detail-sections.tsx`, le guide e gli i18n `*-work-orders.ts` contengono anche le modifiche NON committate della sessione "Note commessa -> Descrizione": separare gli hunk.
+
+## Commessa: tolti Linee prodotto e i totali Commissioni / Netto commissioni da "Dati contrattuali commessa" (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Solo frontend, contratto API invariato: `product_lines` (usate ancora da "Funzione aziendale") e `totals.commissions_amount` / `net_of_commissions` restano nella risposta, non piu' letti dal dettaglio.
+- `work-order-detail-contract-data-panel.tsx`: tolto il campo Linee prodotto. `contract-data-totals.tsx`: restano "Totale {tipologia}" e "Totale Ricavi" (`RevenueTotal`); `contract-data-formulas.ts`: `totalsHint`/`TotalsHintKind` sostituiti da `revenueTotalHint`. i18n: - `totals.commissions/netOfCommissions`, `hint.netOfCommissionsFormula`, `hint.totals.commissions/netOfCommissions`. Fixture `CONTRACT_DATA_HIDDEN_COMMISSIONS` cancellata.
+- Test (REQUIREMENT CHANGED): `work-order-contract-data-section.test.tsx`, `contract-data-formulas.test.ts`, nuovo caso in `work-order-detail-layout.test.tsx`. Spec 0400 D-8.
+- Verifica: Vitest work-orders + work-order-contract-data 428/428, help 166/166, ESLint e `tsc -b --force` puliti.
+- Manuale: guide in-app IT+EN `work-orders.ts` aggiornate; manuale Claude Docs DA AGGIORNARE (sezione Commessa > Dati contrattuali: niente Linee prodotto, niente Commissioni/Netto commissioni).
+- Seguito: Stato lavorazione / Avanzamento commessa, voce sopra.
+
+## Commessa: le "Note commessa" diventano la "Descrizione" (decisione utente 2026-11-27) — VERDE MIRATO, COMMITTATO (qnet-2), MIGRAZIONE NON LANCIATA SU qnet2
+
+- DB: migrazione `2026_12_28_100000_merge_internal_notes_into_description_on_work_orders_table` sposta `work_orders.internal_notes` in `description` (con entrambi: note, riga vuota, vecchia descrizione; query builder, nessun log, `updated_at` intatto) ed elimina la colonna; `down()` rimette solo la colonna vuota. Su qnet2: 9.293 commesse con note, 4 con descrizione, 1 con entrambe. `quotes.internal_notes` invariato.
+- Backend: tolto `internal_notes` delle commesse da model, resource, Store/Update request, DTO Create/Update, `WorkOrdersAuthorization`, `AiMentionRegistry`, factory, seeder demo (`DemoWorkOrderSeeder`, `DemoCommissionShowcaseSeeder`), migrazione legacy (`WorkOrdersSource`, `LegacyWorkOrderRealigner`, `WorkOrdersTarget`).
+- Legacy (`../qnet`, NON committato): `WorkOrderMigrationController` manda un solo `description` = note, descrizione legacy, "Data fine (legacy)" (uniti da riga vuota); niente piu `internal_notes`. Verificato con tinker (legacy: 1.707 note, 0 descrizioni) + `php -l`. Spec 0189 aggiornata.
+- Frontend: il riquadro giallo (`WorkOrderDescriptionCalloutRow`, ex `WorkOrderInternalNotesRow`) si chiama "Descrizione" e scrive `description`; nel dettaglio sta in cima alla colonna destra, sopra "Riferimenti Società e Funzioni Aziendali" (in creazione resta a tutta larghezza); testo e textarea scorrono oltre 100px (prima 300px, ridotto su richiesta utente 2026-11-27) (`NotesCalloutRow` ha la nuova prop `textClassName`, il default condiviso resta `max-h-64`); tolta la riga Descrizione (`WorkOrderDescriptionRow` cancellata) da "Descrizione commessa" e dalla sezione Dati della creazione. i18n: - `detail.internalNotes`/`internalNotesPlaceholder`, + `detail.descriptionPlaceholder`.
+- Verifica: Pest WorkOrders (5 rossi preesistenti, vedi sotto), Migration 943/943, TimeEntries 142/142, Contracts 243/243, Seeding 324/324, nuovo `WorkOrderInternalNotesMergeMigrationTest`; Vitest work-orders+record-form+help+i18n 101 file/816 test; ESLint e `tsc -b --force` puliti; Pint pulito sui file toccati.
+- Manuale: guide IT/EN e Claude Docs aggiornati; spec 0093 D-10 REQUIREMENT CHANGED.
+- Prossimo passo: lanciare `php artisan migrate` su qnet2 quando l'utente lo decide; rilanciare la sorgente Commesse dal legacy solo dopo il deploy del controller legacy.
+
+## Dettaglio Commessa come il vecchio QNet: intestazione con stato + menu tre puntini, niente KPI, motivo chiusura facoltativo (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Intestazione (`work-order-detail-header.tsx`): tolti la striscia KPI grigia (avanzamento, data inizio, data richiamo, scadenza contratto: `WorkOrderStatsStrip`/`WorkOrderDetailStats` cancellati, anche dal form di creazione) e il badge Tipo commessa; in alto a destra lo **stato** (fase spec 0395) accanto al menu **tre puntini verticali** senza bordo (`ghost`, `MoreVertical`; deroga voluta a `frontend.md` §9 su richiesta utente).
+- Menu: `work-order-actions-menu.tsx` + `use-work-order-actions-menu.ts` (voci filtrate dai permessi, popup montati fuori dal menu). Ordine: Avanzamento commessa, Copia dati dall'offerta, Richiedi aggiornamento, Richiedi proforma | separatore | Chiusura forzata / Riapri, Elimina. Cancellati `work-order-closure-actions.tsx`, `work-order-delete-action.tsx`, `work-order-copy-quote-attributes-action.tsx` (+ i loro test, confluiti in `work-order-actions-menu.test.tsx`). Helper test: `work-order-actions-menu-test-utils.ts`. i18n: + `workOrders.detail.actionsMenu`; - `detail.startDate/callbackDate/contractExpiryDate`, `form.forceCloseReasonRequired`.
+- Motivo chiusura forzata facoltativo: FormRequest Store/Update `force_close_reason` => `sometimes|nullable|string` (tolto `required_if`); dialog senza `required`, vuoto => null. Spec 0093 AC-030 REQUIREMENT CHANGED (Rev. 2026-11-27).
+- Verifica: Vitest work-orders+help+i18n 99 file / 808 test verdi, ESLint pulito, `tsc -b --force` pulito; Pest `Feature/WorkOrders` 621/626 (i 5 rossi `WorkOrderAttributeLocksTest` e `QuoteLineWorkOrderMigrationTest` falliscono anche da soli, file non toccati: tabelle `product_categories`/colonna `renewal_number` mancanti nello schema di test), `ContractWorkOrderClosureTest` 5/5, Pint pulito.
+- Manuale: guide in-app IT+EN `work-orders.ts` aggiornate; manuale Claude Docs aggiornato (Commessa, azioni, Richiedi aggiornamento, chiusura forzata, Fasi). PDF derivato da rigenerare.
+- Stato in alto: resta in sola lettura (decisione utente 2026-11-27), la fase si muove da sola come da spec 0395.
+
+## [OLD] ISO: tolti dalla Commessa la sezione "Dati storici ISO" con i suoi campi e lo "Stato Lavorazione" flessibile (richieste utente 2026-11-27) — VERDE MIRATO, COMMITTATO (solo qnet-2; legacy NON committato), SEEDER NON LANCIATO SU qnet2
+
+- Decisione utente: togliere sezione E campi (non solo la sezione: i campi sarebbero finiti in "Altre informazioni"), valori conservati. Seconda richiesta: togliere anche lo "Stato Lavorazione" flessibile di "Dettagli Lavorazioni Iso" (`stato_consulenza_1`, radice legacy 1 "ISO").
+- Perche' lo stato flessibile e' superfluo: stessa fonte legacy (`orderisos.stato_consulenza`) del campo nativo `work_order_workflow_status_id`, ma copia fissa. Su qnet2: 4.454 commesse valorizzate, 1.453 uguali al nativo, 2.915 diverse perche' chiuse (il nativo va sullo stato di chiusura, spec 0324 D-9), 86 aperte diverse (flessibile della prima riga `orderisos` o vuoto, nativo della riga piu' recente con stato valido).
+- qnet-2: seeder one-shot `QualificaOldIsoWorkOrderFieldsRemovalSeeder` (rinominato da `QualificaOldIsoHistoryFieldsRemovalSeeder`, mai lanciato; `php artisan db:seed --class=QualificaOldIsoWorkOrderFieldsRemovalSeeder --force`): radice "[OLD] ISO" + discendenti (`CategoryHierarchy::descendantIds`), contesto work_order: stacca i 12 codici `CODES` (gli 11 storici settore, ente_ultimo_audit, data_emissione/scadenza_certificato, data_ente_primo/ultimo/prossimo_audit, data_vi, ispettore_vi, sup_vi, data_ultima_chiamata + `STATE_CODE` `stato_consulenza_1`) e li toglie dai form con `AttributeLayoutPruner` (sezione vuota eliminata, `canonical_order` conservato). Query builder, nessun log; valori in `work_orders.attribute_values` intatti; [OLD] PROGETTI- (stessi campi) non toccata; l'attributo `stato_consulenza_1` resta nel catalogo, senza collegamenti. Idempotente.
+- Legacy (`../qnet`, NON committato): tolti la sezione `iso-dati-storici` da `MigrationLayoutSections::iso()` e `ISO_HISTORY_ATTRIBUTES` (costante cancellata) dalla card 2 di `MigrationAttributeCards::workOrderAttributes()`. Stato ISO: `WorkflowStates::ISO_ROOT_ID` (1), `isWorkOrderField()`, `fieldCodesByCategory()` (usato da `ProductCategoryMigrationController` e `AttributeLayoutMigrationController`: niente link ne' layout), `LegacyWorkOrderAttributeValues::stateValues` salta il codice ISO (niente valore); `@state` tolto dalla sezione `iso-dettagli-lavorazioni-iso`. `codesByCategory()`/`foreignStates()` invariati (instradamento degli altri stati uguale). Verificato con tinker (114 codici -> 50 campo, 0 link/layout `stato_consulenza_1`, 41 link agli altri stati; commesse 5841/6070/6215 senza stato, 19924/20175 con `stato_consulenza_5`, 20047 con `stato_consulenza_9`) + `php -l`. Spec 0189 G-20 aggiornata (Rev. 2026-11-27 e 2026-11-27 bis).
+- Verifica: Pest `Seeding/QualificaOldIsoWorkOrderFieldsRemovalSeederTest` 4/4, Pint pulito. Simulazioni su qnet2 in transazione annullata: storici 605 assegnazioni tolte e 55 form ripuliti, 515 valori `data_ultima_chiamata` intatti, PROGETTI- con le sue 12 assegnazioni, secondo giro senza effetti; stato 55 assegnazioni e 55 posizioni tolte, sezione "Dettagli Lavorazioni Iso" rimasta con scopo/scopo_confermato/scopo_annuale/note_consulente/data_verifica_ufficiale, 4.454 valori intatti.
+- Manuale: nessun impatto (il manuale e le guide non citano la sezione ne' il campo flessibile; lo Stato lavorazione documentato e' quello nativo).
+
+## Campi commessa GDPR dall'[OLD] GDPR, collegati come ISO (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO (c74f574d7 + collegamenti offerta), SEEDER LANCIATO SU qnet2 SOLO NELLA PRIMA VERSIONE
+
+- La radice "GDPR" (id 52 in dev) non aveva campi Commessa. Nuovo `QualificaCatalog/GdprWorkOrderCatalogue` (ATTRIBUTES, SECTIONS, LINKS): 11 campi propri `gdpr_onsite_visits`, `gdpr_offsite_visits`, `gdpr_interview_location`/`gdpr_training_location` (enum radio on_site/off_site come ISO), `gdpr_work_hours` (decimal), `gdpr_work_start_date`, `gdpr_work_end_date`, `gdpr_last_call_date`, `gdpr_callback_date`, `gdpr_consultant_notes`, `gdpr_next_consulting_date`; form a 4 sezioni sulla radice, ereditato da GDPR - GDPR e GDPR - Nomina DPO.
+- Seeder one-shot `QualificaGdprWorkOrderFieldsSeeder` (`php artisan db:seed --class=QualificaGdprWorkOrderFieldsSeeder --force`): campi + form (non tocca un form gia' configurato) + 8 collegamenti `current_attribute_id` (gdpr_accessi_onsite/offsite, gdp_ore_lavorazione, gdpr_inizio/fine_lavorazione, gdpr_ultima_chiamata, gdpr_richiamo, gdpr_prossima_consulenza). Offerta (`GdprCatalogue::QUOTE_LINKS`, aggiunti 2026-11-27 dopo il primo lancio: rilanciare il seeder): `numero_dipendenti` -> `gdpr_employee_count`, `attivita_prevalente` -> `gdpr_business_activity`; `check_list` (enum Si/No) non collegabile a `gdpr_checklist` (boolean). NON collegati: enum `gdpr_intervista`/`gdpr_formazione` (regole 0429), `note_consulente` (gia' collegato a `iso_consultant_notes`). Escluso per scelta `stato_consulenza_9` (Stato Lavorazione: stati di lavorazione, come ISO/SOA). Non e' nel percorso del seed di produzione (`QualificaBranchWorkOrderSeeder` invariato).
+- Logica di collegamento estratta nel trait `Concerns/LinksLegacyAttributes` (usato anche da `QualificaLinkedAttributesSeeder`, comportamento invariato).
+- Verifica: Pest `Seeding/QualificaGdprWorkOrderFieldsSeederTest` 5/5 (+ `QualificaGdprCatalogueTest`, `QualificaCatalogSeederTest` verdi), `tests/Feature/Attributes` + `QualificaGdprCatalogueTest` 120/121 (rosso preesistente `AttributeCurrentAttributeTest` D-1 rollback: migrazioni successive con `dropForeign` su SQLite). Pint pulito. Simulazione su qnet2 in transazione annullata: 11 campi, form ereditato dalle 2 sottocategorie, 8/8 collegamenti, secondo giro senza duplicati.
+- Manuale: Claude Docs, paragrafo dopo la nota sui 41 collegamenti ISO. Guide in-app: nessun impatto.
+
+## Filtri di colonna: oltre 2000 valori solo "Contiene"/data/numero, niente avviso "solo i primi valori" (richiesta utente 2026-11-27) — VERDE, NON COMMITTATO
+
+- Regola: colonna testo/numero/data con piu' di 2000 valori distinti -> solo filtro a condizione; fino a 2000 -> checklist Excel completa. Colonne set/enum/tags/badge/boolean invariate (sempre checklist).
+- Backend: `config/table-filter-values.php` (`limit` 2000, `large_columns_fresh_seconds` 3600, `large_columns_stale_seconds` 86400). `TableValuesRequest` usa `limit` come cap/default (era 200). Nuovo `TableLargeValueColumnsService`: `ids()` sonda con `TableService::distinctValues(..., limit)->hasMore` le colonne candidate (filterable, kind non checklist, `hasFilterValues` non false), per utente + scope categoria, `Cache::flexible`; `markColumns()` aggiunge `tooManyFilterValues: true`. `TableController` lo calcola in columns/savePreferences/saveFilters subito dopo `scopeToProductCategory` (prima degli scope di riga opportunity/quote/registry, cosi' i tre endpoint coincidono). Costo misurato prima apertura: 12-785 ms per tabella (request-management il peggiore), poi cache.
+- Frontend: `TableColumn.tooManyFilterValues`; `hasTypedFilterOnly()` in `column-filters.ts` (usato da `resolveFilter`); `typed-only-filter-models.ts` converte i filterModel salvati multi -> sola condizione (stato persistito in `use-table-view-grid-state`, viste salvate in `saved-views-slot`); la parte checklist di un filtro salvato su quelle colonne si perde. Rimossi `filter-truncation-notice.ts`, toast e chiave i18n `table.filterValuesTruncated`, il parametro `onTruncated`/`onFilterValuesTruncated`. Resta la ricerca server del task 427169 come rete se una lista supera il cap tra due sonde.
+- Test: Pest `TableLargeValueColumnsTest` (5), `TableValuesTest` cap (REQUIREMENT CHANGED); Vitest `typed-only-filter-models.test.ts` (3), `resolveFilter` (3 casi), test delle firme senza callback (REQUIREMENT CHANGED). Pest Table 318/320 (rossi preesistenti `TableBulkDeleteTest`:131, `TableDefinitionContractTest` FormalabCallLog), CategoryTabs 106/106; Vitest data-table+table+help 812/812; ESLint, Pint, `tsc -b --force` EXIT=0. Non provato nel browser.
+- Spec 0005: contratto `limit`, AC-015, AC-015b. Manuale: guida in-app `general` IT/EN "Filtro di colonna" + manuale Claude Docs aggiornati.
+
+## Commesse: filtro Titolo "contiene" (2026-11-26) — VERDE, NON COMMITTATO
+
+- `WorkOrderColumnCatalog` colonna `title`: `hasFilterValues => false` -> la griglia usa solo `agTextColumnFilter` (default "contiene"), niente lista a checkbox (richiesta utente).
+- Test: `WorkOrderTableTest` "title filters by a contains condition". Guide `work-orders` IT+EN e manuale Claude Docs (paragrafo "Filtro del Titolo") aggiornati.
+
+## Ricerca richieste/iscritti anche sull'anagrafica dei campi flessibili (2026-11-26) — VERDE, NON COMMITTATO
+
+- Il campo Cerca di Gestione Richieste/Iscritti, oltre al cliente, trova le richieste il cui `quotes.attribute_values` collega un'anagrafica trovata per nome/cognome/CF/P.IVA in un attributo `type=relation` con `relation_target.entity_type=registries` (oggi `user_registry` "Anagrafica Utente" di Orientamento specialistico, `host_registry`, `avv_company_id`, `gare_company_id`). Telefono/email NON estendono ai campi.
+- `RequestClientSearch` Step 4: secondo passaggio `quotes.id IN` (ids letti con lo stesso cap `table-search.request_client_match_cap`), codici attributo filtrati da regex prima del path JSON. MySQL locale: "maria" 51 ms, "rossi" 17 ms.
+- Test: `RequestManagementTableSearchTest` (+2). Guide `request-management` IT+EN e manuale Claude Docs (paragrafo del campo Cerca) aggiornati.
+- Commesse non toccate (fuori richiesta).
+
+## Richieste legacy bloccate sulle loro categorie madri (spec 0432, 2026-11-26) — VERDE, NON COMMITTATO
+
+- Richiesta legacy = offerta NON legata (`root_product_category_id` null) con almeno una linea `is_legacy` (categoria o radice). In modifica linee (pannello Lavora + cella, `RequestProductLineWriter`) ogni categoria deve stare sotto le radici gia' presenti: `QuoteRootScope::assertWithinLegacyRoots` -> 422 `product_lines`. Togliere una radice si', aggiungerne/sostituirne no. Offerte non legate del catalogo nuovo: libere come prima.
+- Pannello: nuovo `legacy_root_categories` ({id,name}[], `[]` se non legacy) da `QuoteRootScope::legacyRootsOf`. FE: `ProductLinesField.lockedRootCategoryIds` e `ProductCategoryRootSelect.onlyRootIds` (lista, sostituiscono i singoli `lockedRootCategoryId`/`onlyRootId` della 0411); hint `requestManagement.workPanel.productLines.legacyRootsLocked`.
+- Test: `tests/Feature/RequestManagement/RequestLegacyRootLockTest.php` (6), `request-product-lines-root-lock.test.tsx`, `locked-root-select.test.tsx`. Guide `request-management` IT+EN aggiornate.
+- Portata: delle 28.707 offerte con linee [OLD], 27.699 erano gia' legate alla radice [OLD] (gia' bloccate dalla 0411 D-4); la 0432 tocca le 1.008 non legate (993 multi-radice). Manuale Claude Docs aggiornato (paragrafo "Una richiesta per categoria madre").
+- Fuori scope: modulo Opportunita' (linee libere sulle opportunita' senza offerte legate), dati esistenti (21 richieste non legate del catalogo nuovo con piu' madri, elencate in chat il 2026-11-26).
+- Pre-esistente, non toccato: `RequestManagementAllColumnsSortFilterTest` fallisce su "managers is not sortable".
+
+## Documenti: motivo per ogni file scartato (2026-11-26) — VERDE, NON COMMITTATO
+
+- Causa segnalata: PDF scansionato da 36 MB, oltre `attachments.max_size` (10 MB) e oltre `post_max_size` (20M) -> 413 prima della validazione; la UI diceva solo il nome del file.
+- `useAttachments().upload` ora restituisce `failed: { name, error }[]`; `uploadFailureReason()` (`features/attachments/upload-failure-reason.ts`): 413 -> `attachments.errors.reasons.tooLarge`, 422 -> messaggio del server su `file`, altro -> nessun motivo. L'avviso mostra `uploadSome` (alcuni caricati) o `uploadNone` (nessuno) + elenco "nome: motivo".
+- Backend: `StoreAttachmentRequest::messages()` `file.max` -> `attachments.file_too_large` ("Il file supera la dimensione massima di :max MB."), nuovi `lang/{it,en}/attachments.php`.
+- Guide in-app `general` IT+EN e manuale Claude Docs (nota Documenti) aggiornati.
 
 ## Cedolini, parte B statini (spec 0431, 2026-11-25) — VERDE, NON COMMITTATO
 
@@ -190,7 +434,7 @@
 - Test: `tests/Feature/Seeding/QualificaSafetyHaccpLayoutRevisionSeederTest.php` (4). Verdi: Seeding 309, DocumentLayouts Feature 149, Unit 93/94 (rosso noto `ProductsTableRendererTest` cost_lines AC-245, non toccato). Pint pulito.
 - Manuale: nessun impatto (cambia solo il contenuto del documento generato).
 
-## Indirizzi: Nazione/Regione/Provincia sempre visibili (segnalazione utente 2026-11-25, /referents) — VERDE MIRATO, NON COMMITTATO
+## Indirizzi: Nazione/Regione/Provincia sempre visibili (segnalazione utente 2026-11-25, /referents) — VERDE MIRATO, COMMITTATO
 
 - Causa: il layout `compact` di `GeoSelect` (tutti i form indirizzo: anagrafiche, referenti, societa', sedi operative, conti finanziari) nascondeva Nazione/Regione/Provincia dietro il link con freccia "Modifica area geografica": nessuno apriva la freccia, quindi gli indirizzi esteri non venivano compilati.
 - Fix: `features/geo/geo-compact-fields.tsx` senza Collapsible: riga Nazione/Regione/Provincia (3 colonne da `sm`) + Comune sotto, sempre visibili. Supera la decisione 2026-09-07 ("antenati dietro disclosure"). Prop `collapsible` e chiavi i18n `geo.editArea`/`geo.hideArea` rimosse. Il comune resta ricercabile da solo e compila gli antenati (`cityFirst` in `GeoSelect` invariato).
@@ -257,7 +501,7 @@
 - Test: `tests/Feature/WorkOrders/WorkOrderAmountColumnsTest.php` (9), `column-renderers.test.tsx` (+2). Pest WorkOrders 618/623 (5 rossi preesistenti: WorkOrderAttributeLocksTest 3, QuoteLineWorkOrderMigrationTest 2), Tables 74, Projects 100, Exports 43; Vitest work-orders+help 61 file/549; ESLint, Pint, `tsc -b --force` puliti. Verifica DB dev: 200 commesse a caso, 0 differenze fra `total_revenue` e `effective_revenue` della tab Dati contrattuali.
 - Guide in-app `work-orders` IT/EN (paragrafo dopo "Stato pagamento") + manuale Claude Docs (paragrafo "Colonne Importo consulenza e Totale ricavo." dopo "Colonna Stato pagamento.").
 
-## Avanzamento commesse riallineato al legacy (2026-11-24) — VERDE MIRATO, NON COMMITTATO, SEEDER NON ANCORA ESEGUITO
+## Avanzamento commesse riallineato al legacy (2026-11-24) — VERDE MIRATO, COMMITTATO, SEEDER NON ANCORA ESEGUITO
 
 - Causa: `WorkOrderProgressSource` crea soltanto (salta la commessa che ha gia' avanzamenti) e le cancellazioni del legacy (`ListaAvanzamentoCommesseModale::deleteAvanzamento`, hard delete, nessun activity log ne' utente) non arrivano a qnet-2. Esempio: legacy 12574 al 100% (righe rifatte il 29/10), qnet-2 COM-12574 al 37%.
 - Conteggio sulle copie locali: 173 commesse migrate con percentuale diversa; 37 senza avanzamenti inseriti in qnet-2 (allineabili), 136 con righe manuali qnet-2 (da decidere caso per caso, non toccate).
@@ -275,7 +519,7 @@
 - Guide IT/EN: `quotes.ts` (catalogo), `parts/work-orders-costs.ts`; manuale Claude Docs: paragrafo catalogo offerta.
 - Prossimo: eseguire `costs:clear-vat` su qnet2 (e staging/prod al deploy, dopo aver verificato che "IVA al 0%" esista); commit qnet-2 + legacy su richiesta, esclusi i file Formalab di un altro lavoro in corso.
 
-## Formalab: partner del prospetto = Partner commerciale dell'offerta del discente (spec 0427 D-2 revised, 2026-11-24) — VERDE MIRATO, NON COMMITTATO
+## Formalab: partner del prospetto = Partner commerciale dell'offerta del discente (spec 0427 D-2 revised, 2026-11-24) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: "bisogna prendere il campo partner commerciale che si trova sulla offerta del discente. nient'altro". Nel legacy il partner era solo testo libero `pre_info_formaziones.partner_commerciale` (import GOL, creazione opportunita' GOL, info preliminari).
 - `CommissionBook::offerPartners`: CF -> anagrafiche (`personal_data`) -> opportunita' (`registry_id`) -> offerte; vale la piu' recente (id maggiore) con `commercial_partner_id`. Nessun fallback (ne' testo legacy ne' Partner commerciale dell'anagrafica). Colonna `formalab_learner_commissions.partner_name` rimossa: migrazione nuova `2026_11_24_110000_drop_partner_name_...` (NON eseguita su qnet2: va lanciata con `migrate`; la tabella e' vuota). ST-2 non migra piu' il testo `partner_commerciale`.
@@ -295,7 +539,7 @@
 - DA FARE: ST-2 migrazione dati partner dal legacy (pre_info_formaziones: 6.826 con partner, 3.364 con %, 1.108 con fornitore; il legacy legge la PRIMA riga per CF). ST-3 azioni: Genera Notula/e, Genera ODA Partner (con scadenze), Importa discenti, selezioni. ST-4 modulo Notule discenti (prerequisito di "Importa liquidazioni" e dello stato ODA discente).
 - Differenze dichiarate dal legacy: la lettura non riallinea gli importi salvati (non influenza i calcoli); colonna ODA discente senza stato (arriva con ST-4); refresh classe esplicito.
 
-## Formalab: polling leggero e backfill senza N+1 (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+## Formalab: polling leggero e backfill senza N+1 (spec 0422 D-4bis, 2026-11-23) — VERDE MIRATO, COMMITTATO
 
 - Misura sulla copia di prod: `GET /status` (e la fase backfill del sync) facevano 5.504 query / 7 s per le 464 commesse non collegate (~12 query a commessa: mappa categoria + attributi applicabili); il polling ogni 5 s lo martellava.
 - `LinkBackfill::eachUnlinked`: `with('quoteLines.product.category')` + `keyCodeOf` una volta per combinazione ordinata di categorie, poi `CourseFieldWriter::editionIdAt($workOrder, $code)` (nuovo; `editionIdOf` lo usa). Ora 95 query / 0,19 s, stesso risultato.
@@ -409,7 +653,7 @@
   - manuale Claude Docs (gruppi, select "Gruppo", "Più documenti", "Campo data estratto");
   - spec delle richieste documentali (gruppi e categoria sulle richieste).
 
-## Formalab: Nome corso = select sulle classi, abbinamento solo per edition_id, menu "Integrazioni esterne" (spec 0426, 2026-11-23) — VERDE MIRATO, NON COMMITTATO, MIGRAZIONE E SEEDER NON ESEGUITI SU qnet2
+## Formalab: Nome corso = select sulle classi, abbinamento solo per edition_id, menu "Integrazioni esterne" (spec 0426, 2026-11-23) — VERDE MIRATO, COMMITTATO, MIGRAZIONE E SEEDER NON ESEGUITI SU qnet2
 
 - Tabella d'appoggio = `formalab_classes` (gemella di `classi` legacy). Invariante nuova `id = edition_id` (mapper + migrazione `2026_11_23_110000_align_formalab_class_ids_with_edition_ids`, due passaggi senza collisioni): il campo relazione salva l'id, quindi salva l'edition_id.
 - Core, punto di estensione generico: `config('custom-fields.relation_only_targets')` (entity_type => {model, label}) letto da `CustomFieldEntityRegistry` (non memoizzato). Formalab registra `formalab-classes` (`FormalabClass::ENTITY_TYPE`, for-select `integrations/formalab/classes` = `FOR_SELECT_RESOURCE`).
@@ -425,7 +669,7 @@
 - Committato b8a6b598f (qnet-2 main); legacy su `develop` cfefaed5 (NON su master: regola utente, il legacy si committa su develop).
 - D-12 (2026-11-23, VERDE MIRATO, COMMITTATO f6b08cdd8): classe non piu' su Formalab -> `Services/RemovedClassCleanup` (link eliminati, select svuotata con PeopleChangeLog, classe cancellata dal catalogo; altri campi intatti). Chiamato da `ClassCatalogSync` Step 3 (edizioni locali assenti dall'elenco, solo lettura completa e non vuota: `fetchAll` ritorna `complete`) e da `ClassCatalog::refresh` su 404 (Sincronizza commessa, webhook). Colonna `formalab_sync_runs.classes_removed` (migrazione 2026_11_23_120000) + `last_sync.classes_removed` + riga nella card Ultima sincronizzazione. `CourseFieldWriter::keyCodeOf` nuovo. Verificato su Formalab reale: 39 edizioni note al legacy e assenti dall'elenco danno 404 anche per id (nessuna con commesse collegate in dev). Test `FormalabRemovedClassTest` (5); Pest Integrations 78, System 27, WorkOrders 608; Vitest integrations+help 21 file/191; tsc, ESLint, Pint puliti. Guida `formalab` IT/EN sezione automatic-sync (corretta anche: il giro collega solo le non collegate, spostamenti/scollegamenti avvengono al salvataggio).
 - Fix (2026-11-23, COMMITTATO 823617dc1): il "Nome Corso / Ed." in sola lettura mostrava l'edition_id. Causa: `features/attributes/attribute-value-display.tsx` (dettaglio Commessa/Offerta/Prodotto) stampava l'id nudo di ogni attributo `relation` (difetto generico, colpiva anche gli altri campi relazione). Ora risolve l'etichetta con `useForSelectLabels` su `relation_target.for_select_resource` ('…' in attesa); `DisplayableAttribute.relation_target` opzionale. Test nuovo `attribute-value-display.test.tsx`; Vitest attributes/work-orders/quotes/products 150 file/1231, tsc, ESLint puliti. Se l'attributo e' ancora `text` (ClassSelectSeeder non lanciato) il numero resta: serve la conversione.
-- Sync ogni ORA (richiesta utente 2026-11-23, VERDE MIRATO, NON COMMITTATO): default `FORMALAB_SYNC_INTERVAL_MINUTES` 60 (config + .env.example); `FormalabServiceProvider::schedule` con intervallo >= 60 usa `0 * * * *` (prima tetto a 59 = */59). Health "sync_stale" scala con l'intervallo (STALE_AFTER_INTERVALS x 60 min). Se l'.env di produzione imposta 10 esplicitamente va cambiato/tolto + config:cache. Test: Activation (+dataset default/60/120), Admin (REQUIREMENT CHANGED 10->60); Pest Formalab 81 verdi. Guida formalab IT/EN "ogni ora".
+- Sync ogni ORA (richiesta utente 2026-11-23, VERDE MIRATO, COMMITTATO): default `FORMALAB_SYNC_INTERVAL_MINUTES` 60 (config + .env.example); `FormalabServiceProvider::schedule` con intervallo >= 60 usa `0 * * * *` (prima tetto a 59 = */59). Health "sync_stale" scala con l'intervallo (STALE_AFTER_INTERVALS x 60 min). Se l'.env di produzione imposta 10 esplicitamente va cambiato/tolto + config:cache. Test: Activation (+dataset default/60/120), Admin (REQUIREMENT CHANGED 10->60); Pest Formalab 81 verdi. Guida formalab IT/EN "ogni ora".
 
 ## Categorie delle checklist + sincronizzazione ArchivioSmart (spec 0410, 2026-11-23) — COMMITTATO (6d5beb16a), NON PROVATO NEL BROWSER
 
@@ -490,7 +734,7 @@
 - Manuale: guida in-app `general.ts` IT/EN (sezione note); Claude Docs rev 950 (sezione Note, paragrafo "Con Rispondi...").
 - Nessun seeder ne' migrazione: basta il deploy.
 
-## Commesse: Responsabile/Partecipante gestisce la commessa anche senza `work-orders.update` (spec 0387 D-7, 0379 AC-005 rev., decisione utente 2026-11-23) — VERDE MIRATO, NON COMMITTATO
+## Commesse: Responsabile/Partecipante gestisce la commessa anche senza `work-orders.update` (spec 0387 D-7, 0379 AC-005 rev., decisione utente 2026-11-23) — VERDE MIRATO, COMMITTATO
 
 - `WorkOrderPolicy::manage` (non e' un permesso, fuori da `abilities()`): `update` oppure `view` + membro (`WorkOrderVisibilityScope::isMember`, in memoria se `supervisors`/`participants` sono caricati). Usato da: PATCH con sole chiavi di chiusura (`UpdateWorkOrderRequest::isClosureOnly`, altrimenti `update`), azioni `force_close`/`reopen` e campi `is_force_closed`/`force_close_reason`, nuova azione `record_progress` + endpoint avanzamento, fasi (`WorkOrderStageController`), `is_read_only` del board, ricarica Modello di Task. Restano a `update`: form e copia attributi offerta.
 - Task: `TaskRecordRoles::isWorkOrderManager` (membro non assegnatario) entra in `canUpdate`/mandato via `TaskAbilityResolver::managesTheTask`; `claimsByCompleting` tiene la rivendicazione della 0387 (diventa assegnatario al completamento e va in validazione se richiesta). `TaskBoardQuery::tasks` imposta la relazione `workOrder` con i membri caricati (AC-007 0163: 19 query).
@@ -498,7 +742,7 @@
 - Test: nuovo `tests/Feature/WorkOrders/WorkOrderMemberManagementTest.php` (4); REQUIREMENT CHANGED `TaskWorkOrderVisibilityTest` AC-005, `TaskWorkOrderParticipantClaimTest` AC-004, `work-order-progress-dialog.test.tsx` (fixture). WorkOrders 597, Tasks 732, Notes 121, Seeding 295 verdi; Pint, help Vitest 162, `tsc -b --force` puliti.
 - Manuale: guide in-app IT/EN `work-orders.ts`, `tasks.ts`, `parts/work-orders-tasks.ts`; Claude Docs rev 949. Nota: prima di questa modifica il manuale (rev 942) diceva "chiusura forzata a chiunque possa aprire la commessa": corretto in "Responsabile o Partecipante".
 
-## Ruoli `reparto-*`: menziona chiunque, Sicurezza solo commesse proprie (spec 0408 D-16, spec 0353 D-2 rev., segnalazione utente 2026-11-23) — VERDE MIRATO, NON COMMITTATO, SEEDER DA RIESEGUIRE
+## Ruoli `reparto-*`: menziona chiunque, Sicurezza solo commesse proprie (spec 0408 D-16, spec 0353 D-2 rev., segnalazione utente 2026-11-23) — VERDE MIRATO, COMMITTATO, SEEDER DA RIESEGUIRE
 
 - Sicurezza (domanda 29 "Solo quelle in cui e' coinvolto"): tolto `work_orders_view_competence` da `DepartmentGrantSets::SAFETY` (supera la scelta D-6).
 - Documenti: nessun cambio. La regola "chi vede il modulo ne vede i documenti" e' stata provata e ritirata (decisione utente 2026-11-23): restano le risposte del questionario.
@@ -695,7 +939,7 @@
 - FE: etichette `permissions.abilities.notifyAssignment(Email)` IT/EN. Manuale: guida in-app `notifications` IT/EN sezione `assignment-notices`; Claude Docs rev 924 (paragrafo + tabella "Avvisi di assegnazione" dopo "Notifiche del tuo team"). PDF da rigenerare.
 - Da verificare nel browser: matrice del ruolo (caselle nei moduli Opportunita'/Offerte/Gestione Richieste/Iscritti), assegnazione di un Gestore Account con e senza caselle.
 
-## Notifica email sugli stati di lavorazione dell'offerta (spec 0419, task 10 riunione 12-16 novembre, 2026-11-20) — VERDE MIRATO, NON COMMITTATO (branch staging), MIGRAZIONI LANCIATE SU qnet2 2026-11-20, NON PROVATO NEL BROWSER
+## Notifica email sugli stati di lavorazione dell'offerta (spec 0419, task 10 riunione 12-16 novembre, 2026-11-20) — VERDE MIRATO, COMMITTATO (branch staging), MIGRAZIONI LANCIATE SU qnet2 2026-11-20, NON PROVATO NEL BROWSER
 
 - Richiesta utente: nel configuratore stati, come la nota obbligatoria, uno stato puo' prevedere una notifica email con testo e destinatari scelti.
 - BE: colonna `quote_workflow_statuses.notify` json nullable (migrazione `2026_12_20_100000_add_notify_to_quote_workflow_statuses_table`, DA LANCIARE con ok utente). Shape `{subject, message, record_team, user_ids, role_ids, emails}`; regole e normalizzazione in `App\DataObjects\QuoteWorkflows\WorkflowStatusNotify` (usate da `ValidatesWorkflowCriteria::statusesRules`, `UpdateDefaultStatusesRequest`, DTO Create/UpdateQuoteWorkflowData); `distinct` per lista con closure (il `distinct` di Laravel su wildcard annidato confronta tutti gli stati). `WorkflowStatusWriter` scrive `notify` (assente = null, come `requires_note`). Resource: `notify` in `QuoteWorkflowStatusResource` e `QuoteWorkflowResource` (solo endpoint del configuratore).
@@ -762,7 +1006,7 @@
 - DB locale: anagrafiche bloccate 707 -> 436; la 134 non e' piu' bloccata.
 - Test: 2 nuovi in `OpportunityOpenPerRegistryTest` (No categoria + legacy non blocca; attuale + No categoria blocca). Opportunities/Leads/MultipleOpen/SingleQuote verdi, Pint ok. Guida in-app opportunities IT/EN aggiornata (help vitest verde). Manuale Claude Docs aggiornato (paragrafo "Attenzione: una sola opportunita' aperta" + cella "Piu' opportunita' aperte" nella tabella categorie); PDF derivato da rigenerare.
 
-## Layout preventivi "Layout servizi" (id 2) e "Preventivo ISO" (id 4) sostituiti con le revisioni di novembre (task 427544, 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON APPLICATO AL DB LOCALE
+## Layout preventivi "Layout servizi" (id 2) e "Preventivo ISO" (id 4) sostituiti con le revisioni di novembre (task 427544, 2026-11-18) — VERDE MIRATO, COMMITTATO, NON APPLICATO AL DB LOCALE
 
 - Fonte: `LAYOUT_PREVENTIVO_GENERICO_SERVIZI rev.12.11.2026.docx` e `Template preventivo_ISO Rev. 10.11.2026.docx`. Novita': "Allegato A" informativa privacy (3 tabelle statiche `table`, elenco puntato reso con prefisso "• ", dichiarazione di consenso); ISO anche clausole "PRIVACY E PROTEZIONE DEI DATI PERSONALI" 10.1-10.4; servizi perde la clausola "Ai sensi degli art. 1341-1342".
 - Riconvertiti con un convertitore Python una-tantum (NON nel repo, come quello del 2026-10-28) che rifa' le stesse convenzioni: verifica di fedelta' = i blocchi invariati (24 servizi, 38 ISO) escono identici a quelli gia' in `assets/quote-layouts/{services,iso}.json`; il diff degli asset e' solo aggiunta (+ la clausola tolta). Carta intestata invariata (`letterhead-75cb7b747891.png`).
@@ -810,7 +1054,7 @@
 - Al commit: solo i file di questa spec; il working tree contiene la spec 0410 e il lavoro seeder 0408 di altre sessioni. COMMITTATO in `4159d7c3c` (per hunk).
 - Dopo il commit (NON committato): le frasi guida di "Linee di prodotto" (hint del campo, riga singola, hint della richiesta/opportunita', `rootLocked`) sono un unico riquadro con icona ed elenco puntato, `ProductLinesHints` (`ProductLinesField.extraHints`), usato da tutti i form che montano il campo; nel pannello Lavora l'hint non e' piu' un tooltip di `MetaField`. Fixture dei test 0411 rese indipendenti dai campi della 0410 (`Partial<ProductCategoryTreeNode>`). Manuale: nessun impatto (solo grafica).
 
-## Tab degli stati di sistema in Opportunita' e Offerte (spec 0409, 2026-11-18) — VERDE MIRATO, NON COMMITTATO
+## Tab degli stati di sistema in Opportunita' e Offerte (spec 0409, 2026-11-18) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente: filtri a tab "come in Contratti/Commesse" sugli stati di sistema delle offerte (`quote_system_statuses`), in Offerte e in Opportunita'. Riprende la parte G della 0404 (eliminata il 2026-11-16), ora sugli stati di sistema.
 - BE Offerte: trait `Tables/Quotes/Concerns/HasQuoteSystemStatusTabs` (aggregates per nome stato di sistema, ignora il filtro `quote_system_status`).
@@ -1053,13 +1297,13 @@
 - Manuale: guide IT/EN nuova `quote-system-statuses` (+HELP_GUIDE_KEYS 109), `quotes`, `quote-workflows`; Claude Docs rev 834 (configuratore workflow, paragrafo "Stati di sistema offerta", Offerte, Gestione Iscritti, colonna Gestione Richieste).
 - Aperti: filtro set della colonna `behavior` mostra i valori grezzi come oggi `group` degli Stati Contratto; statistiche/report restano sui gruppi (fuori scope spec). HANDOFF e' ~1.3 MB, oltre la soglia di 50 KB: da archiviare.
 
-## Filtro personalizzato sui campi flessibili (attr.*) e "Vuoto/Non vuoto" sulle date (2026-11-16) — VERDE MIRATO, NON COMMITTATO
+## Filtro personalizzato sui campi flessibili (attr.*) e "Vuoto/Non vuoto" sulle date (2026-11-16) — VERDE MIRATO, COMMITTATO
 
 - Segnalazione utente: "Data verifica ispettiva" + "Non vuoto" (filtro personalizzato) non cambiava nulla. Root cause: `AttributeColumnBuilder::raw()` (la dichiarazione in `filterableColumnMap()`) non aveva `filterType` -> `CustomFilterRuleValidator::resolveType()` null -> ogni regola su un `attr.*` rifiutata con 422 ("cannot be used in a custom filter rule"), per TUTTI i campi flessibili. Ora `raw()` porta il `filterType` della tabella di mapping (lo stesso di `resolved()`).
 - Secondo buco, stessa area: `AttributeDateFilterApplier` ignorava Set e multi (dateFrom assente): blank/not_blank del filtro personalizzato (`values:[null]`) e la checklist della griglia sugli attributi data non filtravano. Ora `apply()` gestisce multi (AND), set (valori esatti + "(Vuoti)" = null/'') e condizione data; `AttributeSummaryDateColumn::applyFilter` delega tutto a lui (tolto il trait `AppliesSetFilter`).
 - Test: `WorkOrderSummaryDateAttributeColumnTest` (+1: blank/not_blank/gt via `customFilterRules`), nuovo `WorkOrderDateAttributeCustomFilterTest` (2). Mirati 132/132; suite CategoryTabs/RequestManagement/Contracts/Table/Attributes/CustomFields/WorkOrders 2365/2439: i rossi sono TUTTI del refactor in corso della sessione parallela sulle colonne manager/operatore di Gestione richieste (`RequestManagerColumns::OPERATOR_COLUMN_ID` ecc.) + 2 preesistenti (TableBulkDelete, TableDefinitionContract). Pint pulito. Manuale: nessun impatto (comportamento atteso gia' descritto).
 
-## Commessa: colonna "Data verifica ispettiva" al posto di "Verifiche ispettive" (2026-11-16) — VERDE MIRATO, NON COMMITTATO, SEEDER DA LANCIARE
+## Commessa: colonna "Data verifica ispettiva" al posto di "Verifiche ispettive" (2026-11-16) — VERDE MIRATO, COMMITTATO, SEEDER DA LANCIARE
 
 - Richiesta utente 2026-11-16: nella griglia commesse la colonna delle verifiche ispettive mostra solo la data della riga attiva (vuota se nessuna riga attiva), e' una data e si chiama "Data verifica ispettiva". Il valore esiste gia': `summary` (strategia `selected` su `data_verifica`) salvato in `attribute_values.<code>.summary`; su qnet2 116 commesse con riga attiva, 0 incongruenze.
 - Contratto: nuova chiave opzionale `config.summary.grid_label` di un campo tabella, ammessa solo se la colonna di riepilogo e' `date`/`datetime` (`TableFieldSchema::GRID_LABEL_COLUMN_TYPES`, validata in `TableFieldConfigValidator::validateGridLabel`, max 191). Con la chiave la colonna `attr.<code>` diventa `type: datetime`, `filterType: date`, label = grid_label, senza `table`, valore = summary scalare. Logica in `App\Tables\RequestManagement\AttributeSummaryDateColumn` (valore, filtro set+data+multi solo sul summary, valori distinti con "(Vuoti)"), usata da `AttributeColumnBuilder` (label/mapping) e `AttributeGridColumns` (mapValues/applyFilter/distinctValues); sort invariato (gia' sul summary). Solo griglie ATTRIBUTI: i campi personalizzati tabella non la usano e l'editor non la mostra (prop `gridLabel` di `DefinitionTableColumnsEditor`, passata solo da `attribute-type-sections.tsx`).
@@ -1073,7 +1317,7 @@
 - Richiesta utente 2026-11-16: "metti un link alla proforma su documenti". Nel blocco di ogni prodotto il numero del Documento e' un link (`DocumentNumber` di `work-order-invoices/invoice-table-parts.tsx`, lo stesso della scheda Proforma attiva) che apre `InvoiceDetailSheet`; `onChanged` invalida `workOrderContractDataKeys.detail` (un incasso cambia lo stato del documento). Solo con `invoices.view`: calcolato in `work-order-detail-contract-data-panel.tsx` e passato come prop `canOpenDocuments` (`WorkOrderContractDataSection` -> `ContractDataLines` -> `ContractDataLineFields`), senza hook di auth nei componenti contract-data. Nessun cambio backend.
 - Test: `work-order-contract-data-section.test.tsx` (+2: link con permesso, testo senza). Vitest work-order-contract-data+work-orders 399/399, help 161/161, ESLint e `tsc -b --force` puliti. Guide IT/EN `work-orders` (riga Documento) e manuale Claude Docs rev 824 aggiornati.
 
-## Commessa: eliminati 5 campi flessibili legacy (2026-11-16) — VERDE MIRATO, NON COMMITTATO, SEEDER GIA' LANCIATO SU qnet2 DALL'UTENTE
+## Commessa: eliminati 5 campi flessibili legacy (2026-11-16) — VERDE MIRATO, COMMITTATO, SEEDER GIA' LANCIATO SU qnet2 DALL'UTENTE
 
 - Richiesta utente 2026-11-16: eliminare i campi flessibili "Accordo sui Pagamenti" (`accordo_pagamento`), "Insoluti" (`insoluti`), "Comunicazioni Email Commerciale" (`comunicazione_email`), "Proforma emessa" (`status_contabile`), "Totale commessa manuale" (`totale_commessa_manuale`) + seeder one-shot. Su qnet2 solo contesto Commessa: valori su 298/298/260/16392/416 commesse, 140-170 assegnazioni, 110 layout ciascuno.
 - **One-shot: `php artisan db:seed --class=RemoveRetiredWorkOrderAttributesSeeder --force`** (lanciato dall'utente su qnet2 il 2026-11-16: attributi e valori gia' rimossi; i dati originali restano nel legacy `orders`/`orderisos`). Usa il nuovo `App\Services\AttributeRemover::remove(codes)` (valori da products/quotes/work_orders, attribute_category, layout via AttributeLayoutPruner, opzioni, attributi; query builder, idempotente). `WorkOrderPaymentStatusAttributeMover` (0402) ora usa lo stesso servizio. `AttributeService::VALUE_TABLES` reso pubblico. Cancellati `QualificaWorkOrderPaymentAttributesSeeder` e il suo test (assegnava due di questi campi). Accordo e insoluti restano sui pagamenti per riga (0403, `LegacyWorkOrderLinePaymentWriter` invariato).
@@ -1563,7 +1807,7 @@
 - Da notare: durante la sessione `git diff` mostrava modifiche di un'altra sessione (WorkOrderResource,
   AttributeGridColumns, data-table column-filters/summary-cell, i18n custom-fields/referents): non toccate.
 
-## Colonna tabella "N righe": badge + filtro sulle righe (task 427477) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Colonna tabella "N righe": badge + filtro sulle righe (task 427477) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 427477 (qnet2 task id, /work-orders): in "Verifiche Ispettive" (attributo 455 `orderiso_verificas`, tipo
   `table`, riepilogo = riga Attivo) la cella mostrava "1 righe"/"2 righe". Dati dev: 3187 commesse su 3302 non hanno
@@ -1610,7 +1854,7 @@
   Vitest referents/work-orders/quotes/contracts/i18n/help 1498 verdi, Pint/ESLint/`tsc -b --force` puliti. NON provato
   in browser. Manuale: guida in-app `work-orders` IT/EN + paragrafo "Referente e recapiti nella commessa" nel manuale Docs.
 
-## Filtro personalizzato che si disattiva da solo (task 428054) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Filtro personalizzato che si disattiva da solo (task 428054) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 428054 (qnet2 task id, /request-management): "metto il filtro dei richiami di oggi, dopo poco si toglie da
   solo" (+ "non prende tutti i richiami", gia' risolto da #428096, commit 60e2f89fe).
@@ -1626,7 +1870,7 @@
 - Non escluso: se l'utente usava invece il filtro di colonna o i Filtri avanzati, chiedere i passi (nessuna altra causa
   trovata; il giro salva/rileggi dei filtri sul backend e' corretto).
 
-## Filtro "Data inizio" sulle commesse: ricerca in formato utente (task 427789) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Filtro "Data inizio" sulle commesse: ricerca in formato utente (task 427789) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 427789 (qnet2 task id, /work-orders): "Data inizio" ha lo stesso problema di Anagrafica: tutto gennaio 2026
   introvabile. Causa: l'elenco di `start_date` sono le prime 200 date in ordine crescente (dev, utente 162: si ferma al
@@ -1682,7 +1926,7 @@
 - Manuale: guida `general` IT/EN (tabella comandi Documenti). Manuale Claude Docs: riga "Scarica tutti" nella sezione
   Note e documenti.
 
-## Nuova anagrafica da Gestione Richieste eredita Fonte/Commerciale/Segnalatore (#427523) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Nuova anagrafica da Gestione Richieste eredita Fonte/Commerciale/Segnalatore (#427523) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Ticket di Martina: creando una richiesta con un NUOVO cliente, Fonte, Commerciale e Segnalatore restavano solo su
   offerta/opportunita'; l'anagrafica nasceva vuota. Causa: `RequestCreationService::newClientRegistryData()` passava
@@ -1694,7 +1938,7 @@
 - Manuale: guida `request-management` IT/EN (passo Attribuzione) + manuale Claude Docs (stesso passo).
 - Le anagrafiche gia' create cosi' in passato restano senza i tre campi (nessun backfill).
 
-## Filtri data a giorno intero su colonne data+ora (#428096) — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+## Filtri data a giorno intero su colonne data+ora (#428096) — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Causa: `AdvancedFilterApplier` (date_range) e `FilterApplier::applyDate` (inRange/greaterThan) confrontavano un
   giorno nudo ("2026-11-13", o "2026-11-13 00:00:00" da AG Grid) con una colonna DATETIME: l'estremo "a" valeva
@@ -1704,7 +1948,7 @@
   Vale per tutte le tabelle generiche. Test: `RequestManagementCallbackTest` (#428096, anche OR combinato).
 - La parte "il filtro si toglie da solo" e' il task 428054: vedi la sua voce (filtro personalizzato).
 
-## Ticket da QNet (lotto 2026-11-13) — VERDE MIRATO, NON COMMITTATO
+## Ticket da QNet (lotto 2026-11-13) — VERDE MIRATO, COMMITTATO
 
 - **#428417 import contatti:** `config/imports.php` `column_aliases.phone` + 'phone number', 'telephone', 'mobile',
   'mobile phone', 'numero di telefono', 'numero telefono'. Test: `ColumnMapperTest` (dataset).
@@ -1724,7 +1968,7 @@
   salvato potrebbe dover riattivare la colonna. Test: `PurchaseRequestTablesTest` (#426856).
 - Guide in-app aggiornate IT+EN: request-statistics, work-orders, request-management, purchase-requests.
 
-## Attributi di tipo data mostrati nel formato utente — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+## Attributi di tipo data mostrati nel formato utente — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Ticket #428276 (commessa 16201): "Data inizio corso" / "Data fine corso" in "Informazioni aggiuntive" uscivano in ISO
   (`2025-10-07`). Causa: `formatAttributeScalar` in `features/attributes/attribute-value-display.tsx` non aveva il ramo
@@ -1733,7 +1977,7 @@
 - Test: `attribute-layout-view.test.tsx` ("renders a date attribute in the user date format").
 - Non toccato: l'editor resta `<input type="date">` nativo, il cui formato segue la lingua del browser (85 input in app).
 
-## Email delle notifiche su coda `mail` dedicata — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+## Email delle notifiche su coda `mail` dedicata — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Incidente prod 2026-11-13 (disservizio Microsoft): 129 job su `default`, 108 email di notifica che fallivano ogni
   ~21 s e venivano rimesse in coda senza backoff; campanelle (`database`), `GenerateApiDocsJob` e

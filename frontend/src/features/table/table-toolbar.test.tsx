@@ -98,4 +98,36 @@ describe('TableToolbar', () => {
       screen.queryByRole('button', { name: /delete selected/i }),
     ).not.toBeInTheDocument()
   })
+
+  // User request 2026-11-27: the funnel beside the three dots shows/hides the pinned Commesse filters.
+  it('renders the funnel beside the options menu, pressed while the filters show', () => {
+    const onToggle = vi.fn()
+    renderToolbar({ filtersToggle: { open: true, activeCount: 2, onToggle } })
+
+    const funnel = screen.getByRole('button', { name: 'Hide filters' })
+    expect(funnel).toHaveAttribute('aria-pressed', 'true')
+    expect(funnel.nextElementSibling).toHaveAccessibleName('Table options')
+
+    fireEvent.click(funnel)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('counts the applied filters on the funnel while they are hidden', () => {
+    renderToolbar({ filtersToggle: { open: false, activeCount: 2, onToggle: vi.fn() } })
+
+    expect(screen.getByRole('button', { name: 'Show filters, 2 active filters' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('has no funnel without pinned filters', () => {
+    renderToolbar()
+
+    expect(screen.queryByRole('button', { name: /filters$/ })).not.toBeInTheDocument()
+  })
+
+  // User request 2026-11-27: the applied filters and "clear all" beside the row count, no row of their own.
+  it('renders the filter chips slot beside the row count', () => {
+    renderToolbar({ filterChipsSlot: <span>Title: iso</span> })
+
+    expect(screen.getByText('50 rows').parentElement).toContainElement(screen.getByText('Title: iso'))
+  })
 })

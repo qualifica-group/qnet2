@@ -9,7 +9,17 @@ import type { DocumentChecklistSyncOutcome } from '@/features/document-checklist
 
 export type DocumentRequestStatus = 'draft' | 'sent' | 'in_progress' | 'completed' | 'expired' | 'cancelled'
 export type DocumentRequestDeliveryStatus = 'pending' | 'delivered' | 'failed'
-export type DocumentRequestOperation = 'upsert' | 'remind' | 'cancel' | 'refresh' | 'approve' | 'reject' | 'complete'
+export type DocumentRequestOperation =
+  | 'upsert'
+  | 'remind'
+  | 'cancel'
+  | 'refresh'
+  | 'approve'
+  | 'reject'
+  | 'complete'
+  | 'refresh_rules'
+  | 'revalidate'
+  | 'stop_validation'
 
 export interface DocumentRequestSection {
   name: string
@@ -69,6 +79,8 @@ export interface DocumentRequest {
   items_satisfied_count: number
   sections: DocumentRequestSection[]
   items: DocumentRequestItem[]
+  /** Items whose rules changed with the last refresh from the checklist (spec 0432). */
+  rules_updated_item_ids: number[]
   sent_at: string | null
   last_reminded_at: string | null
   completed_at: string | null
@@ -80,7 +92,14 @@ export interface DocumentRequest {
   pending_operation: DocumentRequestOperation | null
   delivery_error: string | null
   created_at: string
-  permissions: { update: boolean; remind: boolean; cancel: boolean; review: boolean; complete: boolean }
+  permissions: {
+    update: boolean
+    remind: boolean
+    cancel: boolean
+    review: boolean
+    complete: boolean
+    refresh_rules: boolean
+  }
 }
 
 export interface DocumentRequestList {

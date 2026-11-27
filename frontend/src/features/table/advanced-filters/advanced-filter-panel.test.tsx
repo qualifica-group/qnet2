@@ -118,6 +118,43 @@ describe('AdvancedFilterPanel', () => {
     expect(screen.getByRole('checkbox')).toBeInTheDocument()
   })
 
+  // User request 2026-11-27: every picker of the Commesse filters searches, the "Mese" select included.
+  it('renders a select filter as a searchable list and hands back the picked option value', () => {
+    const filters = fakeFilters()
+    renderPanel(
+      [
+        descriptor({
+          name: 'month',
+          type: 'select',
+          label: 'Month',
+          options: [
+            { value: 1, label: 'January' },
+            { value: 6, label: 'June' },
+          ],
+        }),
+      ],
+      filters,
+    )
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Month' }))
+    fireEvent.change(screen.getByPlaceholderText('Search…'), { target: { value: 'jun' } })
+
+    expect(screen.queryByRole('option', { name: 'January' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('option', { name: 'June' }))
+    expect(filters.setFieldValue).toHaveBeenCalledWith('month', 6)
+  })
+
+  it('shows the picked option of a select filter and clears it back to null', () => {
+    const filters = fakeFilters({ draft: { month: 6 } })
+    renderPanel(
+      [descriptor({ name: 'month', type: 'select', label: 'Month', options: [{ value: 6, label: 'June' }] })],
+      filters,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /June/ }))
+    expect(filters.setFieldValue).toHaveBeenCalledWith('month', null)
+  })
+
   it('skips a filter declared `visible: false`', () => {
     const descriptors = [
       descriptor({ name: 'hidden', type: 'text', label: 'Hidden', visible: false }),

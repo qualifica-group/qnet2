@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
-use App\Enums\QuoteLineType;
 use App\Http\Resources\QuoteLineResource;
 use App\Http\Resources\WorkOrderCostResource;
 use App\Models\QuoteLine;
@@ -32,6 +31,7 @@ final class WorkOrderCostOverviewBuilder
     public function __construct(
         private readonly LineEffectiveRevenue $effectiveRevenue,
         private readonly WorkOrderPassiveCostAggregator $passiveCosts,
+        private readonly WorkOrderBudgetLines $budgetLines,
     ) {}
 
     /**
@@ -42,8 +42,8 @@ final class WorkOrderCostOverviewBuilder
         // Step 1: load the actual costs, the commessa's revenue lines and the offer's COST lines
         $costs = $workOrder->costs()->with(['product.category', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'supplier', 'costType'])->get();
         $revenueLines = $workOrder->quoteLines()->with(['product', 'commissions'])->get();
-        $budgetLines = $this->budgetLines($workOrder);
-        $allocated = $budgetLines->whereIn('offer_line_id', $revenueLines->modelKeys())->values();
+        $budgetLines = $this->budgetLines->for($workOrder, self::BUDGET_LINE_RELATIONS);
+        $allocated = $budgetLines->whereNotNull('offer_line_id')->values();
         $unallocated = $budgetLines->whereNull('offer_line_id')->values();
 
         // Step 2: compare per revenue line
@@ -87,24 +87,6 @@ final class WorkOrderCostOverviewBuilder
                 'by_cost_type' => $byCostType->map($this->publicCostTypeRow(...))->all(),
             ],
         ];
-    }
-
-    /**
-     * The COST lines of the source offer(s) (all of them on a multi-offer
-     * commessa, spec 0267 D-10) that are either allocated to some REVENUE line
-     * (filtered to this commessa's own by build()) or generic.
-     *
-     * @return Collection<int, QuoteLine>
-     */
-    private function budgetLines(WorkOrder $workOrder): Collection
-    {
-        return QuoteLine::query()
-            ->whereIn('quote_id', $workOrder->isMultiQuote() ? $workOrder->sourceQuoteIds() : [$workOrder->quote_id])
-            ->where('line_type', QuoteLineType::Cost)
-            ->with(self::BUDGET_LINE_RELATIONS)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
     }
 
     /**

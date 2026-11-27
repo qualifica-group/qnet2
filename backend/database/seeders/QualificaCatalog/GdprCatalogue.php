@@ -16,8 +16,9 @@ use App\Enums\LayoutSectionVariant;
  * QualificaBusinessFunctionLinkSeeder.
  *
  * Worked like "Consulenza", every product under the "Consulenza" typology,
- * with the default working states and no Commessa field. The offer fields sit
- * on the root, inherited by both lines with the root's form.
+ * with the default working states. The offer fields sit on the root,
+ * inherited by both lines with the root's form; the Commessa set is in
+ * GdprWorkOrderCatalogue (one-shot, 2026-11-27).
  *
  * `code` is the English identifier; `name` is the user-facing label, kept in
  * its original language.
@@ -31,6 +32,16 @@ final class GdprCatalogue
     public const string GDPR = 'GDPR - GDPR';
 
     public const string DPO_APPOINTMENT = 'GDPR - Nomina DPO';
+
+    /**
+     * [OLD] GDPR offer code => current offer code (spec 0429), linked by
+     * QualificaGdprWorkOrderFieldsSeeder. Not linked: the legacy `check_list`,
+     * an enum against the `gdpr_checklist` yes/no.
+     */
+    public const array QUOTE_LINKS = [
+        'numero_dipendenti' => 'gdpr_employee_count',
+        'attivita_prevalente' => 'gdpr_business_activity',
+    ];
 
     /**
      * Every subcategory is a classification target, never a container (spec

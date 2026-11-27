@@ -44,7 +44,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The **Search** box finds requests by the client's first name, last name, tax code, VAT number, or primary phone or email. It starts from the third character and matches words that **begin** with what you type: \"ros\" finds Rossi, \"ssi\" does not. With several words (for example \"mario rossi\") all of them must match. One- and two-letter words are ignored. With very generic terms the list may be incomplete: add a word to narrow it down.",
+          text: "The **Search** box finds requests by the client's first name, last name, tax code, VAT number, or primary phone or email. First name, last name, tax code and VAT number also find the requests where that person is linked in a registry-type flexible field (for example **Anagrafica Utente** of Orientamento specialistico), even when the request's client is someone else. It starts from the third character and matches words that **begin** with what you type: \"ros\" finds Rossi, \"ssi\" does not. With several words (for example \"mario rossi\") all of them must match. One- and two-letter words are ignored. With very generic terms the list may be incomplete: add a word to narrow it down.",
         },
         {
           type: 'paragraph',
@@ -157,7 +157,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again. A request created for a parent category shows only its lines and accepts only categories and products of that parent: for another parent category create a new request.',
+            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again. A request created for a parent category shows only its lines and accepts only categories and products of that parent: for another parent category create a new request. A request with lines of the old catalogue ([OLD]) accepts only categories of the parent categories it already has: you cannot add or switch to a different parent category.',
             '**Offer rows**: products picked from the **Product catalogue**, with quantities, prices and VAT.',
             "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
             '**Status**: some statuses require a **Note**. A validated status requires at least one offer row. Closing does not, with either a positive or a negative outcome: the product row becomes mandatory when the contract is validated.',

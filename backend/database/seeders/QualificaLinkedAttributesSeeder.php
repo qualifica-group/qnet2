@@ -2,8 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Attribute;
-use App\Services\Attributes\AttributeLinkRules;
+use Database\Seeders\Concerns\LinksLegacyAttributes;
 use Illuminate\Database\Seeder;
 
 /**
@@ -18,6 +17,8 @@ use Illuminate\Database\Seeder;
  */
 class QualificaLinkedAttributesSeeder extends Seeder
 {
+    use LinksLegacyAttributes;
+
     /** Legacy code => current code. Commessa fields first, then offer fields. */
     public const array LINKS = [
         'data_inizio_lavorazione' => 'iso_assignment_date',
@@ -66,36 +67,6 @@ class QualificaLinkedAttributesSeeder extends Seeder
 
     public function run(): void
     {
-        $attributes = Attribute::query()
-            ->whereIn('code', [...array_keys(self::LINKS), ...array_values(self::LINKS)])
-            ->get(['id', 'code', 'type', 'current_attribute_id'])
-            ->keyBy('code');
-        $linked = 0;
-
-        foreach (self::LINKS as $legacyCode => $currentCode) {
-            $skipReason = $this->skipReason($attributes->get($legacyCode), $attributes->get($currentCode));
-
-            if ($skipReason !== null) {
-                $this->command?->warn("{$legacyCode} -> {$currentCode}: {$skipReason}");
-
-                continue;
-            }
-
-            $attributes[$legacyCode]->update(['current_attribute_id' => $attributes[$currentCode]->id]);
-            $linked++;
-        }
-
-        $this->command?->info("Campi collegati: {$linked}");
-    }
-
-    private function skipReason(?Attribute $legacy, ?Attribute $current): ?string
-    {
-        return match (true) {
-            $legacy === null || $current === null => 'campo assente',
-            $legacy->current_attribute_id !== null => $legacy->current_attribute_id === $current->id ? 'gia\' collegato' : 'collegato a un altro campo',
-            $current->current_attribute_id !== null => 'il campo attuale ha a sua volta un campo attuale',
-            ! AttributeLinkRules::compatible($legacy->type, $current->type) => "tipi non compatibili ({$legacy->type} / {$current->type})",
-            default => null,
-        };
+        $this->command?->info('Campi collegati: '.$this->linkLegacyAttributes(self::LINKS));
     }
 }

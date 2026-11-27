@@ -4,7 +4,6 @@ import { Hammer, Loader2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader } from '@/components/detail/record-panel'
-import { WorkOrderStatsStrip } from '@/features/work-orders/work-order-detail-header'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
 
 interface WorkOrderFormHeaderProps {
@@ -17,19 +16,15 @@ interface WorkOrderFormHeaderProps {
 }
 
 /**
- * Identity band + KPI strip of the work order create form, the detail's own
- * (`WorkOrderDetailHeader` + `WorkOrderDetailStats`, spec 0195 D-8 applied to
- * Commesse): monogram, title and code follow what is being typed, the strip
- * follows the dates, and the actions sit where the detail keeps its badges.
- * Completion and contract number only exist once created. A refused submit is
- * reported right under the actions.
+ * Identity band of the work order create form, the detail's own
+ * (`WorkOrderDetailHeader`, spec 0195 D-8 applied to Commesse; no KPI strip,
+ * user directive 2026-11-27): monogram, title and code follow what is being
+ * typed, and the actions sit where the detail keeps its badges. A refused
+ * submit is reported right under the actions.
  */
 export function WorkOrderFormHeader({ control, formId, isSubmitting, submitError, onCancel }: WorkOrderFormHeaderProps) {
   const { t } = useTranslation()
-  const [title, code, startDate, callbackDate] = useWatch({
-    control,
-    name: ['title', 'code', 'start_date', 'callback_date'],
-  })
+  const [title, code] = useWatch({ control, name: ['title', 'code'] })
   const heading = title.trim() || t('workOrders.form.createTitle')
 
   return (
@@ -60,13 +55,6 @@ export function WorkOrderFormHeader({ control, formId, isSubmitting, submitError
           {submitError}
         </div>
       ) : null}
-
-      <WorkOrderStatsStrip
-        completionPercentage={null}
-        startDate={startDate || null}
-        callbackDate={callbackDate}
-        contractExpiryDate={null}
-      />
     </>
   )
 }

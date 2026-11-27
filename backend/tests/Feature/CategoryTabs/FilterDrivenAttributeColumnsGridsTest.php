@@ -19,7 +19,7 @@ it('ignores a filter and a sort on an attribute outside the category and rejects
     $makeRecord($root);
     $makeRecord($root);
     Sanctum::actingAs(categoryTabGridActor($grid));
-    $page = ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => categoryTabFilters($root)];
+    $page = ['startRow' => 0, 'endRow' => 25, 'advancedFilters' => $grid === 'work-orders' ? workOrderCategoryFilters($root) : categoryTabFilters($root)];
 
     $response = $this->postJson("/api/tables/{$grid}/rows", [
         ...$page,
@@ -44,7 +44,7 @@ it('exports the work orders attribute values and honours a filter, a sort and th
     $actor = categoryTabGridActor('work-orders');
     $actor->givePermissionTo(Permission::findOrCreate('work-orders.export', 'web'));
     Sanctum::actingAs($actor);
-    $payload = fn (array $extra): array => ['format' => 'csv', 'columns' => [['colId' => 'attr.wo_field', 'header' => 'WO']], 'advancedFilters' => categoryTabFilters($root), ...$extra];
+    $payload = fn (array $extra): array => ['format' => 'csv', 'columns' => [['colId' => 'attr.wo_field', 'header' => 'WO']], 'advancedFilters' => workOrderCategoryFilters($root), ...$extra];
     $exported = function (array $extra) use ($payload): array {
         $response = $this->postJson('/api/exports/work-orders', $payload($extra))->assertCreated();
         $run = ExportRun::findOrFail($response->json('data.export_run.id'));

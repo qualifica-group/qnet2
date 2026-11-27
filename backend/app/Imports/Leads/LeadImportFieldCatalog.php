@@ -2,6 +2,8 @@
 
 namespace App\Imports\Leads;
 
+use App\Models\Source;
+
 /**
  * Static catalogue backing `LeadsImportDefinition::columns()/fields()/
  * globalConfig()` (spec 0033): the mappable Registry+Lead field ids and the
@@ -63,12 +65,13 @@ final class LeadImportFieldCatalog
      *
      * `source_id` is required in BOTH campaign modes: the operator picks the
      * Fonte at upload time, and it wins over the one each campaign carries.
+     * It starts from `config('imports.leads_default_source')` (by name).
      *
      * @var array<int, array{id: string, required: bool, for_select_resource: string, multiple?: bool, depends_on?: string, required_unless_mapped?: string}>
      */
     private const array GLOBAL_FIELDS = [
         ['id' => 'campaign_id', 'required' => true, 'for_select_resource' => 'campaigns', 'required_unless_mapped' => 'campaign_code'],
-        ['id' => 'source_id', 'required' => true, 'for_select_resource' => 'sources'],
+        ['id' => self::SOURCE_FIELD_ID, 'required' => true, 'for_select_resource' => 'sources'],
         ['id' => 'product_ids', 'required' => false, 'for_select_resource' => 'products', 'multiple' => true, 'depends_on' => 'campaign_id'],
     ];
 
@@ -82,6 +85,8 @@ final class LeadImportFieldCatalog
      * @var array<int, string>
      */
     private const array REQUIRED_FOR_CREATION = ['first_name', 'last_name'];
+
+    private const string SOURCE_FIELD_ID = 'source_id';
 
     /**
      * @return array<int, array{id: string, required: bool}>
@@ -119,6 +124,8 @@ final class LeadImportFieldCatalog
      */
     public function globalConfig(): array
     {
+        $defaults = [self::SOURCE_FIELD_ID => $this->defaultSourceId()];
+
         return array_map(
             fn (array $field): array => [
                 'id' => $field['id'],
@@ -127,11 +134,28 @@ final class LeadImportFieldCatalog
                 'for_select_resource' => $field['for_select_resource'],
                 'multiple' => $field['multiple'] ?? false,
                 'depends_on' => $field['depends_on'] ?? null,
-                'default' => null,
+                'default' => $defaults[$field['id']] ?? null,
                 'required_unless_mapped' => $field['required_unless_mapped'] ?? null,
             ],
             self::GLOBAL_FIELDS,
         );
+    }
+
+    /**
+     * Id of the source named in `config('imports.leads_default_source')`,
+     * or null when none carries that name (renamed or deleted).
+     */
+    private function defaultSourceId(): ?int
+    {
+        $name = config('imports.leads_default_source');
+
+        if (! is_string($name) || $name === '') {
+            return null;
+        }
+
+        $sourceId = Source::query()->where('name', $name)->value('id');
+
+        return $sourceId === null ? null : (int) $sourceId;
     }
 
     /**

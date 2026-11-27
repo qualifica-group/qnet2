@@ -211,6 +211,13 @@ export interface TableColumn {
    */
   hasFilterValues?: boolean
   /**
+   * `true` when the column has more distinct values than the checklist lists
+   * (backend `TableLargeValueColumnsService`): the column then gets only its
+   * condition filter (Contiene, date, number), like `hasFilterValues: false`.
+   * Absent otherwise.
+   */
+  tooManyFilterValues?: boolean
+  /**
    * Allowed values for enum/tags/badge columns (may be resolved dynamically),
    * OR — for an `editor: 'select'` column (spec 0055 D-2) — the backend's own
    * resolved option objects, whose `value` is the id the PATCH submits and

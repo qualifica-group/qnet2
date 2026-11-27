@@ -20,8 +20,8 @@ interface ProductLinesFieldProps {
   disabled?: boolean
   /** The module the card belongs to (spec 0389); omitted where every branch is usable. */
   area?: CategoryPickArea
-  /** Spec 0411: a request bound to one parent category offers only that root to its rows. */
-  lockedRootCategoryId?: number | null
+  /** Spec 0411/0432: the only roots the rows may pick (a bound or a legacy request); `null` = every root. */
+  lockedRootCategoryIds?: readonly number[] | null
   /** Guidance lines the hosting form adds to the field's own hint box. */
   extraHints?: string[]
 }
@@ -54,7 +54,7 @@ export function ProductLinesField({
   onChange,
   disabled = false,
   area,
-  lockedRootCategoryId = null,
+  lockedRootCategoryIds = null,
   extraHints = NO_EXTRA_HINTS,
 }: ProductLinesFieldProps) {
   const { t } = useTranslation()
@@ -114,7 +114,7 @@ export function ProductLinesField({
                     otherRowsFilled={otherRowsFilled(index)}
                     triggerLabel={t('productLines.rootCategory', { n: index + 1 })}
                     area={area}
-                    onlyRootId={lockedRootCategoryId}
+                    onlyRootIds={lockedRootCategoryIds}
                     takenRootIds={takenRootIds(index)}
                   />
                 </div>

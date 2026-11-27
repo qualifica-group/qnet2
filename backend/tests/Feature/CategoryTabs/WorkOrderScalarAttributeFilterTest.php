@@ -44,7 +44,7 @@ function scalarAttributeFiltered(ProductCategory $category, array $workOrders, s
 {
     $ids = test()->postJson('/api/tables/work-orders/rows', [
         'startRow' => 0, 'endRow' => 25,
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
         'filterModel' => ["attr.{$code}" => $filter],
     ])->assertOk()->json('items.*.id');
     $names = array_flip(array_map(static fn (WorkOrder $workOrder): int => $workOrder->id, $workOrders));
@@ -110,7 +110,7 @@ it('finds a searched value beyond the first 500 distinct values of an attribute'
 
     $values = test()->postJson('/api/tables/work-orders/values', [
         'columnId' => 'attr.scope', 'filterModel' => new stdClass, 'limit' => 50, 'search' => 'PEST',
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
     ])->assertOk()->json('data.values');
 
     expect($values)->toBe(['zz pest management']);

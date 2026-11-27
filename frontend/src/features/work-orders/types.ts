@@ -47,6 +47,8 @@ export interface WorkOrderWorkflowStatusRef {
 export interface WorkOrderSupervisor {
   id: number
   name: string
+  /** The person's photo (data URI), `null` without one; optional so older fixtures stay valid. */
+  avatar_url?: string | null
 }
 
 /**
@@ -56,6 +58,8 @@ export interface WorkOrderSupervisor {
 export interface WorkOrderParticipant {
   id: number
   name: string
+  /** As on `WorkOrderSupervisor`. */
+  avatar_url?: string | null
   position: number
 }
 
@@ -202,11 +206,6 @@ export interface WorkOrderDetail {
   /** The set resolved for THIS work order: the picker never offers anything outside it (422 otherwise). */
   work_order_workflow_statuses: WorkOrderWorkflowStatusRef[]
   /**
-   * Spec 0402: the net amount of the commessa's lines, `null` without
-   * `view_contract_data`. Optional so older fixtures stay valid.
-   */
-  amount?: string | null
-  /**
    * Spec 0146 D-8/AC-023: task of this commessa NOT closed, counted WITHOUT
    * visibility (the actor may not see all of them) — the exact set the
    * force-close side effect would flip to `ClosedNegative`. Drives the
@@ -221,7 +220,6 @@ export interface WorkOrderDetail {
   /** "Partecipanti": the ordered team, gaps preserved via `position`. */
   participants: WorkOrderParticipant[]
   description: string | null
-  internal_notes: string | null
   /** Spec 0267 D-7: true when the lines come from more than one offer (the single-offer fields below are then null). */
   is_multi_quote: boolean
   /**
@@ -321,7 +319,6 @@ export interface CreateWorkOrderPayload {
   supervisor_ids: number[]
   callback_date?: string | null
   description?: string | null
-  internal_notes?: string | null
   is_force_closed?: boolean
   force_close_reason?: string | null
   /** Spec 0324 D-6: a `closed`-group status of the resolved set; used only when forcing the closure. */

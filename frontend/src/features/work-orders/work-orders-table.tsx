@@ -24,11 +24,13 @@ interface WorkOrdersGridProps {
   showWorkPhaseTabs?: boolean
   /** Page action beside the tabs: the "Commesse di Progetto" create button (spec 0431). */
   createAction?: ReactNode
+  /** The legacy Commesse filters always in view, no quick-search (user request 2026-11-27); only the "Commesse" page. */
+  pinnedFilters?: boolean
 }
 
 /**
  * The shared body of the work orders pages (spec 0359): the grid with the legacy row actions
- * (Modifica, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
+ * (the eye, Responsabili e Partecipanti, the tab menu, via `useWorkOrderRowActions`, spec 0405)
  * and its dialogs. Permission gating is an affordance only; the backend re-authorizes each call.
  */
 export function WorkOrdersGrid({
@@ -36,6 +38,7 @@ export function WorkOrdersGrid({
   rowScope,
   scope,
   showWorkPhaseTabs = false,
+  pinnedFilters = false,
   createAction,
 }: WorkOrdersGridProps) {
   const tableRef = useRef<TableViewHandle>(null)
@@ -70,6 +73,7 @@ export function WorkOrdersGrid({
         domain={domain}
         scope={scope}
         rowScope={rowScope}
+        pinnedFilters={pinnedFilters}
         onFilterModelChange={workPhaseTabs.onFilterModelChange}
         onAggregatesChange={workPhaseTabs.onAggregatesChange}
         renderers={renderers}
@@ -92,6 +96,7 @@ export function WorkOrdersTable() {
       rowScope={PROCESSING_ROW_SCOPE}
       scope={ATTRIBUTE_COLUMNS_FROM_FILTERS_SCOPE}
       showWorkPhaseTabs
+      pinnedFilters
     />
   )
 }

@@ -30,7 +30,6 @@ export function buildCreatePayload(values: WorkOrderFormValues, suggestedCode?: 
     participant_slots: values.participant_slots,
     callback_date: values.callback_date,
     description: values.description,
-    internal_notes: values.internal_notes,
     quote_line_ids: values.quote_line_ids,
     // Spec 0098: la mappa viaggia sempre alla create — non c'e' nulla di
     // persistito da conservare, quindi il merge sparso lato server non serve
@@ -154,16 +153,6 @@ export function buildUpdatePayload(
   }
   if (values.description !== original.description) {
     payload.description = values.description
-  }
-  if (values.internal_notes !== original.internal_notes) {
-    payload.internal_notes = values.internal_notes
-  }
-  // Spec 0322: never `null` on a persisted work order, so a null form value is "not picked".
-  if (
-    typeof values.work_order_workflow_status_id === 'number' &&
-    values.work_order_workflow_status_id !== original.work_order_workflow_status_id
-  ) {
-    payload.work_order_workflow_status_id = values.work_order_workflow_status_id
   }
   const originalLineIds = original.quote_lines.map((line) => line.id)
   if (!sameIdSet(values.quote_line_ids, originalLineIds)) {

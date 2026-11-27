@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
-import { netAmountHint, totalsHint } from '@/features/work-order-contract-data/contract-data-formulas'
-import { CONTRACT_DATA, PAID_LINE } from '@/features/work-order-contract-data/contract-data-fixtures'
+import { netAmountHint, revenueTotalHint } from '@/features/work-order-contract-data/contract-data-formulas'
+import { PAID_LINE } from '@/features/work-order-contract-data/contract-data-fixtures'
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -15,12 +15,11 @@ describe('netAmountHint', () => {
   })
 })
 
-describe('totalsHint', () => {
-  it('shows the net-of-commissions formula with the totals', () => {
-    expect(totalsHint('netOfCommissions', CONTRACT_DATA.totals, t).lines[1]).toBe('3,000.00 − 450.00 = 2,550.00')
-  })
-
-  it('is a rule only for the other KPIs', () => {
-    expect(totalsHint('revenue', CONTRACT_DATA.totals, t).lines).toHaveLength(1)
+describe('revenueTotalHint', () => {
+  it('is the total revenue rule only', () => {
+    expect(revenueTotalHint(t)).toEqual({
+      title: 'Total revenue',
+      lines: ["Sum of the lines' effective revenue: the received commission, otherwise the net amount."],
+    })
   })
 })

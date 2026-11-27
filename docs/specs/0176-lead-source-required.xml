@@ -43,6 +43,11 @@
     D-8  (utente, delta 2026-09-30) Auto-mapping: "Nome" -> `full_name`, salvo che il file abbia anche una colonna
          che mappa su `last_name` ("Cognome"): allora "Nome" -> `first_name` (`config('imports.contextual_aliases')`,
          applicato da `ColumnMapper`). "Indirizzo e-mail" -> `email` (alias).
+    D-9  (utente, delta 2026-11-27) Import lead: la Fonte del wizard parte impostata su "Social".
+         `LeadImportFieldCatalog::globalConfig()` espone come `default` di `source_id` l'id della fonte il cui
+         nome e' `config('imports.leads_default_source')` (env `IMPORT_LEADS_DEFAULT_SOURCE`, default "Social");
+         nessuna fonte con quel nome -> `default` null (campo vuoto come prima). Resta modificabile e la
+         precompilazione dalla campagna (D-5) la sostituisce. Solo leads, non request-management.
   </decisions>
 
   <contract>

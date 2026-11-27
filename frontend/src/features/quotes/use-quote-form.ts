@@ -125,6 +125,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode, withNewOpportunity 
     () =>
       mode.type === 'edit'
         ? {
+            quoteId: mode.quote.id,
             productIds: mode.quote.offer_lines.map((line) => line.product_id),
             context: {
               applicable_attributes: mode.quote.applicable_attributes,

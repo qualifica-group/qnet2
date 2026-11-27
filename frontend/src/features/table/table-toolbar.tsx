@@ -2,11 +2,13 @@ import { type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   FilterX,
+  Funnel,
   Maximize2,
   Minimize2,
   MoreHorizontal,
   RotateCcw,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -58,6 +60,17 @@ export interface TableToolbarProps {
    * selection or bulk delete.
    */
   bulkActionsSlot?: ReactNode
+  /** The applied-filter chips with their "clear all", right after the row count (pinned filters only). */
+  filterChipsSlot?: ReactNode
+  /** The funnel beside the options menu that shows/hides the pinned filters; absent = no funnel. */
+  filtersToggle?: FiltersToggle
+}
+
+export interface FiltersToggle {
+  open: boolean
+  /** Applied filters, counted on the funnel while they are hidden. */
+  activeCount: number
+  onToggle: () => void
 }
 
 interface IconButtonProps {
@@ -89,12 +102,49 @@ function IconButton({ icon, label, onClick, disabled }: IconButtonProps) {
   )
 }
 
+/** Funnel toggle of the pinned filters: pressed while they show, the active count while hidden. */
+function FiltersToggleButton({ open, activeCount, onToggle }: FiltersToggle) {
+  const { t } = useTranslation()
+  const label = t(open ? 'table.hideFilters' : 'table.showFilters')
+  const showCount = !open && activeCount > 0
+  const accessibleLabel = showCount ? `${label}, ${t('table.advancedFilters.activeCount', { count: activeCount })}` : label
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={accessibleLabel}
+          aria-pressed={open}
+          onClick={onToggle}
+          className="relative text-muted-foreground hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground"
+        >
+          <Funnel aria-hidden="true" />
+          {showCount ? (
+            <Badge
+              variant="destructive"
+              aria-hidden="true"
+              className="absolute -right-1 -top-1 h-4 min-w-4 justify-center rounded-full px-1 text-[10px] tabular-nums"
+            >
+              {activeCount}
+            </Badge>
+          ) : null}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 /**
  * The unified table header (spec 0009): a single bar fused to the top of the
  * grid. Left holds the live row counter (the quick-search and the advanced
  * filters and the saved filters sit above the grid, in `TableFilterBar`);
- * right holds the icon controls — reset-filters, an options
- * menu (import, export, reset layout) and fullscreen. Purely presentational: every piece
+ * right holds the icon controls — reset-filters, the funnel of the pinned
+ * filters (when the page has them), an options menu (import, export, reset
+ * layout) and fullscreen. Purely presentational: every piece
  * of state and every handler is owned by the caller (TableView).
  */
 export function TableToolbar({
@@ -110,13 +160,15 @@ export function TableToolbar({
   importSlot,
   exportSlot,
   bulkActionsSlot,
+  filterChipsSlot,
+  filtersToggle,
 }: TableToolbarProps) {
   const { t } = useTranslation()
 
   return (
     <div className="flex items-center gap-2 border-b border-border bg-card px-2.5 py-2">
-      {/* Left: live row count + bulk actions */}
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+      {/* Left: live row count + bulk actions + (pinned filters) the applied-filter chips */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
         {rowCount != null ? (
           <span className="hidden shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground sm:inline">
             {t('table.rowCount', { count: rowCount })}
@@ -124,6 +176,8 @@ export function TableToolbar({
         ) : null}
 
         {bulkActionsSlot}
+
+        {filterChipsSlot}
       </div>
 
       {/* Right: icon controls */}
@@ -136,6 +190,8 @@ export function TableToolbar({
             disabled={resettingFilters}
           />
         ) : null}
+
+        {filtersToggle ? <FiltersToggleButton {...filtersToggle} /> : null}
 
         <DropdownMenu>
           <Tooltip>

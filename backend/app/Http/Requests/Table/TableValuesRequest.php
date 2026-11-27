@@ -30,14 +30,6 @@ use Illuminate\Validation\Validator;
  */
 class TableValuesRequest extends FormRequest
 {
-    /**
-     * Cap + default for the number of distinct values returned. Mirrors the
-     * `limit` bound documented in spec 0004 (cap 200, default 200).
-     */
-    private const int MAX_LIMIT = 200;
-
-    private const int DEFAULT_LIMIT = 200;
-
     private ?TableDefinition $resolvedDefinition = null;
 
     public function authorize(): bool
@@ -56,7 +48,7 @@ class TableValuesRequest extends FormRequest
         return [
             'columnId' => ['required', 'string', Rule::in($filterable)],
             'search' => ['nullable', 'string', 'max:255'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_LIMIT],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:'.$this->maxLimit()],
 
             'filterModel' => ['sometimes', 'array'],
             // Whitelist the filter keys: every key must be a filterable column.
@@ -127,7 +119,7 @@ class TableValuesRequest extends FormRequest
         return [
             'columnId' => $validated['columnId'],
             'search' => $validated['search'] ?? null,
-            'limit' => $validated['limit'] ?? self::DEFAULT_LIMIT,
+            'limit' => $validated['limit'] ?? $this->maxLimit(),
             'filterModel' => $validated['filterModel'] ?? [],
             'productCategoryId' => isset($validated['productCategoryId']) ? (int) $validated['productCategoryId'] : null,
             'productCategoryBranchId' => isset($validated['productCategoryBranchId']) ? (int) $validated['productCategoryBranchId'] : null,
@@ -136,6 +128,16 @@ class TableValuesRequest extends FormRequest
             'registryId' => isset($validated['registryId']) ? (int) $validated['registryId'] : null,
             'referentId' => isset($validated['referentId']) ? (int) $validated['referentId'] : null,
         ];
+    }
+
+    /**
+     * Cap + default for the number of distinct values returned: the checklist
+     * limit, past which a text/number/date column offers only its condition
+     * filter (TableLargeValueColumnsService).
+     */
+    private function maxLimit(): int
+    {
+        return (int) config('table-filter-values.limit');
     }
 
     /**

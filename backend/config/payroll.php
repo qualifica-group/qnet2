@@ -38,4 +38,24 @@ return [
         'payment_method_code' => env('PAYSLIP_PAYMENT_METHOD_CODE', 'bonifico_bancario'),
         'cost_type_code' => env('PAYSLIP_COST_TYPE_CODE', '63.01.001'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Personnel cash flow forecast (spec 0434, D-2..D-4)
+    |--------------------------------------------------------------------------
+    |
+    | The regular payslip type that carries the monthly net, the default payment
+    | days of the net salary and of the F24 (both in the month after the
+    | competence month) and the extra monthly payments (thirteenth, fourteenth)
+    | as month and day of payment.
+    */
+    'forecast' => [
+        'regular_payslip_type' => env('PAYROLL_FORECAST_REGULAR_PAYSLIP_TYPE', 'MENSILITA_NORMALE'),
+        'salary_day' => (int) env('PAYROLL_FORECAST_SALARY_DAY', 15),
+        'f24_day' => (int) env('PAYROLL_FORECAST_F24_DAY', 16),
+        'extra_payments' => [
+            'thirteenth' => ['month' => 12, 'day' => 20],
+            'fourteenth' => ['month' => 7, 'day' => 15],
+        ],
+    ],
 ];

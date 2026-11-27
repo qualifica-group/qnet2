@@ -47,6 +47,15 @@ describe('resolveFilter', () => {
     },
   )
 
+  // User decision 2026-11-27: past the checklist limit only the condition filter is offered.
+  it.each([
+    ['text', 'agTextColumnFilter'],
+    ['number', 'agNumberColumnFilter'],
+    ['date', 'agDateColumnFilter'],
+  ] as const)('returns only the condition filter for a "%s" column with too many values', (filterType, expected) => {
+    expect(resolveFilter(stubColumn({ id: 'x', type: 'text', filterType, tooManyFilterValues: true }))).toBe(expected)
+  })
+
   it.each(['set', 'boolean'] as const)(
     'returns agSetColumnFilter for filterType "%s"',
     (filterType) => {
@@ -154,7 +163,6 @@ describe('buildColumnFilter', () => {
     const { filter, filterParams } = buildColumnFilter(
       'users',
       stubColumn({ id: 'primary_address', type: 'text', hasFilterValues: false }),
-      vi.fn(),
       translate,
     )
 
@@ -168,7 +176,6 @@ describe('buildColumnFilter', () => {
     const { filter, filterParams } = buildColumnFilter(
       'users',
       stubColumn({ id: 'email', type: 'text' }),
-      vi.fn(),
       translate,
     )
 
@@ -190,7 +197,6 @@ describe('buildColumnFilter', () => {
       const { filterParams } = buildColumnFilter(
         'users',
         stubColumn({ id: 'x', type: 'text', filterType }),
-        vi.fn(),
         translate,
       )
 
@@ -207,7 +213,6 @@ describe('buildColumnFilter', () => {
     const { filter, filterParams } = buildColumnFilter(
       'users',
       stubColumn({ id: 'user_type', type: 'enum' }),
-      vi.fn(),
       translate,
     )
 
@@ -221,7 +226,6 @@ describe('buildColumnFilter', () => {
     const { filterParams } = buildColumnFilter(
       'users',
       stubColumn({ id: 'is_active', type: 'boolean', filterType: 'set' }),
-      vi.fn(),
       translate,
     )
 
@@ -240,7 +244,6 @@ describe('buildColumnFilter', () => {
     const { filterParams } = buildColumnFilter(
       'products',
       stubColumn({ id: 'usages', type: 'tags', filterType: 'set', enumKey: 'product_usage' }),
-      vi.fn(),
       translate,
     )
 
@@ -257,7 +260,6 @@ describe('buildColumnFilter', () => {
       'work-orders',
       // The backend serves `type: 'date'`, absent from the frontend ColumnType union.
       stubColumn({ id: 'start_date', type: 'date' as TableColumn['type'], filterType: 'date' }),
-      vi.fn(),
       translate,
     )
 
@@ -284,7 +286,7 @@ describe('buildColumnFilter', () => {
         filterType: 'text',
         table: { ...table, summary: { ...table.summary, column: summaryColumn } },
       })
-      const { filterParams } = buildColumnFilter('work-orders', column, vi.fn(), translate)
+      const { filterParams } = buildColumnFilter('work-orders', column, translate)
 
       return (filterParams as IMultiFilterParams).filters?.[0]?.filterParams as {
         valueFormatter?: (p: { value: unknown }) => string
@@ -299,7 +301,6 @@ describe('buildColumnFilter', () => {
     const { filterParams } = buildColumnFilter(
       'users',
       stubColumn({ id: 'user_type', type: 'enum' }),
-      vi.fn(),
       translate,
     )
 
@@ -322,13 +323,12 @@ describe('createColumnValuesGetter', () => {
 
   it('fetches values scoped to the OTHER columns, excluding the target column', async () => {
     fetchValuesMock.mockResolvedValue({ values: ['a', 'b'], hasMore: false })
-    const onTruncated = vi.fn()
     const params = stubValuesParams({
       email: { filterType: 'text', type: 'contains', filter: 'x' },
       roles: { filterType: 'set', values: ['admin'] },
     })
 
-    createColumnValuesGetter('users', 'email', onTruncated)(params)
+    createColumnValuesGetter('users', 'email')(params)
     await waitFor(() => expect(params.success).toHaveBeenCalled())
 
     expect(fetchValuesMock).toHaveBeenCalledWith('users', {
@@ -336,18 +336,6 @@ describe('createColumnValuesGetter', () => {
       filterModel: { roles: { filterType: 'set', values: ['admin'] } },
     })
     expect(params.success).toHaveBeenCalledWith(['a', 'b'])
-    expect(onTruncated).not.toHaveBeenCalled()
-  })
-
-  it('signals truncation when the backend reports hasMore', async () => {
-    fetchValuesMock.mockResolvedValue({ values: ['a'], hasMore: true })
-    const onTruncated = vi.fn()
-    const params = stubValuesParams({})
-
-    createColumnValuesGetter('users', 'email', onTruncated)(params)
-    await waitFor(() => expect(params.success).toHaveBeenCalled())
-
-    expect(onTruncated).toHaveBeenCalledOnce()
   })
 
   it('resolves to an empty list without crashing on a fetch failure', async () => {
@@ -355,7 +343,7 @@ describe('createColumnValuesGetter', () => {
     const params = stubValuesParams({})
 
     expect(() =>
-      createColumnValuesGetter('users', 'email', vi.fn())(params),
+      createColumnValuesGetter('users', 'email')(params),
     ).not.toThrow()
     await waitFor(() => expect(params.success).toHaveBeenCalledWith([]))
   })
@@ -366,7 +354,7 @@ describe('createColumnValuesGetter', () => {
     fetchValuesMock.mockResolvedValue({ values: ['a'], hasMore: false })
     const params = stubValuesParams({})
 
-    createColumnValuesGetter('request-management', 'attr.durata_corso', vi.fn(), 12)(params)
+    createColumnValuesGetter('request-management', 'attr.durata_corso', 12)(params)
     await waitFor(() => expect(params.success).toHaveBeenCalled())
 
     expect(fetchValuesMock).toHaveBeenCalledWith('request-management', {
@@ -380,7 +368,7 @@ describe('createColumnValuesGetter', () => {
     fetchValuesMock.mockResolvedValue({ values: [], hasMore: false })
     const params = stubValuesParams({})
 
-    createColumnValuesGetter('users', 'email', vi.fn())(params)
+    createColumnValuesGetter('users', 'email')(params)
     await waitFor(() => expect(params.success).toHaveBeenCalled())
 
     expect(fetchValuesMock.mock.calls[0][1]).not.toHaveProperty('productCategoryId')
@@ -392,7 +380,7 @@ describe('createColumnValuesGetter', () => {
     fetchValuesMock.mockResolvedValue({ values: ['draft'], hasMore: false })
     const params = stubValuesParams({})
 
-    createColumnValuesGetter('quotes', 'quote_status', vi.fn(), undefined, 7)(params)
+    createColumnValuesGetter('quotes', 'quote_status', undefined, 7)(params)
     await waitFor(() => expect(params.success).toHaveBeenCalled())
 
     expect(fetchValuesMock).toHaveBeenCalledWith('quotes', {
@@ -407,7 +395,7 @@ describe('createColumnValuesGetter', () => {
     fetchValuesMock.mockResolvedValue({ values: [], hasMore: false })
     const params = stubValuesParams({})
 
-    createColumnValuesGetter('quotes', 'quote_status', vi.fn())(params)
+    createColumnValuesGetter('quotes', 'quote_status')(params)
     await waitFor(() => expect(params.success).toHaveBeenCalled())
 
     expect(fetchValuesMock.mock.calls[0][1]).not.toHaveProperty('opportunityId')

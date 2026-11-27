@@ -40,12 +40,10 @@ export function editDefaults(workOrder: WorkOrderDetail): WorkOrderFormValues {
     participant_slots: padManagerSlots(managerSlotsFromRefs(workOrder.participants), DEFAULT_PARTICIPANT_SLOTS),
     callback_date: workOrder.callback_date,
     description: workOrder.description,
-    internal_notes: workOrder.internal_notes,
     quote_line_ids: workOrder.quote_lines.map((line) => line.id),
     // Spec 0124 D-9: never resubmitted (`buildUpdatePayload` never reads it,
     // D-5), kept only so the shared shape stays one.
     task_template_id: workOrder.task_template?.id ?? null,
-    work_order_workflow_status_id: workOrder.work_order_workflow_status_id,
     // An empty PHP map serializes as a JSON ARRAY (`toAttributeValuesMap`),
     // and every applicable code needs its key for the Zod object: seeded
     // here, not by the effect below, so the `values` re-sync after a save
@@ -89,10 +87,8 @@ export function createDefaults(initialCode: string | undefined, standalone: bool
     participant_slots: Array.from({ length: DEFAULT_PARTICIPANT_SLOTS }, () => null),
     callback_date: null,
     description: null,
-    internal_notes: null,
     quote_line_ids: [],
     task_template_id: null,
-    work_order_workflow_status_id: null,
     attribute_values: {},
     ...NO_REFERENCES,
     product_lines: standalone ? [emptyProductLineRow()] : [],

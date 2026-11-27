@@ -325,6 +325,7 @@ export const requestManagement = {
       hint: 'Le categorie scelte qui filtrano i prodotti di interesse e determinano i campi specifici della richiesta al salvataggio.',
       /** Spec 0411: the request is bound to one parent category. */
       rootLocked: 'La richiesta appartiene alla categoria madre {{root}}: puoi scegliere solo sue categorie. Per un\'altra categoria crea una nuova richiesta.',
+      legacyRootsLocked: 'La richiesta ha linee di prodotto del catalogo vecchio: puoi scegliere solo categorie di {{roots}}. Per un\'altra categoria madre crea una nuova richiesta.',
     },
     collaboration: {
       notesTab: 'Note',

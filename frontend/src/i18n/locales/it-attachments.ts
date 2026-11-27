@@ -20,8 +20,14 @@ export const attachments = {
   errors: {
     load: 'Impossibile caricare i documenti. Riprova.',
     upload: 'Impossibile caricare il file. Riprova.',
-    uploadSome_one: 'Impossibile caricare 1 file: {{names}}. Gli altri sono stati caricati.',
-    uploadSome_other: 'Impossibile caricare {{count}} file: {{names}}. Gli altri sono stati caricati.',
+    uploadSome_one: 'Impossibile caricare 1 file. Gli altri sono stati caricati.',
+    uploadSome_other: 'Impossibile caricare {{count}} file. Gli altri sono stati caricati.',
+    uploadNone_one: 'Impossibile caricare il file.',
+    uploadNone_other: 'Impossibile caricare i {{count}} file.',
+    failedFile: '{{name}}: {{reason}}',
+    reasons: {
+      tooLarge: 'Il file supera la dimensione massima consentita: riducilo (ad esempio comprimendo il PDF) e riprova.',
+    },
     delete: 'Impossibile eliminare il documento. Riprova.',
     preview: 'Impossibile aprire il documento. Riprova.',
     previewBlocked: 'Il browser ha bloccato la finestra di anteprima. Consenti i pop-up per questo sito.',

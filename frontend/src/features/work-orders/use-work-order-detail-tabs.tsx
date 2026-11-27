@@ -16,6 +16,7 @@ import { WorkOrderPagePanel } from '@/features/work-order-page/work-order-page-p
 import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-order-invoices-section'
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { workOrderModuleFor } from '@/features/work-orders/work-order-type-routing'
+import { WorkOrderProgressSection } from '@/features/work-orders/work-order-progress-section'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 import { IntegrationWorkOrderAccountingActions } from '@/integrations/integration-work-order-accounting-actions'
@@ -28,11 +29,13 @@ export const WORK_ORDER_INFO_TAB = 'info'
  * section that expects the host to pad it (notes, documents, email, activity);
  * the others (Info, Task, Costi, Proforma, Appunti) bring their own padding.
  * `subTabs`: a group tab (Documenti, Amministrazione) that switches between
- * its own sub-tabs.
+ * its own sub-tabs; `footer`: what the group shows under whichever sub-tab is
+ * open (Amministrazione's "Avanzamento commessa").
  */
 export interface WorkOrderDetailTab extends RecordCollaborationTab {
   padded?: boolean
   subTabs?: WorkOrderDetailTab[]
+  footer?: ReactNode
 }
 
 interface GroupTab {
@@ -41,21 +44,24 @@ interface GroupTab {
   icon: ReactNode
   badge?: ReactNode
   subTabs: WorkOrderDetailTab[]
+  footer?: ReactNode
 }
 
 /**
  * A legacy group tab: absent with no authorized sub-tab, the sub-tab itself
- * when it is the only one (no strip of one), the group otherwise.
+ * when it is the only one (no strip of one, the footer under its content),
+ * the group otherwise.
  */
-function groupTab({ value, label, icon, badge, subTabs }: GroupTab): WorkOrderDetailTab | null {
+function groupTab({ value, label, icon, badge, subTabs, footer }: GroupTab): WorkOrderDetailTab | null {
   if (subTabs.length === 0) {
     return null
   }
   if (subTabs.length === 1) {
-    return subTabs[0]
+    const [only] = subTabs
+    return footer ? { ...only, content: <>{only.content}{footer}</> } : only
   }
 
-  return { value, label, icon, badge, content: null, subTabs }
+  return { value, label, icon, badge, content: null, subTabs, footer }
 }
 
 interface UseWorkOrderDetailTabsArgs {
@@ -64,6 +70,8 @@ interface UseWorkOrderDetailTabsArgs {
   info: ReactNode
   /** Slot on the right of the strip where the Task board portals its header actions. */
   actionsContainer: HTMLElement | null
+  /** After a progress registration from Amministrazione: the host refreshes its lists. */
+  onChanged?: () => void
   /** A note may have added Participants (spec 0353): the host rereads the detail. */
   onMembersAdded: () => void
 }
@@ -82,6 +90,7 @@ export function useWorkOrderDetailTabs({
   workOrder,
   info,
   actionsContainer,
+  onChanged,
   onMembersAdded,
 }: UseWorkOrderDetailTabsArgs): WorkOrderDetailTab[] {
   const { t } = useTranslation()
@@ -149,7 +158,7 @@ export function useWorkOrderDetailTabs({
     })
   }
 
-  // Step 4: Amministrazione = Costi + proforma attive e passive.
+  // Step 4: Amministrazione = Costi + proforma attive e passive, "Avanzamento commessa" under them (legacy "€" tab).
   const accountingTabs: WorkOrderDetailTab[] = []
   if (actions.view_costs) {
     accountingTabs.push({
@@ -194,6 +203,13 @@ export function useWorkOrderDetailTabs({
     label: t('workOrders.detail.tabs.accounting'),
     icon: <Euro className="size-3.5" aria-hidden="true" />,
     subTabs: accountingTabs,
+    // The Info tab's progress section, always in sight under the open sub-tab like the legacy "€"
+    // page (user directive 2026-11-27); only with an accounting sub-tab, never a tab of its own.
+    footer: (
+      <div className="border-t p-4">
+        <WorkOrderProgressSection workOrder={workOrder} onChanged={onChanged} />
+      </div>
+    ),
   })
   for (const group of [documentsGroup, accountingGroup]) {
     if (group) {

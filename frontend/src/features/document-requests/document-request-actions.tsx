@@ -6,6 +6,7 @@ import { useConfirm } from '@/components/confirm-dialog-context'
 import { Button } from '@/components/ui/button'
 import type { DocumentRequestAction } from '@/features/document-requests/api'
 import { DocumentRequestEditDialog } from '@/features/document-requests/document-request-edit-dialog'
+import { DocumentRequestRefreshRulesButton } from '@/features/document-requests/document-request-rules-actions'
 import { requestActions } from '@/features/document-requests/document-request-status'
 import { DocumentRequestSyncLogsDialog } from '@/features/document-requests/document-request-sync-logs-dialog'
 import type { DocumentRequest } from '@/features/document-requests/types'
@@ -76,6 +77,7 @@ export function DocumentRequestActions({ request }: { request: DocumentRequest }
           {t('documentRequests.actions.refresh')}
         </Button>
       ) : null}
+      <DocumentRequestRefreshRulesButton request={request} />
       {allowed.complete ? (
         <Button type="button" size="sm" variant="secondary" disabled={run.isPending} onClick={() => void completeRequest()}>
           <CheckCheck aria-hidden="true" />

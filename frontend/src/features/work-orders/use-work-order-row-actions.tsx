@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Contact, Info, ListChecks, MessagesSquare, Paperclip } from 'lucide-react'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
-import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
+import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { PROJECT_WORK_ORDERS_DOMAIN } from '@/features/work-orders/project-work-order-module'
@@ -25,7 +25,10 @@ const DELETE_ACTION_KEY = 'delete'
 /** Row-action key of the eye, which opens the commessa. */
 const VIEW_ACTION_KEY = 'view'
 
-/** The row actions that open the commessa on one of its detail tabs (spec 0405): action key = tab value. */
+/**
+ * The "..." menu entries that open the commessa on one of its detail tabs (spec 0405): action key = tab value.
+ * They always open the modal, never the page (user request 2026-11-27).
+ */
 const TAB_ACTION_KEYS: ReadonlySet<string> = new Set(['info', 'notes', 'tasks', 'documents'])
 
 const ROW_ACTION_ICONS: ActionIconMap = {
@@ -41,8 +44,8 @@ const isProjectRow = (row: TableRow): boolean => row.type === 'project'
 
 /**
  * The page each row action leads to, for Ctrl/Cmd+click: the commessa's page
- * (in the module of its type) for the eye, the page on that tab for Info and
- * the menu entries.
+ * (in the module of its type) for the eye, the page on that tab for the tab
+ * entries of the menu.
  */
 const resolveActionHref: ActionHrefResolver = (action, row) => {
   if (TAB_ACTION_KEYS.has(action.key)) {
@@ -84,11 +87,13 @@ export interface UseWorkOrderRowActionsResult {
  * The Commesse row actions of the legacy `OrdersTable` (spec 0405), shared by
  * every surface that lists work orders (Commesse, Commesse di Progetto, the
  * Contract and Anagrafica tabs). Each row opens in the module of its type
- * (2026-11-25): a project one on `/project-work-orders/:id`. The eye (in place of the legacy "Modifica")
- * opens the record, "Responsabili e Partecipanti" its team dialog, Info and
- * the menu entries (Storico Note / Task / Documenti) open the record on that
- * tab, Elimina (last in the menu, already confirmed by the row) deletes it. The progress cell keeps its own
- * dialog (spec 0321), the "€" cell the proforma request one (spec 0407).
+ * (2026-11-25): a project one on `/project-work-orders/:id`. The eye (in place
+ * of the legacy "Modifica") opens the record, "Responsabili e Partecipanti" its
+ * team dialog, the menu entries Info / Storico Note / Task / Documenti open the
+ * record on that tab in the modal whatever the open mode (user request
+ * 2026-11-27: the grid is never left), Elimina (last in the menu, already
+ * confirmed by the row) deletes it. The progress cell keeps its own dialog
+ * (spec 0321), the "€" cell the proforma request one (spec 0407).
  */
 export function useWorkOrderRowActions({
   onMutated,
@@ -101,8 +106,13 @@ export function useWorkOrderRowActions({
 
   const processingOpener = useModuleOpener(WORK_ORDERS_DOMAIN, { onSaved: onMutated, forceMode })
   const projectOpener = useModuleOpener(PROJECT_WORK_ORDERS_DOMAIN, { onSaved: onMutated, forceMode })
-  const { openView: openProcessingView, openViewTab: openProcessingViewTab } = processingOpener
-  const { openView: openProjectView, openViewTab: openProjectViewTab } = projectOpener
+  // The tab entries of the menu always open the modal (user request 2026-11-27).
+  const processingTabOpener = useModuleOpener(WORK_ORDERS_DOMAIN, { onSaved: onMutated, forceMode: OPEN_MODE_MODAL })
+  const projectTabOpener = useModuleOpener(PROJECT_WORK_ORDERS_DOMAIN, { onSaved: onMutated, forceMode: OPEN_MODE_MODAL })
+  const { openView: openProcessingView } = processingOpener
+  const { openView: openProjectView } = projectOpener
+  const { openViewTab: openProcessingViewTab } = processingTabOpener
+  const { openViewTab: openProjectViewTab } = projectTabOpener
   const { remove } = useDeleteWorkOrder(onMutated)
 
   const handleAction: RowActionHandler = useCallback(
@@ -167,6 +177,8 @@ export function useWorkOrderRowActions({
       <>
         {processingOpener.sheet}
         {projectOpener.sheet}
+        {processingTabOpener.sheet}
+        {projectTabOpener.sheet}
       </>
     ),
     dialogs,

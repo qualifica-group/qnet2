@@ -26,6 +26,16 @@ enum DocumentRequestStatus: string
     }
 
     /**
+     * States in which ArchivioSmart copies the current checklist rules into the request (spec 0432).
+     *
+     * @return array<int, self>
+     */
+    public static function open(): array
+    {
+        return [self::Draft, self::Sent, self::InProgress];
+    }
+
+    /**
      * States in which the customer can be reminded.
      *
      * @return array<int, self>

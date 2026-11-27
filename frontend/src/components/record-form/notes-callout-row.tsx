@@ -10,7 +10,7 @@ import { useResourcePermissions } from '@/features/authorization/permissions'
 import { cn } from '@/lib/utils'
 
 interface NotesCalloutRowProps {
-  /** The form field holding the note (`general_notes`, `internal_notes`): keys the inline editor and its permission. */
+  /** The form field holding the note (`general_notes`, `description`): keys the inline editor and its permission. */
   field: string
   title: string
   notes: string | null
@@ -21,6 +21,8 @@ interface NotesCalloutRowProps {
   editor: ReactNode
   /** Extra condition on top of the field permission (e.g. a contract editable only while still working). */
   canEdit?: boolean
+  /** Overrides on the note's text (e.g. its own scroll height), merged over `GENERAL_NOTES_TEXT_CLASS`. */
+  textClassName?: string
   className?: string
 }
 
@@ -43,6 +45,7 @@ export function NotesCalloutRow({
   inline,
   editor,
   canEdit = true,
+  textClassName,
   className,
 }: NotesCalloutRowProps) {
   const titleId = useId()
@@ -71,7 +74,7 @@ export function NotesCalloutRow({
         className="mt-1"
       >
         {hasNotes ? (
-          <p className={GENERAL_NOTES_TEXT_CLASS}>{notes}</p>
+          <p className={cn(GENERAL_NOTES_TEXT_CLASS, textClassName)}>{notes}</p>
         ) : (
           <p className="text-sm text-muted-foreground">{placeholder}</p>
         )}

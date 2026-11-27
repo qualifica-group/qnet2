@@ -82,8 +82,8 @@
     <decision id="D-4">
       "Chiusura forzata" e la coppia `is_force_closed` BOOLEAN default false indicizzato +
       `force_close_reason` TEXT nullable, entrambi in `#[Fillable]` (l'utente li imposta dal
-      form, non sono flag di sistema). `force_close_reason` e OBBLIGATORIO quando
-      `is_force_closed` e true e viene AZZERATO a NULL quando torna false, nello stesso save:
+      form, non sono flag di sistema). `force_close_reason` e facoltativo (Rev. 2026-11-27,
+      prima obbligatorio con `is_force_closed` true) e viene AZZERATO a NULL quando torna false, nello stesso save:
       senza questa regola resta a schermo la motivazione di una chiusura non piu in vigore.
       NON vengono aggiunte le colonne `force_closed_at`/`force_closed_by`: chi e quando lo
       registra gia `LogsModelActivity` (spec 0034), duplicarlo sarebbe stato morto.
@@ -132,6 +132,12 @@
       implicherebbe un promemoria che qui non esiste.
       "Note commessa" = `internal_notes` TEXT nullable, stesso nome usato da `quotes`: `notes`
       confonderebbe con il modulo Note collaborative (spec 0052), che qui NON viene abilitato.
+      REQUIREMENT CHANGED (Rev. 2026-11-27, decisione utente): le Note commessa diventano la
+      "Descrizione". La migration 2026_12_28_100000 sposta `internal_notes` in `description`
+      (con entrambi: prima le note, poi la vecchia descrizione dopo una riga vuota) ed elimina
+      la colonna; il riquadro giallo in cima al dettaglio si chiama Descrizione e scrive
+      `description`, la riga Descrizione della sezione "Descrizione commessa" non c'e piu.
+      `quotes.internal_notes` resta invariato.
     </decision>
     <decision id="D-10">
       "Tipo commessa" = colonna `type` string(16) NOT NULL, cast su nuovo enum
@@ -228,9 +234,8 @@
           type: "processing" | "project" REQUIRED,
           callback_date?: string|null (Y-m-d),
           description?: string|null,
-          internal_notes?: string|null,
           is_force_closed?: bool (default false),
-          force_close_reason?: string|null (REQUIRED se is_force_closed true),
+          force_close_reason?: string|null (facoltativo, Rev. 2026-11-27),
           quote_line_ids?: int[] (righe REVENUE del quote_id indicato; default [])
         }
       </request>
@@ -240,8 +245,7 @@
           permissions: &lt;ResourcePermissions&gt; }
       </response>
       <errors>401; 403 senza `work-orders.create`; 422 validazione (inclusi
-        `quote_line_ids` non appartenenti all'offerta o non REVENUE, e
-        `force_close_reason` mancante con chiusura forzata attiva).</errors>
+        `quote_line_ids` non appartenenti all'offerta o non REVENUE).</errors>
     </endpoint>
 
     <endpoint method="GET" path="/api/work-orders/{workOrder}">
@@ -283,7 +287,6 @@
         force_close_reason: string|null,
         callback_date: "2026-09-30"|null,
         description: string|null,
-        internal_notes: string|null,
         contract_number: "QUO-0001"|null,                              // = quote.code, derivato (D-2)
         quote: { id: int, code: string, title: string }|null,
         quote_lines: [ { id: int, sort_order: int,
@@ -316,7 +319,7 @@
       <response status="200">
         Campi del catalogo permessi di campo, in quest'ordine:
           code (text), quote_id (select), title (text), type (select), callback_date (date),
-          description (textarea), internal_notes (textarea), is_force_closed (select),
+          description (textarea), is_force_closed (select),
           force_close_reason (textarea), quote_line_ids (select)
         Ceiling: `code` e `quote_id` editabili SOLO in create (model === null), altrove readonly.
         `title` e `type` mandatory. `status` NON compare: non e scrivibile (D-3).
@@ -351,7 +354,7 @@
     <criterion id="AC-027">`GET /api/quote-offer-lines/for-select?quote_id=N` restituisce SOLO le righe REVENUE dell'offerta N, ordinate per `sort_order`, con label composta da `product.code` e `product.name`; senza `quote_id` risponde 422.</criterion>
 
     <!-- Chiusura forzata e stato calcolato -->
-    <criterion id="AC-030">POST con `is_force_closed: true` e `force_close_reason` assente/vuoto da 422 sul campo `force_close_reason`.</criterion>
+    <criterion id="AC-030">REQUIREMENT CHANGED (Rev. 2026-11-27, decisione utente): `force_close_reason` e facoltativo anche con `is_force_closed: true`; assente o vuoto si salva null (POST 201, PATCH 200). Prima: 422 sul campo. [Pest: WorkOrderCrudTest]</criterion>
     <criterion id="AC-031">PATCH che porta `is_force_closed` da true a false azzera `force_close_reason` a NULL nello stesso salvataggio (D-4).</criterion>
     <criterion id="AC-032">La Resource di una commessa con `is_force_closed = false` espone `status.value = "open"`; con `is_force_closed = true` espone `"closed"`. Nessuna colonna `status` esiste in tabella DB.</criterion>
     <criterion id="AC-033">POST/PATCH che inviano `status` non lo scrivono e non lo accettano: lo stato non e client-writable (D-3).</criterion>

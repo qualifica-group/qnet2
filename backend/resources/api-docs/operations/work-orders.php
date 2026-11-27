@@ -69,6 +69,10 @@ return [
         'summary' => 'Replace the actual costs of a work order',
         'description' => 'Replaces the whole list of actual costs: lines with id are updated, lines without id are created, saved lines missing from the list are deleted, and the array order becomes the display order. Each line needs a cost-usable product_id, quantity, unit_price and incurred_on, with optional vat_rate_id, cost_type_id, quote_line_id (a revenue line of this work order the cost is attributed to), supplier_id (a supplier registry) and document_reference; amounts are computed by the server. Returns the cost overview. Requires work-orders.manageCosts on a visible work order.',
     ],
+    'POST /work-orders/{workOrder}/costs/sync-from-quote' => [
+        'summary' => 'Replace the actual costs with the offer\'s costs',
+        'description' => 'Replaces all the manually entered actual costs of the work order with the offer\'s cost lines (those allocated to this work order\'s revenue lines and the generic ones): product, quantity, unit price, VAT rate, supplier (the product\'s default one when the line has none), revenue line, description and the product\'s cost type, dated today. Purchase orders and purchase invoices are not touched. No body. 422 on lines when the offer has no cost lines or a product can no longer be used as a cost. Returns the cost overview. Requires work-orders.manageCosts on a visible work order.',
+    ],
     'GET /work-orders/{workOrder}/emails' => [
         'summary' => 'List the emails of a work order',
         'description' => 'Returns the work order\'s email history, most recently updated first, 20 per page (query parameter page): status (draft, queued, sent, failed, scheduled, schedule_ended), sender, recipients, subject, attachment count, next recurring send date and sent or failed time. Drafts are visible only to their author. Pagination is in meta (current_page, last_page, total) next to data. Requires work-orders.viewEmails on a visible work order.',

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import type { GridApi, GridReadyEvent } from 'ag-grid-community'
 import { registerPresetSetFilterValues } from '@/components/data-table/preset-set-filter-values'
+import { toTypedOnlyFilterModels } from '@/components/data-table/typed-only-filter-models'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { resolveRowGrouping } from '@/features/table/row-grouping'
 import { createSsrmDatasource, type SsrmDatasource } from '@/features/table/ssrm-datasource'
@@ -53,6 +54,8 @@ export interface UseTableViewGridStateArgs {
   advancedFiltersOverride?: AdvancedFilterValues | null
   onAdvancedFiltersOverrideCleared?: () => void
   hiddenAdvancedFilters?: readonly string[]
+  /** See `TableViewProps.pinnedFilters`: no quick-search at all. */
+  pinnedFilters?: boolean
   treeData?: boolean
   /** The loaded config (or `undefined` while pending/erroring). */
   config: TableConfig | undefined
@@ -115,6 +118,7 @@ export function useTableViewGridState(
     advancedFiltersOverride,
     onAdvancedFiltersOverrideCleared,
     hiddenAdvancedFilters,
+    pinnedFilters = false,
     treeData,
     config,
   } = args
@@ -131,14 +135,14 @@ export function useTableViewGridState(
   // The saved filterModel replayed into the grid on mount. Stable identity per
   // config load so it can seed the persisted-baseline ref below.
   const initialFilterModel = useMemo(() => {
-    const saved = config?.filterState ?? EMPTY_FILTER_MODEL
+    const saved = toTypedOnlyFilterModels(config?.filterState ?? EMPTY_FILTER_MODEL, config?.columns ?? [])
     const base = Object.keys(saved).length === 0 && defaultFilterModel ? defaultFilterModel : saved
     if (!forcedFilterModel) {
       return base
     }
     // A `null` forced key clears the saved filter on that column instead of being replayed as a filter.
     return Object.fromEntries(Object.entries({ ...base, ...forcedFilterModel }).filter(([, value]) => value !== null))
-  }, [config?.filterState, defaultFilterModel, forcedFilterModel])
+  }, [config?.filterState, config?.columns, defaultFilterModel, forcedFilterModel])
 
   // SSRM rows are not cached by TanStack Query, so they cannot be invalidated
   // through the queryClient. We hold the grid API and purge its server-side
@@ -192,7 +196,9 @@ export function useTableViewGridState(
     () => config?.searchable ?? [],
     [config?.searchable],
   )
-  const searchEnabled = searchable.length > 0
+  // Pinned filters carry the page's own text search: a term restored from an
+  // earlier visit would narrow the rows with no field to clear it.
+  const searchEnabled = searchable.length > 0 && !pinnedFilters
 
   // The quick search and active custom filter kept in the browser across a
   // reload; column/advanced filters are restored from the config instead.
@@ -207,7 +213,7 @@ export function useTableViewGridState(
   const toolbar = useTableToolbarState({
     gridApi,
     searchEnabled,
-    initialSearch: localFilters.initial.search,
+    initialSearch: pinnedFilters ? '' : localFilters.initial.search,
     searchMinLength: config?.searchMinLength,
     advancedFiltersOpenKey,
   })
@@ -260,6 +266,7 @@ export function useTableViewGridState(
       },
       override: advancedFiltersOverride,
       onOverrideCleared: onAdvancedFiltersOverrideCleared,
+      liveApply: pinnedFilters,
       hidden: hiddenAdvancedFilters,
     })
 

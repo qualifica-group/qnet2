@@ -27,8 +27,9 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
     // Spec 0322 appends `work_order_workflow_status` (REQUIREMENT CHANGED); spec 0358 D-14 adds `renewal_number` after `contract_expiry_date` (REQUIREMENT CHANGED).
     // Spec 0395 (REQUIREMENT CHANGED): `status` is the working phase, the hidden `work_phase` column is gone.
     // REQUIREMENT CHANGED (user directive 2026-11-17): `line_payment_statuses` ("Stato pagamento") appended.
+    // REQUIREMENT CHANGED (user request 2026-11-27): the legacy "Ultima Nota"/"U.N. Responsabile" appended.
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'renewal_number', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'participants', 'work_order_workflow_status', 'line_payment_statuses']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'renewal_number', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors', 'participants', 'work_order_workflow_status', 'line_payment_statuses', 'last_note_at', 'supervisor_last_note_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()
@@ -120,6 +121,24 @@ it('sorts by contract_number using quotes.code (AC-041)', function () {
     ])->assertOk();
 
     expect(collect($response->json('items'))->pluck('contract_number')->all())->toBe(['QUO-0001', 'QUO-0002']);
+});
+
+it('title filters by a "contains" condition, with no value checklist (user request 2026-11-26)', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    WorkOrder::factory()->create(['title' => 'Formazione sicurezza Rossi']);
+    WorkOrder::factory()->create(['title' => 'Consulenza HACCP']);
+    Sanctum::actingAs($actor);
+
+    $columns = collect($this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data.columns'))->keyBy('id');
+    expect($columns['title']['filterType'])->toBe('text')
+        ->and($columns['title']['hasFilterValues'])->toBeFalse();
+
+    $response = $this->postJson('/api/tables/work-orders/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['title' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'sicurezza']],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('title')->all())->toBe(['Formazione sicurezza Rossi']);
 });
 
 it('filters by contract_number text on quotes.code (AC-041)', function () {

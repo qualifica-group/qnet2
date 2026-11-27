@@ -59,15 +59,17 @@ function linkedAttributeRows(ProductCategory $current, ProductCategory $legacy, 
     return test()->postJson('/api/tables/work-orders/rows', [...$page, ...$extra])->assertOk()->json('items');
 }
 
-it('shows one column for the linked fields, the legacy one alone when only its category is selected (AC-001)', function () {
+// REQUIREMENT CHANGED (user request 2026-11-27): the Commesse page has no product category filter, so the
+// legacy category can no longer be picked alone there; in "Categoria madre" it stands for its whole group (D-12).
+it('shows one column for the linked fields, also when only the legacy category is picked (AC-001)', function () {
     [$current, $legacy] = linkedAttributeRoots(AttributeContext::WorkOrder);
     Sanctum::actingAs(workOrderUserWith(['viewAny', 'update']));
 
     categoryTabSaveFilters('work-orders', ['parent_category' => [$current->id, $legacy->id]])->assertOk();
     expect(filterDrivenAttrIds(categoryTabConfigColumns('work-orders')))->toBe(['attr.new_date']);
 
-    categoryTabSaveFilters('work-orders', categoryTabFilters($legacy))->assertOk();
-    expect(filterDrivenAttrIds(categoryTabConfigColumns('work-orders')))->toBe(['attr.old_date']);
+    categoryTabSaveFilters('work-orders', workOrderCategoryFilters($legacy))->assertOk();
+    expect(filterDrivenAttrIds(categoryTabConfigColumns('work-orders')))->toBe(['attr.new_date']);
 });
 
 it('reads the current value on new records and the legacy one on migrated records (AC-002)', function () {

@@ -95,6 +95,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       advancedFiltersOverride,
       onAdvancedFiltersOverrideCleared,
       hiddenAdvancedFilters,
+      pinnedFilters,
       renderFooter,
       onAggregatesChange,
       pinnedRowSlot,
@@ -144,6 +145,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         advancedFiltersOverride,
         onAdvancedFiltersOverrideCleared,
         hiddenAdvancedFilters,
+        pinnedFilters,
         treeData,
         config,
         refetchConfig: refetch,
@@ -274,6 +276,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             advancedFilters={view.advancedFilters}
             advancedFiltersOpen={view.toolbar.advancedFiltersOpen}
             onToggleAdvancedFilters={view.toolbar.toggleAdvancedFilters}
+            advancedFiltersPinned={pinnedFilters}
             savedViewsSlot={savedViewsSlot}
           />
 
@@ -291,9 +294,25 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
               onToggleFullscreen={view.toolbar.toggleFullscreen}
               importSlot={importSlot}
               exportSlot={exportSlot}
+              filterChipsSlot={
+                pinnedFilters ? (
+                  <ActiveFilterChips chips={view.filterChips.chips} onClearAll={view.filterChips.onClearAll} inline />
+                ) : undefined
+              }
+              filtersToggle={
+                pinnedFilters && view.advancedFilterDescriptors.length > 0
+                  ? {
+                      open: view.toolbar.advancedFiltersOpen,
+                      activeCount: view.advancedFilters.activeCount,
+                      onToggle: view.toolbar.toggleAdvancedFilters,
+                    }
+                  : undefined
+              }
             />
 
-            <ActiveFilterChips chips={view.filterChips.chips} onClearAll={view.filterChips.onClearAll} />
+            {pinnedFilters ? null : (
+              <ActiveFilterChips chips={view.filterChips.chips} onClearAll={view.filterChips.onClearAll} />
+            )}
 
             {config?.row_grouping?.enabled ? (
               <RowGroupingBar gridApi={view.gridApi} columns={config.columns} rowGrouping={config.row_grouping} />

@@ -47,8 +47,9 @@ final class WorkOrderDetailRelations
         'quoteLines.product.productTypology',
         // Spec 0267: the client each line comes from, shown on the line of a multi-offer commessa.
         'quoteLines.quote.opportunity.registry',
-        'supervisors',
-        'participants',
+        // `.avatar`: the people of the "Responsabili e Partecipanti" popup carry their photo, as in the grid.
+        'supervisors.avatar',
+        'participants.avatar',
         // Spec 0322: the "Stato lavorazione" WorkOrderResource exposes.
         'workOrderWorkflowStatus',
         // Spec 0124: the `task_template` summary.

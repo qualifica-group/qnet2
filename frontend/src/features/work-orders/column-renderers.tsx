@@ -3,6 +3,7 @@ import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import { ChatUnreadCell } from '@/features/work-orders/chat-unread-cell'
+import { LastNoteCell } from '@/features/work-orders/last-note-cell'
 import { RenewalPeriodCell } from '@/features/work-orders/renewal-period-cell'
 import { LinePaymentStatusesCell } from '@/features/work-orders/line-payment-statuses-cell'
 import { RegistryCell } from '@/features/work-orders/registry-cell'
@@ -41,6 +42,8 @@ import { WorkOrderProformaCell, type ProformaTarget } from '@/features/work-orde
  * statuses, each with its Consulenza/Ente typology badge.
  * `consultancy_amount`/`total_revenue` (legacy "Importo consulenza"/"Totale
  * ricavi") are money, like the Offerte's `revenue_net`.
+ * `last_note_at`/`supervisor_last_note_at` (legacy "Ultima Nota"/"U.N.
+ * Responsabile") show the note date, its author and text on hover.
  */
 export function buildWorkOrderColumnRenderers(
   openProgress: (workOrderId: number) => void,
@@ -61,6 +64,8 @@ export function buildWorkOrderColumnRenderers(
     line_payment_statuses: (params) => <LinePaymentStatusesCell {...params} />,
     consultancy_amount: (params) => <CurrencyCell {...params} />,
     total_revenue: (params) => <CurrencyCell {...params} />,
+    last_note_at: (params) => <LastNoteCell {...params} />,
+    supervisor_last_note_at: (params) => <LastNoteCell {...params} />,
     chat_unread_count: (params) => <ChatUnreadCell {...params} />,
     renewal_number: (params) => <RenewalPeriodCell {...params} />,
     created_at: (params) => <DateTimeCell {...params} />,

@@ -262,10 +262,11 @@ it('AC-012: the generated commessa carries the submitted start date and every re
         'start_date' => '2026-11-02', 'supervisor_ids' => [$second->id, $first->id],
     ])->assertCreated();
 
+    // REQUIREMENT CHANGED (user request 2026-11-27): each person carries its avatar_url (the team popup shows it).
     expect($response->json('data.start_date'))->toBe('2026-11-02')
         ->and($response->json('data.supervisors'))->toBe([
-            ['id' => $first->id, 'name' => 'Ada Alberti'],
-            ['id' => $second->id, 'name' => 'Zoe Zanetti'],
+            ['id' => $first->id, 'name' => 'Ada Alberti', 'avatar_url' => null],
+            ['id' => $second->id, 'name' => 'Zoe Zanetti', 'avatar_url' => null],
         ]);
 });
 

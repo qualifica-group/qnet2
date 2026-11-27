@@ -29,6 +29,7 @@ it('AC-002: invalid parameters answer 422', function (array $params) {
     'horizon not a number' => [['horizon_months' => 'six']],
 ]);
 
+// REQUIREMENT CHANGED (spec 0434): applied and the flows carry include_personnel, salaries and f24.
 it('AC-002: the defaults and the normalised parameters are echoed in applied', function () {
     Sanctum::actingAs(mcActor());
     $first = Company::factory()->create();
@@ -36,10 +37,10 @@ it('AC-002: the defaults and the normalised parameters are echoed in applied', f
 
     $default = mcGet('cash-flow')->assertOk()->json('data');
     expect($default['applied'])->toBe([
-        'company_id' => [], 'company_site_id' => [], 'operational_site_id' => [], 'document_type' => 'all', 'horizon_months' => 6,
+        'company_id' => [], 'company_site_id' => [], 'operational_site_id' => [], 'document_type' => 'all', 'horizon_months' => 6, 'include_personnel' => true,
     ])->and($default['today'])->toBe(mcDay(0))
         ->and($default['months'])->toHaveCount(6)
-        ->and($default['backlog'])->toEqual(['receivable' => 0, 'payable' => 0, 'committed' => 0, 'net' => 0])
+        ->and($default['backlog'])->toEqual(['receivable' => 0, 'payable' => 0, 'committed' => 0, 'salaries' => 0, 'f24' => 0, 'net' => 0])
         ->and($default['by_company'])->toBe([]);
 
     $applied = mcGet('cash-flow', ['company_id' => [$second->id, $first->id, $second->id], 'document_type' => 'invoice', 'horizon_months' => 24])

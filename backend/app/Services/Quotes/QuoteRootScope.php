@@ -36,6 +36,9 @@ final class QuoteRootScope
     /** D-5: the opportunity's roots are fixed by its bound offers. */
     public const string BOUND_ROOTS_MESSAGE = 'The offers of this opportunity are bound to the product categories :roots: the product lines cannot add or remove a parent product category. For another product category create a new request.';
 
+    /** Spec 0432: an unbound request with old-catalogue lines keeps the roots it has. */
+    public const string LEGACY_ROOTS_MESSAGE = 'This request has product lines of the old catalogue: its product lines can only be under :roots. For another product category create a new request.';
+
     /** D-6: an offer row of a bound offer stays under its root. */
     public const string OFFER_LINE_ROOT_MESSAGE = 'This offer belongs to the product category :root: the product ":product" belongs to another one.';
 
@@ -138,6 +141,74 @@ final class QuoteRootScope
             if ($this->rootIdOf((int) $categoryId) !== $rootId) {
                 throw ValidationException::withMessages([
                     $errorField => [__(self::OTHER_ROOT_MESSAGE, ['root' => $this->namesOf([$rootId])])],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Spec 0432: an UNBOUND request whose lines include an old-catalogue
+     * category (`is_legacy`, on the category or on its root) is locked to the
+     * roots of those lines; [] when none is legacy, so a new-catalogue request
+     * stays free.
+     *
+     * @param  array<int, int>  $currentCategoryIds
+     * @return array<int, int>
+     */
+    public function legacyRootIdsOf(array $currentCategoryIds): array
+    {
+        $rootIds = array_keys($this->groupByRoot($currentCategoryIds));
+
+        $hasLegacy = $rootIds !== [] && ProductCategory::query()
+            ->whereKey([...$currentCategoryIds, ...$rootIds])
+            ->where('is_legacy', true)
+            ->exists();
+
+        return $hasLegacy ? $rootIds : [];
+    }
+
+    /**
+     * Spec 0432: the roots a request's work panel offers when it is a legacy
+     * one, by name; empty for a bound offer (D-4 locks it already) and for a
+     * request of the new catalogue.
+     *
+     * @return Collection<int, ProductCategory>
+     */
+    public function legacyRootsOf(Quote $quote): Collection
+    {
+        if ($quote->root_product_category_id !== null) {
+            return new Collection;
+        }
+
+        $categoryIds = $this->linesOf($quote)->pluck('product_category_id')->map(intval(...))->all();
+        $rootIds = $this->legacyRootIdsOf($categoryIds);
+
+        return $rootIds === []
+            ? new Collection
+            : ProductCategory::query()->whereKey($rootIds)->orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
+     * Spec 0432: every submitted category of a legacy request sits under one
+     * of the roots its persisted lines already have.
+     *
+     * @param  array<int, int>  $nextCategoryIds
+     * @param  array<int, int>  $currentCategoryIds
+     *
+     * @throws ValidationException
+     */
+    public function assertWithinLegacyRoots(array $nextCategoryIds, array $currentCategoryIds, string $errorField): void
+    {
+        $rootIds = $this->legacyRootIdsOf($currentCategoryIds);
+
+        if ($rootIds === []) {
+            return;
+        }
+
+        foreach ($nextCategoryIds as $categoryId) {
+            if (! in_array($this->rootIdOf((int) $categoryId), $rootIds, true)) {
+                throw ValidationException::withMessages([
+                    $errorField => [__(self::LEGACY_ROOTS_MESSAGE, ['roots' => $this->namesOf($rootIds)])],
                 ]);
             }
         }

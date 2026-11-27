@@ -90,6 +90,7 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     status: { source: 'quotes', distinct_count: 1, entries: [{ id: 1, name: 'New', color: 'slate', group: 'open', count: 1 }] },
     product_lines: [{ id: 1, business_function: { id: 40, name: 'Sales' }, product_category: { id: 500, name: 'Consulting' } }],
     root_product_category: null,
+    legacy_root_categories: [],
     // The offer's own REVENUE rows (spec 0086 D-7), editable since the user
     // directive 2026-08-07: the panel starts with one.
     offer_lines: [OFFER_LINE_FIBRA],

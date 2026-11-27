@@ -322,6 +322,7 @@ export const requestManagement = {
       hint: 'The categories chosen here scope the products of interest and, once saved, the request-specific fields.',
       /** Spec 0411: the request is bound to one parent category. */
       rootLocked: 'This request belongs to the parent category {{root}}: only its categories can be chosen. For another category create a new request.',
+      legacyRootsLocked: 'This request has product lines of the old catalogue: you can choose only categories of {{roots}}. For another parent category create a new request.',
     },
     collaboration: {
       notesTab: 'Notes',

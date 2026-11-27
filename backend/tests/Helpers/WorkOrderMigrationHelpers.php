@@ -26,7 +26,6 @@ if (! function_exists('legacyWorkOrderRecord')) {
             'start_date' => '2024-05-01',
             'callback_date' => '2024-06-01',
             'description' => 'Legacy description',
-            'internal_notes' => 'Legacy notes',
             'force_close_reason' => null,
             'status_label' => 'Aperta',
             'work_phase' => 'to_plan',

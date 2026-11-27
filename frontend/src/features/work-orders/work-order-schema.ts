@@ -33,7 +33,6 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
       .max(MAX_MANAGER_SLOTS, t('workOrders.form.participantsMax')),
     callback_date: z.string().nullable(),
     description: z.string().nullable(),
-    internal_notes: z.string().nullable(),
     quote_line_ids: z.array(z.number()),
     // "Modello di Task" (spec 0124 D-9): opzionale, immutabile dopo la
     // creazione (D-5) — resta nella shape CONDIVISA cosi' l'edit form puo'
@@ -41,10 +40,6 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     // `quote_id`; nessuna superRefine la rende obbligatoria in nessuna
     // modalita'.
     task_template_id: z.number().nullable(),
-    // "Stato lavorazione" (spec 0322): picked on the detail only; the create
-    // resolves the `open` row server-side, so it stays `null` there and the
-    // create payload never carries it.
-    work_order_workflow_status_id: z.number().nullable().optional(),
     // "Informazioni aggiuntive" (spec 0098): una chiave per `code`
     // applicabile, forma per-tipo dal builder CONDIVISO — lo stesso che usano
     // Offerta, Prodotti e Gestione Richieste (spec 0084/0061). La

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DocumentChecklists\DocumentChecklistController;
 use App\Http\Controllers\DocumentChecklists\DocumentChecklistForSelectController;
+use App\Http\Controllers\DocumentChecklists\DocumentChecklistOpenRequestsController;
 use App\Http\Controllers\DocumentChecklists\DocumentChecklistSyncController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +35,9 @@ Route::delete('document-checklists/{documentChecklist}', [DocumentChecklistContr
 
 Route::post('document-checklists/{documentChecklist}/sync', [DocumentChecklistSyncController::class, 'sync']);
 Route::get('document-checklists/{documentChecklist}/sync-logs', [DocumentChecklistSyncController::class, 'logs']);
+// Open document requests of the checklist and the refresh of their rules (spec 0432).
+Route::get('document-checklists/{documentChecklist}/open-requests', [DocumentChecklistOpenRequestsController::class, 'count']);
+Route::post('document-checklists/{documentChecklist}/refresh-open-requests', [DocumentChecklistOpenRequestsController::class, 'refresh']);
 
 // The categories of the checklists (spec 0410) share the module and its permissions.
 require __DIR__.'/document-checklist-categories.php';

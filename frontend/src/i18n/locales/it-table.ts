@@ -46,11 +46,12 @@ export const table = {
   layoutReset: 'Layout della tabella ripristinato ai valori predefiniti.',
   layoutError: 'Impossibile aggiornare il layout della tabella.',
   resetFilters: 'Azzera filtri',
+  // Imbuto dei filtri fissi (pagina Commesse, richiesta utente 2026-11-27).
+  showFilters: 'Mostra filtri',
+  hideFilters: 'Nascondi filtri',
   filtersReset: 'Filtri della tabella azzerati.',
   filtersError: 'Impossibile azzerare i filtri della tabella.',
   filtersSaveError: 'Impossibile salvare i filtri della tabella.',
-  filterValuesTruncated:
-    'Questa colonna ha molti valori: l’elenco mostra solo i primi. Scrivi nella casella Cerca per trovare gli altri.',
   textFilters: 'Filtri testo',
   numberFilters: 'Filtri numero',
   dateFilters: 'Filtri data',

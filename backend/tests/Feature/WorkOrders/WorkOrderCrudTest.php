@@ -171,16 +171,31 @@ it('update: PATCH without quote_line_ids leaves the linked lines untouched (AC-0
 // in WorkOrderTableTest)
 // ---------------------------------------------------------------------------
 
-it('create: 422 when is_force_closed=true and force_close_reason is absent/empty (AC-030)', function () {
+// REQUIREMENT CHANGED (user directive 2026-11-27): the reason of a forced closure is optional (was AC-030, a 422).
+it('create: force-closes without a reason, absent or empty (AC-030)', function () {
     $actor = workOrderUserWith(['create']);
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'No reason', 'type' => 'processing', 'is_force_closed' => true])
-        ->assertStatus(422)->assertJsonValidationErrors('force_close_reason');
+        ->assertCreated()
+        ->assertJsonPath('data.is_force_closed', true)
+        ->assertJsonPath('data.force_close_reason', null);
 
     $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'Empty reason', 'type' => 'processing', 'is_force_closed' => true, 'force_close_reason' => ''])
-        ->assertStatus(422)->assertJsonValidationErrors('force_close_reason');
+        ->assertCreated()
+        ->assertJsonPath('data.force_close_reason', null);
+});
+
+it('update: force-closes without a reason (user directive 2026-11-27)', function () {
+    $actor = workOrderUserWith(['update']);
+    $workOrder = WorkOrder::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/work-orders/{$workOrder->id}", ['is_force_closed' => true, 'force_close_reason' => null])
+        ->assertOk()
+        ->assertJsonPath('data.is_force_closed', true)
+        ->assertJsonPath('data.force_close_reason', null);
 });
 
 it('update: is_force_closed true->false zeroes force_close_reason in the same save (AC-031)', function () {

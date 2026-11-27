@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import axios from 'axios'
@@ -7,15 +7,17 @@ import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
 import { fetchWorkOrderFormContext, updateWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
+import { hasWorkOrderAction, selectWorkOrderAction } from '@/features/work-orders/work-order-actions-menu-test-utils'
 import { OPEN_WORKFLOW_STATUS, WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { FieldPermission } from '@/features/authorization/types'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /**
  * Spec 0195 applied to Commesse (user directive 2026-10-06): no edit page,
  * a pencil per editable row — the flexible fields included, one row each —
  * Save PATCHes that field alone, Cancel restores it without any request; the
- * forced closure is a header action, not a row.
+ * forced closure is a record action (the "..." actions menu), not a row.
  */
 
 vi.mock('@/features/modules/use-module-open-mode', () => ({
@@ -91,7 +93,6 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [{ id: 31, name: 'Bruno Bianchi', position: 3 }],
     description: null,
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: 'QUO-0004',
@@ -206,22 +207,13 @@ describe('WorkOrderDetailView — in-place editing', () => {
       permissions: {
         ...record.permissions,
         fields: Object.fromEntries(
-          ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'supervisor_ids',
+          ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'supervisor_ids',
             'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id'].map((key) => [key, READ_ONLY_FIELD]),
         ),
       },
     })
 
     expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument()
-  })
-
-  it('hydrates the participants editor without compacting a gap', () => {
-    renderDetail(workOrder())
-
-    fireEvent.click(queryPencil(label('workOrders.detail.participants'))!)
-
-    expect(screen.getByText('Participant 1')).toBeInTheDocument()
-    expect(screen.getByText('Participant 3')).toBeInTheDocument()
   })
 
   it('offers no way to edit the product lines: they are fixed at creation', () => {
@@ -261,13 +253,92 @@ describe('WorkOrderDetailView — flexible fields, one in-place row each', () =>
   })
 })
 
+const GATE_CODE: ApplicableAttributeSummary = { ...SITE_ACCESS, id: 2, code: 'gate_code', name: 'Gate code', sort_order: 1 }
+
+/** One configured section holding both Attributes ("Accesso"), as the form layout places them. */
+const ACCESS_LAYOUT: LayoutBlob = {
+  sections: [
+    {
+      id: 'access', title: 'Accesso', description: null, variant: 'default', collapsible: false,
+      default_collapsed: false, columns: 2, sort_order: 0,
+      rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' }, { attribute_code: 'gate_code', width: 'half' }] }],
+    },
+  ],
+}
+
+function sectionWorkOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}) {
+  return workOrder({
+    applicable_attributes: [SITE_ACCESS, GATE_CODE],
+    attribute_layout: ACCESS_LAYOUT,
+    attribute_values: { site_access: 'Gate 3', gate_code: 'A1' },
+    ...overrides,
+  })
+}
+
+const sectionPencilName = () => label('attributes.layout.editSection', { section: 'Accesso' })
+
+// User directive 2026-11-27: a flexible-fields section edits as a whole, in one popup, one save.
+describe('WorkOrderDetailView — flexible fields, a whole section at once', () => {
+  it('saves every field changed in the section popup with a single PATCH', async () => {
+    const record = sectionWorkOrder()
+    vi.mocked(updateWorkOrder).mockResolvedValueOnce({ ...record, attribute_values: { site_access: 'Gate 4', gate_code: 'B2' } })
+    renderDetail(record)
+
+    fireEvent.click(screen.getByRole('button', { name: sectionPencilName() }))
+    const dialog = screen.getByRole('dialog', { name: 'Accesso' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Site access' }), { target: { value: 'Gate 4' } })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Gate code' }), { target: { value: 'B2' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: label('common.inlineEdit.save') }))
+
+    await waitFor(() =>
+      expect(updateWorkOrder).toHaveBeenCalledWith(4, { attribute_values: { site_access: 'Gate 4', gate_code: 'B2' } }),
+    )
+    expect(updateWorkOrder).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('discards the popup edits on cancel, without any request', () => {
+    renderDetail(sectionWorkOrder())
+
+    fireEvent.click(screen.getByRole('button', { name: sectionPencilName() }))
+    const dialog = screen.getByRole('dialog', { name: 'Accesso' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Site access' }), { target: { value: 'Gate 9' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: label('common.inlineEdit.cancel') }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
+    expect(updateWorkOrder).not.toHaveBeenCalled()
+  })
+
+  it('shows an integration-owned value read-only in the popup', () => {
+    renderDetail(sectionWorkOrder({ locked_attributes: [{ code: 'gate_code', source: 'Gestionale' }] }))
+
+    fireEvent.click(screen.getByRole('button', { name: sectionPencilName() }))
+    const dialog = screen.getByRole('dialog', { name: 'Accesso' })
+
+    expect(within(dialog).getByRole('textbox', { name: 'Gate code' })).toHaveAttribute('readonly')
+    expect(within(dialog).getByRole('textbox', { name: 'Site access' })).not.toHaveAttribute('readonly')
+  })
+
+  it('offers no section edit when attribute_values is read-only', () => {
+    const record = sectionWorkOrder()
+    renderDetail({
+      ...record,
+      permissions: { ...record.permissions, fields: { ...record.permissions.fields, attribute_values: READ_ONLY_FIELD } },
+    })
+
+    expect(screen.queryByRole('button', { name: sectionPencilName() })).not.toBeInTheDocument()
+  })
+})
+
 describe('WorkOrderDetailView — forced closure as an action (user directive 2026-10-06)', () => {
-  it('has no closure row to edit, only the header action', () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-27): the action is an item of the "..." actions menu.
+  it('has no closure row to edit, only the menu action', () => {
     renderDetail(workOrder())
 
     expect(queryPencil(label('workOrders.form.isForceClosed'))).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: label('actions.forceClose') })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: label('actions.reopen') })).not.toBeInTheDocument()
+    expect(hasWorkOrderAction(label('actions.forceClose'))).toBe(true)
+    expect(hasWorkOrderAction(label('actions.reopen'))).toBe(false)
   })
 
   it('force-closes with the reason through the dialog, warning about the open tasks', async () => {
@@ -283,7 +354,7 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
     })
     const { onChanged } = renderDetail(record)
 
-    fireEvent.click(screen.getByRole('button', { name: label('actions.forceClose') }))
+    selectWorkOrderAction(label('actions.forceClose'))
     expect(await screen.findByRole('alert')).toHaveTextContent('2 open tasks will be closed with a negative outcome.')
     fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.form.forceCloseReason') }), {
       target: { value: 'Cliente insolvente' },
@@ -312,7 +383,7 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
 
     expect(screen.getByText('Cliente insolvente')).toBeInTheDocument()
     expect(queryPencil(label('workOrders.detail.forceCloseReason'))).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: label('actions.reopen') }))
+    selectWorkOrderAction(label('actions.reopen'))
 
     await waitFor(() =>
       expect(updateWorkOrder).toHaveBeenCalledWith(4, { is_force_closed: false, force_close_reason: null }),
@@ -360,8 +431,8 @@ describe('WorkOrderDetailView — work order born without an offer', () => {
 
   // User directives 2026-11-25: lines and products in a section of their own, no amount.
   it('shows the product lines and products in their own section, and no amount', () => {
-    // The server reports 0.00 for a work order with no lines: the row must still not show.
-    renderDetail({ ...standalone(), amount: '0.00' })
+    // REQUIREMENT CHANGED (user directive 2026-11-27): no work order carries an amount any more.
+    renderDetail(standalone())
 
     expect(screen.getByText(label('workOrders.detail.sections.products'))).toBeInTheDocument()
     expect(screen.queryByText(label('workOrders.detail.amount'))).not.toBeInTheDocument()

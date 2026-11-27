@@ -96,7 +96,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'There is no separate edit page: a quote is edited **straight from its detail**, one field at a time, including the **Additional information** (each flexible field has its own row) and the **Offer** and **Costs** rows. Clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every quote, on the detail and on the create form.',
+          text: 'There is no separate edit page: a quote is edited **straight from its detail**, one field at a time, including the **Additional information** (each flexible field has its own row) and the **Offer** and **Costs** rows. Each Additional information section also has a **pencil beside its title**: it opens a popup with every field of the section (tables included) and **Save** records them all at once; **Cancel** or closing the popup discards the changes. Clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every quote, on the detail and on the create form.',
         },
         {
           type: 'steps',

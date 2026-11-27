@@ -9,22 +9,25 @@ import type { ICellRendererParams } from 'ag-grid-community'
  * "Responsabili e Partecipanti" its team dialog, Info and the menu entries
  * open the record on that tab. REQUIREMENT CHANGED: replaces the closure/proforma/
  * documents/notes row actions this hook used to run. Elimina came back on the row
- * (user request 2026-11-19).
+ * (user request 2026-11-19). REQUIREMENT CHANGED (user request 2026-11-27): the
+ * tab entries always open the modal, never the page.
  */
 
 const openView = vi.fn()
 const openViewTab = vi.fn()
+const openViewTabWithPreferredMode = vi.fn()
 /** The module domain whose opener ran: a row opens in the module of its type (2026-11-25). */
 const openedIn = vi.fn()
 vi.mock('@/features/modules/use-module-opener', () => ({
-  useModuleOpener: (domain: string) => ({
+  useModuleOpener: (domain: string, options?: { forceMode?: string }) => ({
     openView: (row: unknown) => {
       openedIn(domain)
       openView(row)
     },
     openViewTab: (row: unknown, tab: string) => {
       openedIn(domain)
-      openViewTab(row, tab)
+      const open = options?.forceMode === 'modal' ? openViewTab : openViewTabWithPreferredMode
+      open(row, tab)
     },
     openCreateWith: vi.fn(),
     sheet: null,
@@ -68,6 +71,7 @@ beforeEach(() => {
   openedIn.mockReset()
   openView.mockReset()
   openViewTab.mockReset()
+  openViewTabWithPreferredMode.mockReset()
   remove.mockReset()
 })
 
@@ -81,12 +85,13 @@ describe('useWorkOrderRowActions (spec 0405)', () => {
     expect(openViewTab).not.toHaveBeenCalled()
   })
 
-  it.each(['info', 'notes', 'tasks', 'documents'])('the "%s" entry opens the record on that tab', (key) => {
+  it.each(['info', 'notes', 'tasks', 'documents'])('the "%s" entry opens the record on that tab in the modal', (key) => {
     const { result } = renderHook(() => useWorkOrderRowActions({ onMutated: vi.fn() }))
 
     act(() => result.current.handleAction(action(key), ROW))
 
     expect(openViewTab).toHaveBeenCalledWith(ROW, key)
+    expect(openViewTabWithPreferredMode).not.toHaveBeenCalled()
   })
 
   it('Elimina deletes the row (already confirmed by the row menu) and a delete refreshes the grid', () => {

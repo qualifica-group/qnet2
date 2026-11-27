@@ -210,8 +210,8 @@ class DocumentRequestService
         }
 
         // Step 2: the item must be in the snapshot and hold a file
-        $item = collect($request->snapshot['items'] ?? [])->firstWhere('id', $itemId);
-        if (! is_array($item)) {
+        $item = $request->snapshotItem($itemId);
+        if ($item === null) {
             throw ValidationException::withMessages(['item' => __('archivio_smart.request_item_not_found')]);
         }
         if (empty($item['current_document_id'])) {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useAdvancedFilters } from '@/features/table/advanced-filters/use-advanced-filters'
 import type { AdvancedFilterDescriptor, AdvancedFilterValues } from '@/features/table/advanced-filters/types'
@@ -460,5 +460,64 @@ describe('useAdvancedFilters sendDefault', () => {
 
     expect(result.current.requestValues).toEqual({ parent_category: [] })
     expect(result.current.activeCount).toBe(0)
+  })
+
+  // User request 2026-11-27: the pinned Commesse filters have no Apply button.
+  describe('live apply', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('applies the draft by itself once the changes stop, once for a burst of keystrokes', () => {
+      const onApplied = vi.fn()
+      const descriptors = [descriptor({ name: 'title', type: 'text' })]
+      const { result } = renderHook(() =>
+        useAdvancedFilters({ domain: 'work-orders', descriptors, applied: null, onApplied, liveApply: true }),
+      )
+
+      act(() => result.current.setFieldValue('title', 'is'))
+      act(() => vi.advanceTimersByTime(100))
+      act(() => result.current.setFieldValue('title', 'iso'))
+      expect(onApplied).not.toHaveBeenCalled()
+
+      act(() => vi.advanceTimersByTime(400))
+
+      expect(onApplied).toHaveBeenCalledTimes(1)
+      expect(mutateMock).toHaveBeenCalledWith({ advancedFilters: { title: 'iso' } })
+      expect(result.current.getApplied()).toEqual({ title: 'iso' })
+    })
+
+    it('keeps what is typed while the save is in flight when the saved config echoes back', () => {
+      const descriptors = [descriptor({ name: 'title', type: 'text' })]
+      let applied: AdvancedFilterValues | null = null
+      const { result, rerender } = renderHook(() =>
+        useAdvancedFilters({ domain: 'work-orders', descriptors, applied, onApplied: vi.fn(), liveApply: true }),
+      )
+
+      act(() => result.current.setFieldValue('title', 'iso'))
+      act(() => vi.advanceTimersByTime(400))
+      act(() => result.current.setFieldValue('title', 'iso 9'))
+      applied = { title: 'iso' }
+      rerender()
+
+      expect(result.current.draft.title).toBe('iso 9')
+    })
+
+    it('never applies by itself without liveApply', () => {
+      const onApplied = vi.fn()
+      const descriptors = [descriptor({ name: 'title', type: 'text' })]
+      const { result } = renderHook(() =>
+        useAdvancedFilters({ domain: 'work-orders', descriptors, applied: null, onApplied }),
+      )
+
+      act(() => result.current.setFieldValue('title', 'iso'))
+      act(() => vi.advanceTimersByTime(1000))
+
+      expect(onApplied).not.toHaveBeenCalled()
+    })
   })
 })

@@ -14,11 +14,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "The work order detail is organised in tabs as in the old QNet. Under the header (title with the client company's name below it, status, indicators) there is a row of tabs: **Info**, **Tasks**, **Documents** (Work order documents and Registry documents), **Administration** (Costs, Active proforma and Passive proforma), **Notes**, then **Workspace notes** (project work orders only), **Email** and **Activity log** where available. On project work orders, at the end of the row, the **Chat** entry with the unread dot opens the conversation in the **Chat** bar at the bottom right. Each tab appears only if you may see it; when a group has a single item available, the tab shows that item directly. Tabs behave like pages: entering the work order opens **Info**; reloading the page keeps you on the tab you were on, and a save inside a tab does not bring you back to Info. At the end of the row, set a little apart, is the **work order title**: clicking it takes you back to Info.",
+          text: "The work order detail is organised in tabs as in the old QNet. At the top is the header: the title with the client company's name below it and, on the right, the **Processing status** (the badge with the arrow: click it to pick another status, see **Processing status**), the work order **Status** (for example To plan) and the **three-dots** button (**Work order actions**), which gathers the work order's actions: **Work order progress**, **Supervisors and Participants** (the same popup as the Work orders list, see **Table actions**), **Copy data from the offer**, **Request update**, **Request proforma** and, below a separator line, **Force close** (or **Reopen**) and **Delete**; each action shows only if you may use it. Under the header there is a row of tabs: **Info**, **Tasks**, **Documents** (Work order documents and Registry documents), **Administration** (Costs, Active proforma and Passive proforma, with Work order progress below them), **Notes**, then **Workspace notes** (project work orders only), **Email** and **Activity log** where available. On project work orders, at the end of the row, the **Chat** entry with the unread dot opens the conversation in the **Chat** bar at the bottom right. Each tab appears only if you may see it; when a group has a single item available, the tab shows that item directly. Tabs behave like pages: entering the work order opens **Info**; reloading the page keeps you on the tab you were on, and a save inside a tab does not bring you back to Info. At the end of the row, set a little apart, is the **work order title**: clicking it takes you back to Info.",
         },
         {
           type: 'paragraph',
-          text: "The **Info** tab has two columns as in the old QNet. On the left: **Client info** (**Company** with the link to the registry, **Registered office** with VAT number and tax code, **Tags**, **Email/PEC**, **Phone**, **Referent 1** i.e. the registry's primary referent, **Referent 2** i.e. the registry's secondary referent (empty when none is set), **Commercial**, **Commercial partner**, **Sector** and **Comments** i.e. the registry's general notes; tap an email, PEC or phone to write or call), then **Work order contract data** (**Amount** i.e. the total net amount of the products, visible to whoever may see the contract data, Start date, the link to the Contract, the **Product lines**, then every product of the work order with its payment fields and the totals Total Consulenza, Total Ente and Total revenue), **Work status** and **Team** (Supervisors and Participants). On the right: **Company references and business functions** (Company, Site, Operational site, Business function: the business functions of the Product lines), **Callback date**, **Work order description** (Work order no., Work order type and the description) and below them the flexible fields (**Additional information**), when the product lines bring any. Client info comes from the registry and is edited there; the references and Product lines come from the quote, read only; a work order with lines from several quotes does not show them. Address, VAT number, tax code and contacts show only if you may view registries and referents. The work order has no Context (Source), Rewards, Document and payment or Task template sections.",
+          text: "The **Info** tab has two columns as in the old QNet. On the left: **Client info** (**Company** with the link to the registry, **Registered office** with VAT number and tax code, **Tags**, **Email/PEC**, **Phone**, **Referent 1** i.e. the registry's primary referent, **Referent 2** i.e. the registry's secondary referent (empty when none is set), **Commercial**, **Commercial partner**, **Sector** and **Comments** i.e. the registry's general notes; tap an email, PEC or phone to write or call), then **Work order contract data** (Start date, the link to the Contract, then every product of the work order with its payment fields and the totals Total Consulenza, Total Ente and Total revenue) and **Work order progress**; Supervisors and Participants are managed from the **three dots** at the top (**Supervisors and Participants**). On the right: **Company references and business functions** (Company, Site, Operational site, Business function: the business functions of the Product lines), **Callback date**, **Work order description** (Work order no. and Work order type) and below them the flexible fields (**Additional information**), when the product lines bring any. Client info comes from the registry and is edited there; the references come from the quote, read only; a work order with lines from several quotes does not show them. Address, VAT number, tax code and contacts show only if you may view registries and referents. The work order has no Context (Source), Rewards, Document and payment or Task template sections.",
         },
         {
           type: 'note',
@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. On the detail the Additional information is always open. On the create form, clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order.',
+          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). Each Additional information section also has a **pencil beside its title**: it opens a popup with every field of the section (tables included, e.g. the **Inspection visits**) and **Save** records them all at once; **Cancel** or closing the popup discards the changes. Fields owned by an integration stay read-only in the popup too. A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. On the detail the Additional information is always open. On the create form, clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order.',
         },
         {
           type: 'steps',
@@ -39,7 +39,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: "The **Work order notes** sit in the yellow box at the top of the detail, like the General notes in Request management: when empty the box invites you to write them; with the pencil (or a click on the text) you write them right inside the box.",
+          text: "The work order **Description** sits in the yellow box at the top of the right column of the **Info** tab, above **Company references and business functions**, like the General notes in Request management; a long text scrolls inside the box, at most about 300 pixels high: when empty the box invites you to write it; with the pencil (or a click on the text) you write it right inside the box. The former Work order notes became the Description: where there were both notes and a description, the notes text comes first and the description follows after a blank line.",
         },
         {
           type: 'note',
@@ -51,7 +51,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer). The **Task template** is changed from the **Tasks** tab (see **Tasks: loading a template**). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer). The **Task template** is changed from the **Tasks** tab (see **Tasks: loading a template**). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry (shown in the table column, edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
           type: 'note',
@@ -65,15 +65,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "The **Actions** column of the Work orders list (also in the Work orders sections of a Contract and of a Registry) has the actions of the old QNet: the **eye** opens the work order, **Supervisors and Participants** opens a popup with the people of the work order, **Info** opens the work order on the Info tab. The three-dots menu opens the work order straight on the **Notes history**, **Tasks** or **Documents** tab; at the bottom of the menu there is **Delete** (see **Deleting a work order**).",
+          text: "The **Actions** column of the Work orders list (also in the Work orders sections of a Contract and of a Registry) has the actions of the old QNet: only the **eye**, which opens the work order, and **Supervisors and Participants**, which opens a popup with the people of the work order, stay on the row. Every other action is in the three-dots menu: **Info**, **Notes history**, **Tasks** and **Documents** open the work order in the side panel, straight on that tab, without leaving the list (even if you chose to open records as a full page; Ctrl or Cmd + click opens it in a new browser tab instead); at the bottom of the menu there is **Delete** (see **Deleting a work order**).",
         },
         {
           type: 'paragraph',
-          text: "In the **Supervisors and Participants** popup you add or remove Supervisors and Participants with the pencil, under the same rules as the detail. At the bottom, if you may request proformas, there is **Request proforma**; **Close** closes the popup.",
+          text: "The **Supervisors and Participants** popup shows the work order's people in two groups, each with its head count: **Supervisors** and **Participants**, the latter numbered (Participant 1, 2...) with any **free slots**. With **Add** you search for a colleague and tick them: they are saved at once; ticking them again takes them out. Hovering a person shows their actions: the **X** removes a Supervisor, a Participant's three-dots menu moves them **up** or **down** or **removes** them (their slot stays free and the others keep their number). Every change is saved at once and the confirmation message has **Undo** to go back. Without the permission to change them you see the people but not the commands. The same popup opens in the work order detail from the **three dots** at the top (**Supervisors and Participants**). At the bottom, if you may request proformas, there is **Request proforma**; **Close** closes the popup.",
         },
         {
           type: 'note',
-          text: "Tasks and Documents show in the menu only if you can see those tabs, Delete only if you may delete work orders. Force close, Progress, Request update, Request proforma and Activity are no longer row actions: you find them in the work order detail. The progress also opens from the **Progress** cell of the table.",
+          text: "Tasks and Documents show in the menu only if you can see those tabs, Delete only if you may delete work orders. Force close, Progress, Request update, Request proforma and Activity are no longer row actions: you find them in the work order detail, in the three-dots menu at the top. The progress also opens from the **Progress** cell of the table.",
         },
         {
           type: 'paragraph',
@@ -87,6 +87,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "If you see the work orders' **Contract data**, the table also has the **Consultancy amount** and **Total revenue** columns, as in the old QNet. **Consultancy amount** adds up the net amount of the work order's **Consulenza** products. **Total revenue** is the same total as the Contract data tab: the net amount of every product, except those with a **received** supplier commission (usually the **Ente** ones), which count only for that commission. Both can be sorted and filtered by amount (equals, greater than, less than, between).",
         },
+        {
+          type: 'paragraph',
+          text: "The **Last note date** and **Last supervisor note** columns mirror those of the old QNet. **Last note date** shows the date of the latest note written in the work order's **Notes history**, replies included; **Last supervisor note** the date of the latest note written by one of the work order's **Supervisors**. Hovering the date shows who wrote the note, its date and time and its text. Deleted notes do not count; with no notes the cell is empty. Both can be sorted and filtered by date.",
+        },
       ],
     },
     {
@@ -99,7 +103,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** is done from the work order detail (it asks for a reason), not from a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only.",
+          text: "**Force closing** is done from the work order detail (with an optional reason), not from a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). The **Period** column shows the contract period the work order was programmed in: **Initial** or **Renewal N** (see the Contracts guide, Renewing the contract). Work order no., Contract no., Linked offer, Registry, Contract expiry, Period, Status, Progress, Created at and Updated at stay read-only. The **Title** column filter finds the work orders whose title **contains** the text you type (for example \"safety\"), with no list of values to tick.",
         },
       ],
     },
@@ -109,7 +113,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In the **Advanced filters** panel (button in the bar above the list) the **Supervisors** and **Participants** fields let you pick one or more people: the list shows the work orders where at least one of them holds that role. If you fill in both fields, a work order must satisfy both. The **Supervisors** and **Participants** columns of the list also have their own filter by name, with a **(Blanks)** entry for the work orders with nobody in that role.",
+          text: "In the filters above the list the **Users** field lets you pick one or more people (type to search them): the list shows the work orders where at least one of them is **Supervisor** or **Participant**. On **Project work orders** the **Advanced filters** panel keeps the two separate **Supervisors** and **Participants** fields instead: filling in both, a work order must satisfy both. The **Supervisors** and **Participants** columns of the list also have their own filter by name, with a **(Blanks)** entry for the work orders with nobody in that role.",
         },
       ],
     },
@@ -119,7 +123,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. The phase is the work order **Status** (the **Status** column of the table and the badge at the top of the detail), separate from the **Working status** and from progress, and moves on its own as in the old QNet: a new work order is **To plan**; it becomes **In progress** when you add a **Supervisor**; a forced closure moves it to **Completed** (positive closing status) or **Cancelled** (negative); reopening it brings it back to **In progress**, or **To plan** when it has no Supervisors. From the contract: **Cancelled** moves all its work orders to **Cancelled**; **Terminated** moves to **Terminated** only those to plan or in progress, and reactivating the contract puts them back. **All** removes the filter. Every tab except **All** shows how many work orders it holds (only when not zero): the number follows the search and the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters, **Parent category** included: if a work order is missing, check those too.",
+          text: "At the top right of the **Work orders** page you find the tabs **All**, **To plan**, **In progress**, **Completed**, **Cancelled** and **Terminated**. The phase is the work order **Status** (the **Status** column of the table and the badge at the top right of the detail, beside the three dots), separate from the **Working status** and from progress, and moves on its own as in the old QNet: a new work order is **To plan**; it becomes **In progress** when you add a **Supervisor**; a forced closure moves it to **Completed** (positive closing status) or **Cancelled** (negative); reopening it brings it back to **In progress**, or **To plan** when it has no Supervisors. From the contract: **Cancelled** moves all its work orders to **Cancelled**; **Terminated** moves to **Terminated** only those to plan or in progress, and reactivating the contract puts them back. **All** removes the filter. Every tab except **All** shows how many work orders it holds (only when not zero): the number follows the active filters, so it matches what you see when you open the tab. The tab adds up with the other filters, **Parent category** included: if a work order is missing, check those too.",
         },
       ],
     },
@@ -129,7 +133,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When it opens, the **Work orders** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the work orders where you are **Supervisor** or **Participant** (and those of your site or competence, when your profile grants it). In the **Advanced filters** panel **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the work orders of every category, otherwise the work orders of your categories (with all their subcategories) plus those of any category where you are **Supervisor** or **Participant**: a work order assigned to you outside your competence stays in the list. Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more and press **Apply** to narrow it down: you see only the work orders of those categories (those of other categories where you are Supervisor or Participant leave the list too) and your choice is saved. The **Search** field also finds work orders by client (registry) name: part of the name is enough, for example \"napoli\". Typing digits only also finds the work order with that exact **ID** (the hidden **ID** column), on top of those whose code contains the number; the id from the old system is not searched.",
+          text: "As in the old QNet, the filters of the **Work orders** page sit above the list, with no frame. The **funnel** icon in the table header, beside the three dots, shows and hides them together with the **saved filters**, and you find them as you left them (open or closed) on later visits too, in the browser you are using; while they are hidden the funnel shows how many filters are active. The filters are: **Title** (the work orders whose title contains the typed text), **Client**, **Month**, **Parent category** and **Users**. In every drop-down list you can type to search the entry. There are no **Apply** and **Reset** buttons: the list updates by itself as soon as you pick an entry or stop typing; to remove a filter empty the field (with the **X** in the drop-down lists). The applied filters show in the table header, beside the row count, each with its own **X**, followed by **Clear all**. **Month** keeps the work orders whose **start date** falls in that month of the **current year**, as in the old QNet: for another year use the filter of the **Start date** column. This page has no quick search: to search by code use the filter of the **Work order no.** column.",
+        },
+        {
+          type: 'paragraph',
+          text: "When it opens, the **Work orders** page shows every record your profile lets you see, without an **Assignment** filter: if you may see everything you see everything, otherwise you see the work orders where you are **Supervisor** or **Participant** (and those of your site or competence, when your profile grants it). **Parent category** starts empty, and empty stands for every parent category you are enabled on: if you are enabled on all of them you see the work orders of every category, otherwise the work orders of your categories (with all their subcategories) plus those of any category where you are **Supervisor** or **Participant**: a work order assigned to you outside your competence stays in the list. Opening the field's list you find only the parent categories you can pick: all of them if you are enabled on everything, otherwise only yours. Pick one or more to narrow it down (on the **Work orders** page the list updates at once, on **Project work orders** press **Apply**): you see only the work orders of those categories (those of other categories where you are Supervisor or Participant leave the list too) and your choice is saved.",
         },
         {
           type: 'paragraph',
@@ -137,11 +145,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the same panel you can also pick one or more values in **Product category** (that category only) and **Client**. The filters never widen what you can see: your profile's visibility rules still apply. A work order falls under a category if the category is among the products on the **revenue rows of the offers it comes from**: the linked offer and, for a multi-offer work order, the offers of the rows it holds. Cost rows do not count. For a multi-offer work order the client of each offer counts too.",
+          text: "In **Client** you can pick one or more clients (**Project work orders** also has **Product category**, that category only). The filters never widen what you can see: your profile's visibility rules still apply. A work order falls under a category if the category is among the products on the **revenue rows of the offers it comes from**: the linked offer and, for a multi-offer work order, the offers of the rows it holds. Cost rows do not count. For a multi-offer work order the client of each offer counts too.",
         },
         {
           type: 'paragraph',
-          text: "The flexible-field columns appear at the end of the list when the category filter points to a single category: a single value in **Product category** or, if that is empty, a single current parent category in **Parent category** (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with an empty **Parent category**. To see only the records of a legacy category or only of a new one use **Product category**. An old field linked to its **Current field** (see the Attributes guide) shares the current field's column: it shows the new field's value on new work orders and the old field's on old ones, and filter, sort and export work on both; editing the cell writes the field that work order has. Two unlinked fields with the same name show in two columns. They are the work order's own fields: they can be sorted, filtered and exported; if you may edit work orders they are edited in the cell, except when the field does not concern that work order (the cell stays read-only). The values can still be read in the detail too. The **Verifiche ispettive** appear as the **Data verifica ispettiva** column: the date of the inspection marked active, blank when no row is active; inspections are managed in the work order detail.",
+          text: "The flexible-field columns appear at the end of the list when **Parent category** points to a single current parent category (for example ISO). Choosing a current parent category also brings in the records of the linked legacy categories (for example [OLD] ISO), which do not appear as separate options in the filter, and the columns are those of the current category first, then those of the legacy ones. With two different current parent categories you see the records of both but no columns; the same with an empty **Parent category**. Picking a linked legacy category stands for its current category and the whole group. An old field linked to its **Current field** (see the Attributes guide) shares the current field's column: it shows the new field's value on new work orders and the old field's on old ones, and filter, sort and export work on both; editing the cell writes the field that work order has. Two unlinked fields with the same name show in two columns. They are the work order's own fields: they can be sorted, filtered and exported; if you may edit work orders they are edited in the cell, except when the field does not concern that work order (the cell stays read-only). The values can still be read in the detail too. The **Verifiche ispettive** appear as the **Data verifica ispettiva** column: the date of the inspection marked active, blank when no row is active; inspections are managed in the work order detail.",
         },
         {
           type: 'note',
@@ -155,15 +163,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The forced closure is an **action**, not a field: you find it at the top of the work order detail. It shows if you may edit the work order or you are one of its **Supervisors** or **Participants**.',
+          text: 'The forced closure is an **action**, not a field: you find it in the **three-dots** menu at the top right of the detail. It shows if you may edit the work order or you are one of its **Supervisors** or **Participants**.',
         },
         {
           type: 'steps',
           items: [
-            'Press **Force close**.',
-            'Write the **reason** (required). If the work order still has open tasks, the dialog tells you how many will be closed with a negative outcome.',
+            'Open the **three dots** and choose **Force close**.',
+            'If you wish, write the **reason** (optional). If the work order still has open tasks, the dialog tells you how many will be closed with a negative outcome.',
             'Pick the **Closing status** (required): the list shows the **Closed (won)** and **Closed (lost)** statuses of the work order\'s set and starts on the main lost one. With a won status the work order progress goes to **100%** (an entry dated today is added, unless it was already at 100%).',
-            'Press **Close work order**: the status becomes Closed, the Processing status becomes the closing status you picked and the reason appears among the work order details.',
+            'Press **Close work order**: the status becomes Closed, the Processing status becomes the closing status you picked and the reason, if written, appears among the work order details.',
           ],
         },
         {
@@ -178,12 +186,12 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Progress is recorded by hand and is the **sum** of the percentages of all the records (in the popup, the Percentage column is the increment of each row). The table's **Progress** column and the indicator at the top of the detail show the total and the date of the latest record; with no records the table cell shows a **+** icon and progress is 0%.",
+          text: "Progress is recorded by hand and is the **sum** of the percentages of all the records (in the popup, the Percentage column is the increment of each row). The table's **Progress** column shows the total and the date of the latest record; with no records the table cell shows a **+** icon and progress is 0%. In the detail, as in the old QNet, the **Work order progress** section shows **Total % reached** and **Last progress**: you find it in the Info tab and at the bottom of the **Administration** tab, under Costs or Proforma (when you may see them).",
         },
         {
           type: 'steps',
           items: [
-            'Open the **Work order progress list**: click the **Progress** cell of the table, or press **Work order progress** at the top of the work order detail (next to Force close).',
+            'Open the **Work order progress list**: click the **Progress** cell of the table, or, in the work order detail, press **Manage progress** in the Work order progress section (or open the **three dots** and choose **Work order progress**).',
             'The **Total % reached** field shows the sum already recorded. Type the new total (1 to 100) in **Current status %**: it must be greater than the total reached. Enter the **Date** (required).',
             'Press **Confirm**: the record is saved (as the difference from the total) and the popup closes.',
             "To delete a row press the trash in the Actions column, then confirm with the trash or cancel with the X: the total drops by that row's increment.",
@@ -201,7 +209,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the work order detail; it shows only if you hold the **Request updates** permission and only on a **To plan** or **In progress** work order (not on a Completed, Cancelled or Terminated one). The work order is not changed.',
+          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The action is in the **three-dots** menu at the top of the work order detail; it shows only if you hold the **Request updates** permission and only on a **To plan** or **In progress** work order (not on a Completed, Cancelled or Terminated one). The work order is not changed.',
         },
         {
           type: 'table',
@@ -224,7 +232,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Besides the **Status** (the phase: To plan, In progress, Completed, Cancelled, Terminated, see **Working phases**), every work order has a **Processing status** field: the operational status you choose. You find it in the detail and as a table column, with a colored badge and the name.",
+          text: "Besides the **Status** (the phase: To plan, In progress, Completed, Cancelled, Terminated, see **Working phases**), every work order has a **Processing status** field: the operational status you choose. You find it in the detail header, beside the Status, and as a table column, with a colored badge and the name. In the detail click the badge (it has an arrow when you may edit it) and pick the status from the list: it is saved at once.",
         },
         {
           type: 'paragraph',
@@ -232,7 +240,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Picking by hand a **Processing status** with a **progress %** above zero raises the work order progress to that percentage (an entry dated today is added). If the status percentage is not above the progress already reached the change is refused and the field shows the error; statuses without a percentage change the status only. The same happens automatically when a task created from a template whose row is linked to a status is closed positively (see **Task Templates**): in that case the status is applied even when it comes before the current one. On a force-closed work order the progress does not change. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Closed (won), Closed (lost), also for the other closing statuses of the same group) or Open. Force-closing sets the Processing status to the **Closing status** you picked (a **Closed (won)** status, which brings the progress to 100%, or a **Closed (lost)** one); reopening the work order sets it back to **Open** while it is still on a lost status.",
+          text: "Picking by hand a **Processing status** with a **progress %** above zero raises the work order progress to that percentage (an entry dated today is added). If the status percentage equals the progress already reached only the status changes, with no new entry; if it is lower the change is refused and a notice explains why; statuses without a percentage change the status only. The same happens automatically when a task created from a template whose row is linked to a status is closed positively (see **Task Templates**): in that case the status is applied even when it comes before the current one. On a force-closed work order the progress does not change. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Closed (won), Closed (lost), also for the other closing statuses of the same group) or Open. Force-closing sets the Processing status to the **Closing status** you picked (a **Closed (won)** status, which brings the progress to 100%, or a **Closed (lost)** one); reopening the work order sets it back to **Open** while it is still on a lost status.",
         },
       ],
     },
@@ -288,7 +296,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Without the permission to see the work order **costs** or **contract data** you see only the **Title** and **Payment status** (with the Consulenza or Ente badge) of each product, with no amounts, document, agreement or unpaid flag, and you cannot edit the payments. Under the products come the totals, as in the old QNet: **Total Consulenza**, **Total Ente** (one per typology: the net amount, with the revenue beside it when different; those at 0.00 are dimmed), then, when visible, Commissions and Net of commissions, finally **Total revenue**, each with its tooltip explaining the calculation.',
+          text: 'Without the permission to see the work order **costs** or **contract data** you see only the **Title** and **Payment status** (with the Consulenza or Ente badge) of each product, with no amounts, document, agreement or unpaid flag, and you cannot edit the payments. Under the products come the totals, as in the old QNet: **Total Consulenza**, **Total Ente** (one per typology: the net amount, with the revenue beside it when different; those at 0.00 are dimmed), finally **Total revenue**, with its tooltip explaining the calculation.',
         },
         {
           type: 'warning',
@@ -381,7 +389,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "When the work order is born from a contract (**Schedule**, batch creation or multi-offer work order), the **Additional information** fields sharing a code with the offer's start already filled; on a multi-offer work order the first non-empty value wins. For existing work orders use **Copy data from the offer** in the header (requires **Edit**): it fills only empty fields, never overwrites, and tells you how many fields it copied.",
+          text: "When the work order is born from a contract (**Schedule**, batch creation or multi-offer work order), the **Additional information** fields sharing a code with the offer's start already filled; on a multi-offer work order the first non-empty value wins. For existing work orders use **Copy data from the offer** in the detail's three-dots menu at the top (requires **Edit**): it fills only empty fields, never overwrites, and tells you how many fields it copied.",
         },
         {
           type: 'paragraph',
@@ -395,7 +403,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'If you can create proforma requests, the **Request proforma** button is at the top of the work order detail, next to **Work order progress**, at the bottom of the **Supervisors and Participants** popup of the Work orders list and in the icon of the table\'s **€** column (see **Table actions**): they all open the same window.',
+          text: 'If you can create proforma requests, **Request proforma** is in the **three-dots** menu at the top of the work order detail, at the bottom of the **Supervisors and Participants** popup of the Work orders list and in the icon of the table\'s **€** column (see **Table actions**): they all open the same window.',
         },
         {
           type: 'steps',
@@ -440,6 +448,14 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "On each item, beside the number of files, **Download** appears for every file the customer uploaded (including rejected or not yet checked ones): the file is saved with its original name. With the dedicated **Review** permission (document requests, assignable from the role) you can **Approve** an item that has a document (optional note) or **Reject** it (mandatory note, up to 1000 characters), overriding the automatic outcome: the status becomes **Manually approved** or **Manually rejected**. Approve is not shown if the item is already approved, Reject if it is already rejected; both are only possible while the request is sent or in progress. **Close request** (with the edit permission) closes it as completed even if items are missing and disables the customer link; **Cancel request** instead discards it. The actions are queued towards ArchivioSmart: if they fail, the message appears on the request.",
         },
+        {
+          type: 'paragraph',
+          text: "A request uses the checklist rules of the moment it was created. When the checklist is corrected, **Refresh rules from the checklist** (with the edit permission, on a draft, sent or in progress request, after confirmation) brings the current description, formats, size, validation prompt and rules of the items into the request; name, required flag and number of files do not change, and the outcomes already given stay. When some changed items hold a file **To fix** or **To review**, **Revalidate changed items** appears and has the AI validate all of them again with a single confirmation.",
+        },
+        {
+          type: 'paragraph',
+          text: "With the **Review** permission, an item with files shows **Revalidate with AI**: the AI validates the files again with the current rules and the item goes back to checking until the outcome arrives; if the item had been approved or rejected by hand, the confirmation warns that the decision is lost. Every revalidation is a call to the AI: use it only where needed. On an item **Uploaded** or **Being checked**, **Stop validation** appears: the files go to manual review and the item is then approved or rejected by hand; ArchivioSmart keeps your name. Who asked for these actions, and when, stays in the activity log of the request.",
+        },
       ],
     },
     {
@@ -448,7 +464,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'A work order can be deleted in three ways, all requiring the permission to delete work orders: from the three-dots menu of its row (**Delete**), from the **Delete** button at the top of its detail, or by selecting one or more in the list and using **Delete selected**. You are asked to confirm first; deleted from the detail, you go back to the list. It **cannot be deleted** if it has linked proforma requests, active invoices, purchase orders or purchase invoices: in the detail the Delete button does not show, from the row a message explains why, with Delete selected the message counts it among the ones not deleted. Tasks, hours and manually entered costs do not block deletion.',
+          text: 'A work order can be deleted in three ways, all requiring the permission to delete work orders: from the three-dots menu of its row (**Delete**), from **Delete** in the three-dots menu at the top of its detail, or by selecting one or more in the list and using **Delete selected**. You are asked to confirm first; deleted from the detail, you go back to the list. It **cannot be deleted** if it has linked proforma requests, active invoices, purchase orders or purchase invoices: in the detail the Delete item does not show, from the row a message explains why, with Delete selected the message counts it among the ones not deleted. Tasks, hours and manually entered costs do not block deletion.',
         },
       ],
     },

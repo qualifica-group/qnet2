@@ -22,7 +22,7 @@ use Spatie\Activitylog\LogOptions;
 #[Fillable([
     'work_order_id', 'document_checklist_id', 'checklist_code', 'checklist_name', 'category_name',
     'due_date', 'recipient_email', 'message', 'status', 'title',
-    'items_count', 'items_uploaded_count', 'items_satisfied_count', 'snapshot',
+    'items_count', 'items_uploaded_count', 'items_satisfied_count', 'snapshot', 'rules_updated_item_ids',
     'sent_at', 'last_reminded_at', 'completed_at', 'cancelled_at', 'expired_at', 'link_expires_at',
     'remote_updated_at', 'last_event_at', 'delivery_status', 'pending_operation', 'delivery_error', 'created_by',
 ])]
@@ -55,6 +55,7 @@ class DocumentRequest extends Model
             'items_uploaded_count' => 'integer',
             'items_satisfied_count' => 'integer',
             'snapshot' => 'array',
+            'rules_updated_item_ids' => 'array',
             'sent_at' => 'datetime',
             'last_reminded_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -112,6 +113,26 @@ class DocumentRequest extends Model
     public function neverReachedArchivioSmart(): bool
     {
         return $this->status === null && $this->delivery_status !== DocumentRequestDeliveryStatus::Pending;
+    }
+
+    /**
+     * Draft, sent or in progress: ArchivioSmart can copy the current checklist rules into it (spec 0432).
+     */
+    public function acceptsRulesRefresh(): bool
+    {
+        return in_array($this->status, DocumentRequestStatus::open(), true);
+    }
+
+    /**
+     * The item of the snapshot with this id, or null.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function snapshotItem(int $itemId): ?array
+    {
+        $item = collect($this->snapshot['items'] ?? [])->firstWhere('id', $itemId);
+
+        return is_array($item) ? $item : null;
     }
 
     public function isRemindable(): bool

@@ -5,7 +5,6 @@ import i18n from '@/i18n'
 import {
   PAID_LINE,
   CONTRACT_DATA,
-  CONTRACT_DATA_HIDDEN_COMMISSIONS,
   RECEIVED_LINE,
 } from '@/features/work-order-contract-data/contract-data-fixtures'
 import {
@@ -234,17 +233,16 @@ describe('WorkOrderContractDataSection - amount hint', () => {
 
 describe('WorkOrderContractDataSection - totals', () => {
   // REQUIREMENT CHANGED (user directive 2026-11-16): the totals follow the lines as legacy-like rows.
-  it('lists the totals after the lines: one per typology, the commissions, the total revenue last', async () => {
+  // REQUIREMENT CHANGED (user directive 2026-11-27): no Commissioni / Netto commissioni rows, even when visible.
+  it('lists the totals after the lines: one per typology, the total revenue last, no commission totals', async () => {
     renderSection(false)
     const lines = await findLines()
 
-    const totals = screen.getAllByText(/^Total |^Commissions$|^Net of commissions$/, { selector: 'dt' })
+    const totals = screen.getAllByText(/^Total /, { selector: 'dt' })
     expect(totals.map((term) => term.textContent)).toEqual([
       'Total Consulenza',
       'Total Ente',
       'Total Formazione',
-      'Commissions',
-      'Net of commissions',
       'Total revenue',
     ])
     expect(lines[1].compareDocumentPosition(totals[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -252,27 +250,13 @@ describe('WorkOrderContractDataSection - totals', () => {
       '1,000.00',
       '2,000.00revenue 200.00',
       '0.00',
-      '450.00',
-      '2,550.00',
       '1,200.00',
     ])
     expect(screen.getByText('0.00', { selector: 'dd span' })).toHaveClass('text-muted-foreground')
+    expect(screen.queryByText(/^(Commissions|Net of commissions)$/, { selector: 'dt' })).not.toBeInTheDocument()
 
-    hover(within(screen.getByText('Net of commissions', { selector: 'dt' }).parentElement as HTMLElement).getByRole('button'))
-    expect(await screen.findByText('3,000.00 − 450.00 = 2,550.00')).toBeInTheDocument()
-  })
-
-  it('drops the commission totals when commissions are not visible', async () => {
-    fetchMock.mockResolvedValue(CONTRACT_DATA_HIDDEN_COMMISSIONS)
-    renderSection(false)
-    await findLines()
-
-    expect(screen.getAllByText(/^Total |^Commissions$|^Net of commissions$/, { selector: 'dt' }).map((term) => term.textContent)).toEqual([
-      'Total Consulenza',
-      'Total Ente',
-      'Total Formazione',
-      'Total revenue',
-    ])
+    hover(within(screen.getByText('Total revenue', { selector: 'dt' }).parentElement as HTMLElement).getByRole('button'))
+    expect(await screen.findByText("Sum of the lines' effective revenue: the received commission, otherwise the net amount.")).toBeInTheDocument()
   })
 })
 

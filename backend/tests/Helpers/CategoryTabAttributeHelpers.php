@@ -91,6 +91,19 @@ if (! function_exists('categoryTabFilters')) {
     }
 }
 
+if (! function_exists('workOrderCategoryFilters')) {
+    /**
+     * The Commesse page selects a category through "Categoria madre" alone
+     * (user request 2026-11-27: no product category filter there).
+     *
+     * @return array<string, array<int, int>>
+     */
+    function workOrderCategoryFilters(ProductCategory $root): array
+    {
+        return ['parent_category' => [$root->id]];
+    }
+}
+
 if (! function_exists('categoryTabSaveFilters')) {
     /**
      * Saves the advanced filters of the acting user for $grid and returns the response.
@@ -124,7 +137,7 @@ if (! function_exists('categoryTabAssertAttributeStaysHidden')) {
     function categoryTabAssertAttributeStaysHidden(string $domain, ProductCategory $category, string $code): void
     {
         $columnId = "attr.{$code}";
-        categoryTabSaveFilters($domain, categoryTabFilters($category))->assertOk();
+        categoryTabSaveFilters($domain, $domain === 'work-orders' ? workOrderCategoryFilters($category) : categoryTabFilters($category))->assertOk();
 
         $saved = test()->postJson("/api/tables/{$domain}/preferences", [
             'columns' => [['id' => $columnId, 'visible' => false, 'order' => 1]],

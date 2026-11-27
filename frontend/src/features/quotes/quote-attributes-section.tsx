@@ -8,6 +8,7 @@ import { AttributeLayoutField } from '@/features/attributes/attribute-layout-fie
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { SyncedAttributeHint } from '@/features/attributes/synced-attribute-hint'
 import { AttributeLayoutView, type AttributeFieldRenderer } from '@/features/attributes/attribute-layout-view'
+import { useAttributeSectionEditAction } from '@/features/attributes/use-attribute-section-edit-action'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { ApplicableAttributeSummary } from '@/features/quotes/types'
@@ -34,6 +35,8 @@ interface QuoteAttributesSectionProps {
   values: Record<string, unknown>
   inline: InlineEdit
   control: Control<QuoteFormValues>
+  /** Detail only: each section's pencil edits all its fields in one popup (user directive 2026-11-27). */
+  sectionEdit?: boolean
 }
 
 /**
@@ -46,7 +49,8 @@ interface QuoteAttributesSectionProps {
  * value.
  *
  * The whole block follows the single `attribute_values` field permission.
- * Absent when the offer lines resolve no Attribute.
+ * Absent when the offer lines resolve no Attribute. With `sectionEdit` every
+ * section also edits as a whole (`AttributeSectionEditDialog`).
  */
 export function QuoteAttributesSection({
   attributes,
@@ -54,15 +58,22 @@ export function QuoteAttributesSection({
   values,
   inline,
   control,
+  sectionEdit = false,
 }: QuoteAttributesSectionProps) {
   const { t } = useTranslation()
   const effectiveAttributes = useEffectiveAttributes(attributes)
+  const effectiveByCode = new Map(effectiveAttributes.map((attribute) => [attribute.code, attribute]))
+  const renderSectionAction = useAttributeSectionEditAction({
+    enabled: sectionEdit,
+    attributesByCode: effectiveByCode,
+    control,
+    inline,
+  })
 
   if (attributes.length === 0) {
     return null
   }
 
-  const effectiveByCode = new Map(effectiveAttributes.map((attribute) => [attribute.code, attribute]))
   const syncedCodes = new Set(attributes.filter((attribute) => attribute.is_synced).map((attribute) => attribute.code))
 
   const renderField: AttributeFieldRenderer = (attribute, value, fieldClassName) => {
@@ -94,7 +105,13 @@ export function QuoteAttributesSection({
       title={t('quotes.detail.additionalInformation')}
       icon={<ClipboardList />}
     >
-      <AttributeLayoutView layout={layout} attributes={attributes} values={values} renderField={renderField} />
+      <AttributeLayoutView
+        layout={layout}
+        attributes={attributes}
+        values={values}
+        renderField={renderField}
+        renderSectionAction={renderSectionAction}
+      />
     </AdditionalInformationSection>
   )
 }

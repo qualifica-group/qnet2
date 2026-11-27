@@ -77,19 +77,20 @@ final class WorkOrderProgressEntryService
     }
 
     /**
-     * Spec 0323 D-2: a manual status change that carries a positive percentage
-     * must go strictly above the progress already reached (legacy rule).
+     * Spec 0323 D-2 (revised 2026-11-27): a manual status change that carries a
+     * positive percentage cannot go below the progress already reached; the same
+     * percentage is accepted and leaves the progress as it is.
      *
      * @throws ValidationException
      */
-    public function assertStatusPercentageAboveCurrent(WorkOrder $workOrder, ?int $percentage): void
+    public function assertStatusPercentageNotBelowCurrent(WorkOrder $workOrder, ?int $percentage): void
     {
         $current = $this->currentTotal($workOrder);
 
-        if ($percentage !== null && $percentage > 0 && $percentage <= $current) {
+        if ($percentage !== null && $percentage > 0 && $percentage < $current) {
             throw ValidationException::withMessages([
                 'work_order_workflow_status_id' => [
-                    __('work_orders.workflow_status.progress_not_above_current', ['percentage' => $percentage, 'current' => $current]),
+                    __('work_orders.workflow_status.progress_below_current', ['percentage' => $percentage, 'current' => $current]),
                 ],
             ]);
         }

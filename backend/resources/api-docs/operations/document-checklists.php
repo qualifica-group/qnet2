@@ -33,6 +33,14 @@ return [
         'summary' => 'Queue the sync of a document checklist',
         'description' => 'Marks the checklist pending and queues a sync job, to retry after a failure. Answers 202 with the checklist. Deleted checklists answer 404. Requires document-checklists.update.',
     ],
+    'GET /document-checklists/{documentChecklist}/open-requests' => [
+        'summary' => 'Count the open document requests of a checklist',
+        'description' => 'Returns count: the document requests of this checklist that are draft, sent or in_progress, whose rules can be refreshed after a correction. Requires document-checklists.update and document-requests.update.',
+    ],
+    'POST /document-checklists/{documentChecklist}/refresh-open-requests' => [
+        'summary' => 'Copy the corrected rules into every open request of a checklist',
+        'description' => 'Takes no body. Queues a rules refresh on every draft, sent or in_progress request of the checklist and answers 202 with queued, the number of requests. Answers 422 on checklist while the checklist has not been sent to ArchivioSmart (sync_status other than synced). Requires document-checklists.update and document-requests.update.',
+    ],
     'GET /document-checklists/{documentChecklist}/sync-logs' => [
         'summary' => 'List the latest ArchivioSmart calls of a document checklist',
         'description' => 'Returns the most recent calls (up to 20, newest first) made for this checklist: operation (upsert or delete), outcome (success, failed or retrying), http_status (null when there was no HTTP response), attempt, message and created_at. Requires document-checklists.view.',

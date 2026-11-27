@@ -32,6 +32,8 @@ interface AttributeLayoutViewProps {
   values: Record<string, unknown>
   /** Defaults to the read-only label/value row. */
   renderField?: AttributeFieldRenderer
+  /** At the end of each section's heading band (e.g. the whole-section edit of a detail); none by default. */
+  renderSectionAction?: (section: LayoutSection) => ReactNode
 }
 
 const renderReadOnlyField: AttributeFieldRenderer = (attribute, value, className) => (
@@ -81,6 +83,7 @@ interface LayoutViewSectionProps {
   items: PlacedAttribute[]
   values: Record<string, unknown>
   renderField: AttributeFieldRenderer
+  action: ReactNode
 }
 
 /**
@@ -88,17 +91,18 @@ interface LayoutViewSectionProps {
  * look): a tinted heading band with icon, title and description, then the
  * same label/value rows as the record sections above it.
  */
-function LayoutViewSection({ section, items, values, renderField }: LayoutViewSectionProps) {
+function LayoutViewSection({ section, items, values, renderField, action }: LayoutViewSectionProps) {
   const wide = section.columns >= 2
 
   return (
     <section className={cn('flex min-w-0 flex-col gap-1', wide && WIDE_SECTION_CLASS)}>
       <div className={cn('flex items-start gap-2 rounded-md px-2.5 py-1.5', HEADING_BAND_CLASS[section.variant])}>
         <Rows3 className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h4 className="text-xs font-semibold text-foreground">{section.title}</h4>
           {section.description ? <p className="text-xs text-muted-foreground">{section.description}</p> : null}
         </div>
+        {action}
       </div>
       <RecordFieldList className={cn('px-1', wide && WIDE_FIELD_LIST_CLASS)}>
         {items.map(({ attribute, width }) => (
@@ -128,6 +132,7 @@ export function AttributeLayoutView({
   attributes,
   values,
   renderField = renderReadOnlyField,
+  renderSectionAction,
 }: AttributeLayoutViewProps) {
   const { t } = useTranslation()
 
@@ -168,6 +173,7 @@ export function AttributeLayoutView({
           items={items}
           values={values}
           renderField={renderField}
+          action={renderSectionAction?.(section) ?? null}
         />
       ))}
     </div>

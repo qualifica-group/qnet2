@@ -33,7 +33,8 @@ const FORM_FIELDS = ['force_close_reason', 'force_close_status_id'] as const
 
 function buildForceCloseSchema(t: TFunction) {
   return z.object({
-    force_close_reason: z.string().trim().min(1, t('workOrders.form.forceCloseReasonRequired')),
+    // Optional (user directive 2026-11-27): an empty reason is sent as null.
+    force_close_reason: z.string(),
     force_close_status_id: z.number({ message: t('workOrders.form.forceCloseStatusRequired') }),
   })
 }
@@ -96,7 +97,7 @@ function ForceCloseForm({ workOrderId, statuses, tasksToClose, onClose, onClosed
     try {
       await closure.mutateAsync({
         workOrderId,
-        payload: forceClosePayload(values.force_close_reason.trim(), values.force_close_status_id),
+        payload: forceClosePayload(values.force_close_reason.trim() || null, values.force_close_status_id),
       })
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, [...FORM_FIELDS])) {
@@ -161,7 +162,7 @@ function ForceCloseForm({ workOrderId, statuses, tasksToClose, onClose, onClosed
             name="force_close_reason"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>{t('workOrders.form.forceCloseReason')}</FormLabel>
+                <FormLabel>{t('workOrders.form.forceCloseReason')}</FormLabel>
                 <FormControl>
                   <Textarea rows={3} {...field} />
                 </FormControl>

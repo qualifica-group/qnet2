@@ -66,7 +66,6 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [],
     description: null,
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: 'QUO-0004',
@@ -148,6 +147,8 @@ function sectionTitles(): string[] {
 
 describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
   // REQUIREMENT CHANGED (user directives 2026-11-16): the Info tab follows the legacy "Info" layout.
+  // REQUIREMENT CHANGED (user directive 2026-11-27): "Avanzamento commessa" takes the place of "Stato lavorazione".
+  // REQUIREMENT CHANGED (user directive 2026-11-27): "Team" left the Info tab for the "..." menu action.
   it('renders the sections in the legacy order, left then right', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ applicable_attributes: [SITE_ACCESS_ATTRIBUTE] })} />)
 
@@ -155,8 +156,10 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     const rightColumn = columnOf(/company references/i)
     expect(rightColumn).not.toBe(leftColumn)
     expect(rightColumn?.parentElement).toBe(leftColumn?.parentElement)
-    expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work status', 'team'])
-    expect(columnTitles(rightColumn).slice(0, 4)).toEqual([
+    expect(columnTitles(leftColumn)).toEqual(['client info', 'work order contract data', 'work order progress'])
+    // REQUIREMENT CHANGED (user decision 2026-11-27): the description callout heads the right column.
+    expect(columnTitles(rightColumn).slice(0, 5)).toEqual([
+      'description',
       'company references and business functions',
       'callback date',
       'work order description',
@@ -178,13 +181,23 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     }
   })
 
-  it('moves code, type, callback date and description to the work order description on the right', () => {
+  // REQUIREMENT CHANGED (user decision 2026-11-27): the description is the yellow callout of the right column, no longer a row of the section.
+  it('moves code, type and callback date to the work order description on the right, the description text on top', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ callback_date: '2026-04-10', description: 'Testo libero' })} />)
 
     const description = screen.getByRole('heading', { level: 3, name: /work order description/i }).closest('section') as HTMLElement
     expect(within(description).getByText('COM-0001')).toBeInTheDocument()
     expect(within(description).getByText('Processing')).toBeInTheDocument()
-    expect(within(description).getByText('Testo libero')).toBeInTheDocument()
+    expect(within(description).queryByText('Testo libero')).not.toBeInTheDocument()
+    const callout = screen.getByRole('heading', { level: 3, name: 'Description' }).closest('section') as HTMLElement
+    // User directive 2026-11-27: a long description scrolls past 100px instead of the shared callout's cap (REQUIREMENT CHANGED: was 300px).
+    expect(within(callout).getByText('Testo libero')).toHaveClass('max-h-[100px]', 'overflow-y-auto')
+    expect(within(callout).getByText('Testo libero')).not.toHaveClass('max-h-64')
+    // User decision 2026-11-27: the callout heads the right column, above the company references.
+    const company = screen.getByRole('heading', { level: 3, name: 'Company references and business functions' }).closest('section') as HTMLElement
+    expect(callout.parentElement).toBe(company.parentElement)
+    expect(callout.compareDocumentPosition(company) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText('Work order notes')).not.toBeInTheDocument()
     const callback = screen.getByRole('heading', { level: 3, name: /callback date/i }).closest('section') as HTMLElement
     expect(within(callback).getByText('10/04/2026')).toBeInTheDocument()
     // REQUIREMENT CHANGED (user directive 2026-11-16): "Dati commessa" merged into "Dati contrattuali commessa".
@@ -208,6 +221,16 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
 
     render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
     expect(subtitleOf()).toBe('COM-0001')
+  })
+
+  // REQUIREMENT CHANGED (user directive 2026-11-27): the opportunity's product lines left the contract data.
+  it('does not list the product lines in the contract data, even when the work order has some', () => {
+    const productLine = { id: 1, business_function: { id: 10, name: 'Formazione' }, product_category: { id: 100, name: 'Corsi' } }
+    render(<WorkOrderDetailView workOrder={workOrder({ product_lines: [productLine] })} />)
+
+    const data = screen.getByRole('heading', { level: 3, name: /work order contract data/i }).closest('section') as HTMLElement
+    expect(within(data).getAllByRole('term').map((term) => term.textContent)).not.toContain('Product lines')
+    expect(within(data).queryByText('Corsi')).not.toBeInTheDocument()
   })
 
   it('links the Contratto from the data section, not from a section of its own', () => {
@@ -242,7 +265,6 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     for (const dropped of ['context', 'client info', 'company references']) {
       expect(titles).not.toContain(dropped)
     }
-    expect(titles).toContain('team')
   })
 
   it('keeps the company references on the right even without additional information (user directive 2026-11-16)', () => {

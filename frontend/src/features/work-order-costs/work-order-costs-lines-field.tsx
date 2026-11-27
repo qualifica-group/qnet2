@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
@@ -21,6 +21,8 @@ interface WorkOrderCostsLinesFieldProps {
   onChangeField: (index: number, patch: Partial<WorkOrderCostRowValues>) => void
   onAddProducts: (items: QuoteCatalogProduct[]) => Promise<void>
   onRemove: (index: number) => void
+  /** At the end of the rows header, beside "Costi effettivi (N)" (spec 0436: the sync with the offer). */
+  headerAction?: ReactNode
 }
 
 /** Spec 0270 D-4: the whole COST catalogue, never scoped by category; a real cost may repeat a product. */
@@ -54,6 +56,7 @@ export function WorkOrderCostsLinesField({
   onChangeField,
   onAddProducts,
   onRemove,
+  headerAction,
 }: WorkOrderCostsLinesFieldProps) {
   const { t } = useTranslation()
   const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
@@ -65,6 +68,7 @@ export function WorkOrderCostsLinesField({
       count={rows.length}
       emptyText={t('workOrders.costs.editor.empty')}
       totals={{ ...totals, totalLabel: t('workOrders.costs.editor.totalLabel') }}
+      headerAction={headerAction}
       catalog={
         readOnly ? null : (
           <QuoteLineCatalog

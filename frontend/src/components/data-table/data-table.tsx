@@ -6,7 +6,6 @@ import {
   type ColumnMovedEvent,
   type ColumnResizedEvent,
   type ColumnVisibleEvent,
-  type FilterOpenedEvent,
   type GetRowIdParams,
   type GridOptions,
   type GridState,
@@ -20,7 +19,6 @@ import {
   AG_GRID_LOCALE_EN,
   AG_GRID_LOCALE_IT,
 } from '@ag-grid-community/locale'
-import { toast } from 'sonner'
 import { type CellRenderer } from '@/components/data-table/column-defaults'
 import {
   buildColDefs,
@@ -41,7 +39,6 @@ import {
   pageSizeOptions,
   restorablePosition,
 } from '@/components/data-table/grid-position'
-import { createFilterTruncationNotice } from '@/components/data-table/filter-truncation-notice'
 import { hookSetFilterServerSearch } from '@/components/data-table/set-filter-server-search'
 import { buildRowGroupingGridOptions, resolveRowId } from '@/components/data-table/row-grouping-grid-options'
 import { buildTreeDataGridOptions } from '@/components/data-table/tree-data-grid-options'
@@ -60,9 +57,6 @@ export type { CellRenderer }
 // (this module's own tests included) keeps working unchanged; the
 // implementations now live in `data-table-overlays.tsx` (engineering.md §6).
 export { ACTIONS_COLUMN_ID, SkeletonLoadingCell, TableEmptyOverlay }
-
-/** Fixed toast id: a second truncated column replaces the notice instead of stacking a copy. */
-const FILTER_TRUNCATED_TOAST_ID = 'table-filter-values-truncated'
 
 // Register enterprise modules + license once, at module load.
 setupAgGrid()
@@ -139,24 +133,6 @@ export function DataTable({
   // `ColDef` is hidden so `autoGroupColumnDef` below is the only place it renders.
   const treeGroupColumnId = treeData ? columns[0]?.id : undefined
 
-  // One notice gate per grid: "first values only" shown once per column, and
-  // only for a filter the user opened (never for a saved filter being restored).
-  // `i18n.t` reads the active language when the notice fires.
-  const [filterTruncationNotice] = useState(() =>
-    createFilterTruncationNotice(() =>
-      toast.info(i18n.t('table.filterValuesTruncated'), { id: FILTER_TRUNCATED_TOAST_ID }),
-    ),
-  )
-
-  // The notice gate, plus the server search of a truncated Set Filter list (task 427169).
-  const handleFilterOpened = useCallback(
-    (event: FilterOpenedEvent) => {
-      filterTruncationNotice.markOpened(event)
-      hookSetFilterServerSearch(event)
-    },
-    [filterTruncationNotice],
-  )
-
   const colDefs = useMemo<ColDef[]>(
     () =>
       buildColDefs({
@@ -176,7 +152,6 @@ export function DataTable({
         masterDetail,
         treeGroupColumnId,
         rowGrouping,
-        onFilterValuesTruncated: filterTruncationNotice.notifyTruncated,
         t,
       }),
     [
@@ -196,7 +171,6 @@ export function DataTable({
       masterDetail,
       treeGroupColumnId,
       rowGrouping,
-      filterTruncationNotice,
       t,
     ],
   )
@@ -406,7 +380,7 @@ export function DataTable({
         onColumnMoved={handleColumnMoved}
         onColumnVisible={handleColumnVisible}
         onFilterChanged={onFilterChanged}
-        onFilterOpened={handleFilterOpened}
+        onFilterOpened={hookSetFilterServerSearch}
         onModelUpdated={handleModelUpdated}
         onPaginationChanged={syncCacheBlockToPageSize}
         onStateUpdated={positionStore ? handleStateUpdated : undefined}

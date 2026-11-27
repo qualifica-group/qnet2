@@ -69,6 +69,24 @@
       `ente_ultimo_audit`, `data_emissione_certificato`, `data_scadenza_certificato`, `data_ente_primo_audit`,
       `data_ente_ultimo_audit`, `data_ente_prossimo_audit`, `data_vi`, `ispettore_vi`, `sup_vi`,
       `data_ultima_chiamata`), nella sezione "Dati storici ISO" (supera la spec 0181 D-1).
+      Rev. 2026-11-27 (decisione utente): sezione "Dati storici ISO" e i suoi 11 campi tolti dalla card ISO;
+      il legacy non li invia piu' (ne' link Commessa ne' layout ne' valori), qnet-2 li stacca dalla Commessa
+      di [OLD] ISO con `QualificaOldIsoWorkOrderFieldsRemovalSeeder` lasciando i valori gia' migrati.
+      Rev. 2026-11-27 bis (decisione utente): tolto anche lo "Stato Lavorazione" del flusso ISO
+      (`stato_consulenza_1`, radice legacy 1, sezione "Dettagli Lavorazioni Iso"): copia fissa dello stato di
+      lavorazione della commessa, che qnet-2 tiene nel campo proprio `work_order_workflow_status_id` (spec 0322).
+      Il legacy non lo collega, non lo mette nel layout e non ne invia il valore
+      (`WorkflowStates::ISO_ROOT_ID`/`fieldCodesByCategory()`); lo stesso seeder lo stacca dalla Commessa di [OLD] ISO.
+      Gli stati degli altri flussi restano campi.
+      Rev. 2026-11-27 ter (decisione utente): "Standard ISO" (`standard`) tolto dalla Commessa di [OLD] ISO
+      (gli standard stanno gia' nella tabella `orderiso_details`; valori e [OLD] PROGETTI- intatti) e nuovo campo
+      "Scopo" `iso_visit_scope` (textarea, lo "Scopo" di "Dettagli Lavorazioni" del legacy, `scopo_visita`, mai
+      migrato) su una riga propria subito dopo "Data urgenza emissione". La Commessa di ISO prende sezioni, campi e
+      ordine di [OLD] ISO (`IsoWorkOrderCatalogue::SECTIONS`): via `iso_standards`, stesso `iso_visit_scope`, nuova
+      sezione "Dettagli lavorazioni ISO" con `iso_scope` (rinominato "Scopo proposto", continua `scopo`),
+      `iso_scope_confirmed`, `iso_outgoing_scope`, `iso_consultant_notes`, `iso_official_audit_date`;
+      `iso_interview_location` prende l'etichetta "Intervista in sede" di [OLD] ISO. Seeder
+      one-shot `QualificaIsoWorkDetailsSeeder`. Il legacy non e' stato toccato: manda ancora `standard` nella card.
       G-21 dati contabili (decisione utente 2026-10-14): due nuovi attributi commessa comuni a ogni card, nella
       sezione "Dati contrattuali": `status_contabile` boolean "Proforma emessa" (`orders.status_contabile` = 1),
       `totale_commessa_manuale` decimal "Totale commessa manuale" (solo se > 0).
@@ -383,13 +401,17 @@
       { id:int, quote_id:int (quotation_id), title:string (title; vuoto -> "Commessa {id}"),
         type:("processing"|"project") (tipo_commessa),
         start_date:date (datestart; assente o anno &lt; 2000 -> data di creazione; null solo se manca anche quella),
-        callback_date:?date (recall_date), description:?string,
-        internal_notes:?string (colonna `note`, poi "Data fine (legacy): d/m/Y" da dateend; uniti da una riga vuota),
+        callback_date:?date (recall_date),
+        description:?string (colonna `note`, poi la colonna `description`, poi "Data fine (legacy): d/m/Y" da
+          dateend; uniti da una riga vuota. Rev. 2026-11-27: la commessa di qnet-2 non ha piu `internal_notes`),
         force_close_reason:?string (status 3 "Chiusa (legacy)", 4 "Annullata (legacy)", 5 "Disdetta (legacy)";
           null = aperta, G-10),
         status_label:?string (informativa),
         stato_pagamento:?int, accordo_pagamento:?string, insoluti:bool (riga `orderisos` della commessa, spec 0201
           D-14),
+        assignment_date:?date ("Data di assegnazione": `data_inizio_lavorazione` della stessa riga `orderisos`;
+          vuota o zero -> giorno dell'ultimo tecnico aggiunto, max `responsabile_services.created_at`; per ogni
+          commessa, qualunque card. Rev. 2026-11-27: la legge solo il seeder `QualificaIsoAssignmentDateSeeder`),
         quote_line_ids:int[] (orderservices.quotation_service esistenti; fallback per service_id sull'offerta),
         supervisor_user_ids:int[] (responsabile_services.id_utente distinti, cancellato -> 999999999; [] ammesso, G-27),
         participant_user_ids:int[] (partecipant_services.id_utente distinti, cancellato -> 999999999, ordine di

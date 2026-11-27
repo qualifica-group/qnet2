@@ -192,6 +192,30 @@ describe('WorkOrderDetailTabs', () => {
     expect(screen.getByText('invoices-section passive')).toBeInTheDocument()
   })
 
+  // User directive 2026-11-27: the Info tab's "Avanzamento commessa" also sits in Administration, under
+  // whichever sub-tab is open, as at the bottom of the legacy "€" page; never a sub-tab of its own.
+  it('shows the work order progress under every Administration sub-tab', () => {
+    renderTabs({ view_costs: true, view_invoices: true })
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Administration' }))
+    expect(screen.queryByRole('tab', { name: 'Work order progress' })).not.toBeInTheDocument()
+    const progress = () => screen.getByRole('heading', { level: 3, name: 'Work order progress' })
+    expect(screen.getByText('costs-section manage:false').compareDocumentPosition(progress()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Passive proforma' }))
+    expect(screen.getByText('invoices-section passive')).toBeInTheDocument()
+    expect(progress()).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Manage progress' })).toBeInTheDocument()
+  })
+
+  it('shows the work order progress under the costs when Costs is the only accounting tab', () => {
+    renderTabs({ view_costs: true })
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
+    const progress = screen.getByRole('heading', { level: 3, name: 'Work order progress' })
+    expect(screen.getByText('costs-section manage:false').compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('shows only the proforma under Administration without view_costs', () => {
     renderTabs({ view_invoices: true })
 
@@ -206,6 +230,7 @@ describe('WorkOrderDetailTabs', () => {
 
     expect(topTabs()).not.toContain('Administration')
     expect(topTabs()).not.toContain('Costs')
+    expect(screen.queryByRole('button', { name: 'Manage progress' })).not.toBeInTheDocument()
   })
 
   it("groups the work order's and the registry's documents under Documents (spec 0173)", () => {

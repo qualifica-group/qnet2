@@ -14,7 +14,7 @@ import {
   WorkOrderAttributesSection,
 } from '@/features/work-orders/work-order-attributes-section'
 import { QUOTE_OFFER_LINES_FOR_SELECT_RESOURCE } from '@/features/work-orders/work-order-quote-lines-field'
-import { WorkOrderIdentitySection, WorkOrderInternalNotesRow } from '@/features/work-orders/work-order-record-identity'
+import { WorkOrderDescriptionCalloutRow, WorkOrderIdentitySection } from '@/features/work-orders/work-order-record-identity'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
 import {
   QUOTES_FOR_SELECT_RESOURCE,
@@ -212,8 +212,8 @@ export function WorkOrderCreateSections({ workOrderForm, draft, registryId = nul
 
   return (
     <RecordSectionsGrid>
-      <WorkOrderInternalNotesRow
-        notes={values.internal_notes ?? null}
+      <WorkOrderDescriptionCalloutRow
+        description={values.description ?? null}
         form={workOrderForm}
         inline={draft}
         className={FULL_WIDTH_SECTION_CLASS}
@@ -226,7 +226,6 @@ export function WorkOrderCreateSections({ workOrderForm, draft, registryId = nul
           type: values.type ?? 'processing',
           start_date: values.start_date || null,
           callback_date: values.callback_date ?? null,
-          description: values.description ?? null,
           task_template:
             templateId !== null
               ? { id: templateId, name: templateLabels.get(templateId)?.label ?? PENDING_LABEL }

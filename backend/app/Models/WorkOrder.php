@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
@@ -85,7 +86,6 @@ use Illuminate\Support\Facades\DB;
     'start_date',
     'callback_date',
     'description',
-    'internal_notes',
     'is_force_closed',
     'force_close_reason',
     'task_template_id',
@@ -97,6 +97,9 @@ class WorkOrder extends BaseModel
 
     /** Relations whose rows block deleting the commessa (spec 0243, D-1). */
     private const array ACCOUNTING_RELATIONS = ['proformaRequests', 'invoices', 'purchaseOrders', 'purchaseOrderLines', 'purchaseInvoices'];
+
+    /** "Latest" note: newest `created_at`, the highest id breaking a same-second tie. */
+    private const array LATEST_NOTE_AGGREGATES = ['created_at' => 'max', 'id' => 'max'];
 
     /** A new commessa is still to be planned (legacy status 1), as the column default says. */
     protected $attributes = ['work_phase' => 'to_plan'];
@@ -338,6 +341,35 @@ class WorkOrder extends BaseModel
         return $this->belongsToMany(User::class, 'work_order_participant')
             ->withPivot('position')
             ->orderByPivot('position');
+    }
+
+    /**
+     * The most recent note of the thread, root or reply (legacy `OrdersTable`
+     * "Ultima Nota"): the grid's "Ultima nota data" column.
+     *
+     * @return MorphOne<Note, $this>
+     */
+    public function latestNote(): MorphOne
+    {
+        return $this->morphOne(Note::class, 'notable')->ofMany(self::LATEST_NOTE_AGGREGATES);
+    }
+
+    /**
+     * The most recent note written by one of the commessa's Responsabili
+     * (legacy "U.N. Responsabile"): the grid's "Ultima nota responsabile".
+     *
+     * @return MorphOne<Note, $this>
+     */
+    public function latestSupervisorNote(): MorphOne
+    {
+        return $this->morphOne(Note::class, 'notable')->ofMany(
+            self::LATEST_NOTE_AGGREGATES,
+            static fn (Builder $notes) => $notes->whereExists(
+                static fn (QueryBuilder $supervisor) => $supervisor->from('work_order_supervisor')
+                    ->whereColumn('work_order_supervisor.work_order_id', 'notes.notable_id')
+                    ->whereColumn('work_order_supervisor.user_id', 'notes.user_id'),
+            ),
+        );
     }
 
     /**

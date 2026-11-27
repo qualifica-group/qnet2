@@ -70,14 +70,10 @@ class UpdateWorkOrderRequest extends FormRequest
             'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'callback_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'internal_notes' => ['sometimes', 'nullable', 'string'],
             'is_force_closed' => ['sometimes', 'boolean'],
-            // No `sometimes` here — same reasoning as StoreWorkOrderRequest:
-            // `required_if:is_force_closed,true` only fires when this PATCH
-            // also submits `is_force_closed: true` in the same payload
-            // (its condition reads the REQUEST, not the DB), so a PATCH that
-            // omits both keys entirely is unaffected either way.
-            'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
+            // Optional even on a forced closure (user directive 2026-11-27,
+            // REQUIREMENT CHANGED from AC-030), as in StoreWorkOrderRequest.
+            'force_close_reason' => ['sometimes', 'nullable', 'string'],
             // Spec 0324 D-6: domain (set + `closed` group) is checked by the status assigner.
             'force_close_status_id' => ['nullable', 'integer'],
             'quote_line_ids' => ['sometimes', 'array'],

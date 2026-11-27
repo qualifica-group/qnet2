@@ -105,6 +105,10 @@ return [
         'summary' => 'Cancel a delivery of a purchase order',
         'description' => 'Removes the receipt and subtracts its quantities from the lines; the order status and linked purchase request lines follow. 409 when the order is cancelled or a line would drop below the quantity already invoiced. Returns the updated order with permissions. Requires purchase-orders.receive.',
     ],
+    'POST /purchase-orders/bulk-status' => [
+        'summary' => 'Change the status of several purchase orders',
+        'description' => 'Moves up to bulk_status_max (200) distinct orders to to_status (draft, in_validation, approved, sent_to_supplier or cancelled), each in its own transaction with the same rules as the single change: orders that cannot move stay as they are and are listed in skipped with the reason (permission, matrix, deliveries, already in that status). With dry_run true nothing is written and changed lists the orders that would move. Returns applied, to_status, total, changed and skipped. 422 on ids (empty, over the maximum, unknown) and on to_status. Requires purchase-orders.view plus purchase-orders.changeStatus or purchase-orders.approve; the permission of the target (approve for approved) is checked order by order.',
+    ],
     'POST /purchase-orders/{purchaseOrder}/status' => [
         'summary' => 'Change the status of a purchase order',
         'description' => 'Moves the order to to_status. Allowed: draft to in_validation, approved, cancelled; in_validation to draft, approved, cancelled; approved to in_validation, sent_to_supplier, cancelled; sent_to_supplier to cancelled; cancelled to draft. partially_fulfilled and fulfilled derive from deliveries. Cancelling releases the linked purchase request lines. 422 when the transition is not allowed, or the order has deliveries or closed residuals and would go back or be cancelled. Returns the order with permissions. Requires purchase-orders.view plus purchase-orders.approve to approve, purchase-orders.changeStatus otherwise.',

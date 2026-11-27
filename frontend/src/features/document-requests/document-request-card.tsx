@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Progress } from '@/components/ui/progress'
 import { DocumentRequestActions } from '@/features/document-requests/document-request-actions'
 import { DocumentRequestItems } from '@/features/document-requests/document-request-items'
+import { DocumentRequestRevalidateNotice } from '@/features/document-requests/document-request-rules-actions'
 import { isOpen } from '@/features/document-requests/document-request-status'
 import type { DocumentRequest, DocumentRequestStatus } from '@/features/document-requests/types'
 import { formatDate, formatDateTime } from '@/lib/formatting/date-display'
@@ -95,6 +96,7 @@ function RequestDetails({ request }: { request: DocumentRequest }) {
     <>
       <RequestMeta request={request} />
       <DocumentRequestActions request={request} />
+      <DocumentRequestRevalidateNotice request={request} />
       <DocumentRequestItems request={request} />
     </>
   )

@@ -1,28 +1,24 @@
 import { useTranslation } from 'react-i18next'
-import { Activity, ClipboardList } from 'lucide-react'
+import { ClipboardList } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { GENERAL_NOTES_TEXTAREA_CLASS } from '@/components/record-form/layout'
 import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
+import { cn } from '@/lib/utils'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import { WorkOrderTaskTemplateField, WorkOrderTextAreaField } from '@/features/work-orders/work-order-identity-fields'
 import {
   WorkOrderCallbackDateRow,
   WorkOrderCodeRow,
-  WorkOrderDescriptionRow,
   WorkOrderForceCloseReasonRow,
   WorkOrderStartDateRow,
   WorkOrderTitleRow,
   WorkOrderTypeRow,
 } from '@/features/work-orders/work-order-record-rows'
 import type { WorkOrderFormState } from '@/features/work-orders/use-work-order-form'
-import {
-  WorkOrderWorkflowStatusField,
-  WorkOrderWorkflowStatusValue,
-} from '@/features/work-orders/work-order-workflow-status-field'
-import type { WorkOrderType, WorkOrderWorkflowStatusRef } from '@/features/work-orders/types'
+import type { WorkOrderType } from '@/features/work-orders/types'
 
 /** What the identity rows show: the persisted record on the detail, the draft on create. */
 export interface WorkOrderIdentityValues {
@@ -31,16 +27,9 @@ export interface WorkOrderIdentityValues {
   type: WorkOrderType
   start_date: string | null
   callback_date: string | null
-  description: string | null
   task_template: RelationFieldRef | null
   /** Set only while the closure is forced: written by the header's action, read-only here. */
   force_close_reason: string | null
-}
-
-/** The "Stato lavorazione" of a persisted work order and its resolved set: absent on create (the server assigns `open`). */
-export interface WorkOrderWorkflowStatusContext {
-  current: WorkOrderWorkflowStatusRef
-  statuses: WorkOrderWorkflowStatusRef[]
 }
 
 interface WorkOrderIdentitySectionProps {
@@ -66,7 +55,6 @@ export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIden
         <WorkOrderTypeRow form={form} inline={inline} type={values.type} />
         <WorkOrderStartDateRow form={form} inline={inline} startDate={values.start_date} />
         <WorkOrderCallbackDateRow form={form} inline={inline} callbackDate={values.callback_date} />
-        <WorkOrderDescriptionRow form={form} inline={inline} description={values.description} />
         <RecordInlineField
           field="task_template_id"
           label={t('workOrders.detail.taskTemplate')}
@@ -87,62 +75,40 @@ export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIden
   )
 }
 
-interface WorkOrderWorkflowStatusSectionProps {
-  workflowStatus: WorkOrderWorkflowStatusContext
-  form: WorkOrderFormState
-  inline: InlineEdit
-}
+/** User directive 2026-11-27: a long description scrolls past 100px, reading and writing alike (300px narrowed to 100px the same day). */
+const DESCRIPTION_MAX_HEIGHT_CLASS = 'max-h-[100px] overflow-y-auto'
 
-/**
- * "Stato lavorazione" of a persisted work order (spec 0322) as its own
- * section, under the contract data in the detail's left column (user
- * directive 2026-11-16), still edited in place.
- */
-export function WorkOrderWorkflowStatusSection({ workflowStatus, form, inline }: WorkOrderWorkflowStatusSectionProps) {
-  const { t } = useTranslation()
-  const label = t('workOrders.detail.workflowStatus')
-
-  return (
-    <RecordSection title={label} icon={<Activity />}>
-      <RecordFieldList>
-        <RecordInlineField
-          field="work_order_workflow_status_id"
-          label={label}
-          inline={inline}
-          editor={<WorkOrderWorkflowStatusField control={form.form.control} statuses={workflowStatus.statuses} />}
-        >
-          <WorkOrderWorkflowStatusValue status={workflowStatus.current} />
-        </RecordInlineField>
-      </RecordFieldList>
-    </RecordSection>
-  )
-}
-
-interface WorkOrderInternalNotesRowProps {
-  notes: string | null
+interface WorkOrderDescriptionCalloutRowProps {
+  description: string | null
   form: WorkOrderFormState
   inline: InlineEdit
   className?: string
 }
 
-/** "Note commessa" across the record's full width, in the request work panel's callout (`NotesCalloutRow`). */
-export function WorkOrderInternalNotesRow({ notes, form, inline, className }: WorkOrderInternalNotesRowProps) {
+/**
+ * "Descrizione" in the request work panel's callout (`NotesCalloutRow`): the
+ * yellow box that was "Note commessa" (user decision 2026-11-27, the notes
+ * were merged into `description`). The detail puts it on top of the right
+ * column, the create form across its full width.
+ */
+export function WorkOrderDescriptionCalloutRow({ description, form, inline, className }: WorkOrderDescriptionCalloutRowProps) {
   const { t } = useTranslation()
-  const label = t('workOrders.detail.internalNotes')
+  const label = t('workOrders.detail.description')
 
   return (
     <NotesCalloutRow
-      field="internal_notes"
+      field="description"
       title={label}
-      notes={notes}
-      placeholder={t('workOrders.detail.internalNotesPlaceholder')}
+      notes={description}
+      placeholder={t('workOrders.detail.descriptionPlaceholder')}
+      textClassName={DESCRIPTION_MAX_HEIGHT_CLASS}
       inline={inline}
       editor={
         <WorkOrderTextAreaField
           control={form.form.control}
-          name="internal_notes"
+          name="description"
           label={label}
-          className={GENERAL_NOTES_TEXTAREA_CLASS}
+          className={cn(GENERAL_NOTES_TEXTAREA_CLASS, DESCRIPTION_MAX_HEIGHT_CLASS)}
         />
       }
       className={className}

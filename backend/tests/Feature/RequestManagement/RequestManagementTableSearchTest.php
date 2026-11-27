@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Requests\Table\TableRowsRequest;
+use App\Models\Attribute;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
@@ -193,4 +194,51 @@ it('columns: declares the minimum search length on the request domains only (AC-
     $this->getJson('/api/tables/request-management/columns')
         ->assertOk()
         ->assertJsonPath('data.searchMinLength', RequestClientSearch::MIN_WORD_LENGTH);
+});
+
+// ---------------------------------------------------------------------------
+// User directive 2026-11-26: a card match also finds the requests whose
+// flexible field links that registry (e.g. "Anagrafica Utente" of
+// Orientamento specialistico), where the person is not the client
+// ---------------------------------------------------------------------------
+
+/**
+ * A request of another client whose `$code` relation field links a registry
+ * carded as `$firstName $lastName`.
+ */
+function requestLinkingRegistry(string $code, string $firstName, string $lastName): Quote
+{
+    $linked = Registry::factory()->create();
+    $linked->personalData()->create(['type' => 'individual', 'first_name' => $firstName, 'last_name' => $lastName]);
+
+    $request = requestWithClient('Agenzia', 'Lavoro', 'AGNLVR80A01H501U', '+39 02 3333333');
+    $request->forceFill(['attribute_values' => [$code => $linked->id]])->save();
+
+    return $request;
+}
+
+it('rows: the name search matches the registry linked in a registry-relation field', function () {
+    Sanctum::actingAs(requestManagementUserWith(['viewAny', 'viewAll']));
+
+    Attribute::factory()->ofType('relation')->create([
+        'code' => 'user_registry',
+        'relation_target' => ['cardinality' => 'one', 'entity_type' => 'registries', 'for_select_resource' => 'registries'],
+    ]);
+    $linking = requestLinkingRegistry('user_registry', 'Mario', 'Rossi');
+    requestLinkingRegistry('user_registry', 'Giulia', 'Bianchi');
+
+    expect(searchRequestIds('mario rossi'))->toBe([$linking->id])
+        ->and(searchRequestIds('ross'))->toBe([$linking->id]);
+});
+
+it('rows: a relation field to another entity never matches a registry id', function () {
+    Sanctum::actingAs(requestManagementUserWith(['viewAny', 'viewAll']));
+
+    Attribute::factory()->ofType('relation')->create([
+        'code' => 'teaching_tutor',
+        'relation_target' => ['cardinality' => 'one', 'entity_type' => 'users', 'for_select_resource' => 'users'],
+    ]);
+    requestLinkingRegistry('teaching_tutor', 'Mario', 'Rossi');
+
+    expect(searchRequestIds('mario rossi'))->toBe([]);
 });

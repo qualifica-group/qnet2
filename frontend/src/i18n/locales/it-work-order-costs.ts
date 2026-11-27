@@ -47,6 +47,22 @@ export const workOrderCosts = {
       empty: 'Nessun costo effettivo per tipo di costo.',
     },
   },
+  /** Spec 0436: replace the actual costs with the offer's cost lines. */
+  quoteSync: {
+    button: "Sincronizza con l'offerta",
+    title: "Sincronizzare i costi dell'offerta?",
+    description_one: "La riga di costo dell'offerta verrà copiata nei costi effettivi, con la data di oggi.",
+    description_other: "Le {{count}} righe di costo dell'offerta verranno copiate nei costi effettivi, con la data di oggi.",
+    replaceDescription_one:
+      "Il costo effettivo già presente verrà sostituito dai prodotti di costo dell'offerta ({{budget}} righe), con la data di oggi. Le modifiche non salvate andranno perse. ODA e fatture d'acquisto non cambiano.",
+    replaceDescription_other:
+      "I {{count}} costi effettivi già presenti verranno sostituiti dai prodotti di costo dell'offerta ({{budget}} righe), con la data di oggi. Le modifiche non salvate andranno perse. ODA e fatture d'acquisto non cambiano.",
+    noBudget: "L'offerta non ha righe di costo per questa commessa.",
+    confirm: 'Sincronizza',
+    syncing: 'Sincronizzazione…',
+    synced: "Costi effettivi sincronizzati con l'offerta.",
+    error: "Impossibile sincronizzare i costi con l'offerta.",
+  },
   editor: {
     readOnly: 'Non hai i permessi per modificare i costi effettivi.',
     empty: 'Nessun costo effettivo inserito.',

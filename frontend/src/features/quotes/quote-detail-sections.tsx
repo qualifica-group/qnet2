@@ -140,6 +140,7 @@ export function QuoteDetailAttributes({ quote, editor }: QuoteDetailSectionsProp
         values={quote.attribute_values}
         inline={editor.inline}
         control={editor.form.control}
+        sectionEdit
       />
     </QuoteAttributesBand>
   )

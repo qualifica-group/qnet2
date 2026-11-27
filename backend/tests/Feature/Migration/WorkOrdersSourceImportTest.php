@@ -40,7 +40,8 @@ it('creates the work order with its lines, supervisors, participants and legacy 
     $activityBefore = DB::table('activity_log')->count();
 
     $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord([
-        'internal_notes' => "Legacy notes\n\nData fine (legacy): 31/12/2024",
+        // REQUIREMENT CHANGED (user decision 2026-11-27): the legacy sends notes, description and end date as one `description`.
+        'description' => "Legacy notes\n\nData fine (legacy): 31/12/2024",
         'quote_line_ids' => [900],
         'supervisor_user_ids' => [61],
         'participant_user_ids' => [62, 63],
@@ -58,8 +59,7 @@ it('creates the work order with its lines, supervisors, participants and legacy 
         ->and($workOrder->type)->toBe(WorkOrderType::Project)
         ->and($workOrder->start_date->toDateString())->toBe('2024-05-01')
         ->and($workOrder->callback_date->toDateString())->toBe('2024-06-01')
-        ->and($workOrder->description)->toBe('Legacy description')
-        ->and($workOrder->internal_notes)->toBe("Legacy notes\n\nData fine (legacy): 31/12/2024")
+        ->and($workOrder->description)->toBe("Legacy notes\n\nData fine (legacy): 31/12/2024")
         ->and($workOrder->is_force_closed)->toBeFalse()
         ->and($workOrder->task_template_id)->toBeNull()
         ->and($workOrder->created_at->toDateTimeString())->toBe('2024-04-20 09:00:00')

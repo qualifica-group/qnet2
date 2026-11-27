@@ -5,7 +5,8 @@ import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import type { ProformaSummary } from '@/features/proforma-requests/types'
 import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
-import { WorkOrderDetailHeader } from '@/features/work-orders/work-order-detail-header'
+import { WorkOrderActionsMenu } from '@/features/work-orders/work-order-actions-menu'
+import { hasWorkOrderAction, selectWorkOrderAction } from '@/features/work-orders/work-order-actions-menu-test-utils'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 const fetchSummaryMock = vi.fn<(id: number) => Promise<ProformaSummary>>()
@@ -80,6 +81,7 @@ describe('proforma request dialog (spec 0193 AC-007)', () => {
   })
 })
 
+// REQUIREMENT CHANGED (user directive 2026-11-27): the action is an item of the "..." actions menu.
 describe('work order detail "Request proforma" action (ticket #427857)', () => {
   function renderHeader(requestProforma: boolean, onChanged = vi.fn()) {
     const workOrder = {
@@ -97,7 +99,7 @@ describe('work order detail "Request proforma" action (ticket #427857)', () => {
     render(
       <QueryClientProvider client={client}>
         <ConfirmDialogProvider>
-          <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} />
+          <WorkOrderActionsMenu workOrder={workOrder} onChanged={onChanged} />
         </ConfirmDialogProvider>
       </QueryClientProvider>,
     )
@@ -109,7 +111,7 @@ describe('work order detail "Request proforma" action (ticket #427857)', () => {
     createRequestsMock.mockResolvedValue([])
     const onChanged = renderHeader(true)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Request proforma' }))
+    selectWorkOrderAction('Request proforma')
 
     expect(await screen.findByRole('heading', { name: /Work order #C-2026-007/ })).toBeInTheDocument()
     fireEvent.change(await screen.findByRole('textbox', { name: /notes for accounting/i }), {
@@ -125,7 +127,7 @@ describe('work order detail "Request proforma" action (ticket #427857)', () => {
   it('is absent without the request_proforma flag', () => {
     renderHeader(false)
 
-    expect(screen.queryByRole('button', { name: 'Request proforma' })).not.toBeInTheDocument()
+    expect(hasWorkOrderAction('Request proforma')).toBe(false)
     expect(fetchSummaryMock).not.toHaveBeenCalled()
   })
 })

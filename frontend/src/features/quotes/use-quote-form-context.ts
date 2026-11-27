@@ -11,6 +11,7 @@ const NO_CATEGORY_IDS: number[] = []
 
 /** What a persisted quote already resolved for its own offer lines' products (`QuoteResource`). */
 export interface PersistedQuoteContext {
+  quoteId: number
   productIds: number[]
   context: QuoteFormContext
 }
@@ -30,7 +31,10 @@ export interface PersistedQuoteContext {
  * categoria non c'e' nulla da risolvere. Sul dettaglio (`persisted`, spec
  * 0197; l'Opportunita' li' non cambia) e' disabilitata anche finche' i
  * prodotti sono quelli salvati: il set lo porta gia' l'offerta, e aprire il
- * dettaglio non deve costare un round trip.
+ * dettaglio non deve costare un round trip. Quando i prodotti cambiano, il
+ * dettaglio passa l'id dell'offerta: un'offerta legata a una categoria madre
+ * (spec 0411) legge solo le righe dell'Opportunita' sotto quella radice, come
+ * il salvataggio (segnalazione 2026-11-27, offerta 31044).
  *
  * `keepPreviousData`-like: durante una rifetch il set precedente resta montato
  * (`placeholderData`), cosi' aggiungere una seconda riga non fa sparire e
@@ -48,12 +52,18 @@ export function useQuoteFormContext(
   const enabled =
     (opportunityId !== null || stableIds.length > 0 || stableCategoryIds.length > 0) && !isPersistedSet
 
+  const quoteId = persisted?.quoteId ?? null
+
   const query = useQuery<QuoteFormContext, AxiosError>({
-    queryKey: ['quotes', 'form-context', opportunityId, stableIds, ...(stableCategoryIds.length > 0 ? [stableCategoryIds] : [])],
-    queryFn: () =>
-      stableCategoryIds.length > 0
-        ? fetchQuoteFormContext(opportunityId, stableIds, stableCategoryIds)
-        : fetchQuoteFormContext(opportunityId, stableIds),
+    queryKey: [
+      'quotes',
+      'form-context',
+      opportunityId,
+      stableIds,
+      ...(stableCategoryIds.length > 0 ? [stableCategoryIds] : []),
+      ...(quoteId !== null ? [{ quoteId }] : []),
+    ],
+    queryFn: () => fetchQuoteFormContext(opportunityId, stableIds, stableCategoryIds, quoteId),
     enabled,
     placeholderData: (previous) => previous,
   })

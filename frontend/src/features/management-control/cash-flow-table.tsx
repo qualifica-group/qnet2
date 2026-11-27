@@ -15,10 +15,12 @@ import { MoneyValue } from '@/features/management-control/money-value'
 import { monthLabelFormatter } from '@/features/management-control/month-label'
 
 const STICKY = 'sticky left-0 z-10 bg-card group-hover:bg-muted'
-const ROWS = ['receivable', 'payable', 'committed', 'net', 'cumulative'] as const
+const ROWS = ['receivable', 'payable', 'committed', 'salaries', 'f24', 'net', 'cumulative'] as const
 type RowKey = (typeof ROWS)[number]
 /** The closing figures of the table: bold, the first one with a heavier separator. */
 const TOTAL_ROWS: readonly RowKey[] = ['net', 'cumulative']
+/** Personnel outflows are forecasts, not documents: shown muted and in italic. */
+const ESTIMATE_ROWS: readonly RowKey[] = ['salaries', 'f24']
 
 interface Column {
   key: string
@@ -71,7 +73,7 @@ export function CashFlowTable({ data, scenario, onScenarioChange }: CashFlowTabl
           {ROWS.map((row) => (
             <tr
               key={row}
-              className={`group hover:bg-muted/40 ${row === 'net' ? 'border-t-2' : 'border-t'} ${TOTAL_ROWS.includes(row) ? 'font-semibold' : ''}`}
+              className={`group hover:bg-muted/40 ${row === 'net' ? 'border-t-2' : 'border-t'} ${TOTAL_ROWS.includes(row) ? 'font-semibold' : ''} ${ESTIMATE_ROWS.includes(row) ? 'italic text-muted-foreground' : ''}`}
             >
               <th scope="row" className={`${CELL} ${STICKY} text-left font-medium`}>
                 {t(`managementControl.cashFlow.table.rows.${row}`)}

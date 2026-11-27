@@ -46,11 +46,12 @@ export const table = {
   layoutReset: 'Table layout reset to default.',
   layoutError: 'Unable to update the table layout.',
   resetFilters: 'Reset filters',
+  // Funnel of the pinned filters (Commesse page, user request 2026-11-27).
+  showFilters: 'Show filters',
+  hideFilters: 'Hide filters',
   filtersReset: 'Table filters cleared.',
   filtersError: 'Unable to reset the table filters.',
   filtersSaveError: 'Unable to save the table filters.',
-  filterValuesTruncated:
-    'This column has many values: the list shows only the first ones. Type in the Search box to find the others.',
   textFilters: 'Text Filters',
   numberFilters: 'Number Filters',
   dateFilters: 'Date Filters',

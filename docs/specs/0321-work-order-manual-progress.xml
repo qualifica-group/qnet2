@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec id="0321-work-order-manual-progress" status="done" owner="utente" date="2026-10-28">
 
+  <amendment date="2026-11-27" status="applied">
+    Direttiva utente 2026-11-27 (come il legacy `manageorder.blade.php` e `prima-nota-commessa.blade.php`): sezione
+    "Avanzamento commessa" (`WorkOrderProgressSection`) con Totale % raggiunto, Ultimo avanzamento e il pulsante
+    "Gestione avanzamento" che apre il popup della lista avanzamenti. Sta nella colonna sinistra della scheda Info, al
+    posto dello Stato lavorazione (spec 0322, ora nell'intestazione), e come ultima sotto-scheda di Amministrazione,
+    solo quando Amministrazione esiste gia' (`view_costs` o `view_invoices`). La voce "Avanzamento commessa" del menu
+    tre puntini resta. Solo frontend, contratto API invariato.
+  </amendment>
+
   <goal>
     L'avanzamento della commessa si registra a mano, come nel QNet legacy: una serie di registrazioni
     "percentuale raggiunta + data", sempre crescenti e al massimo 100%, consultabili e cancellabili.

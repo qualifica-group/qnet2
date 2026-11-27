@@ -160,7 +160,20 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
     expect(await screen.findByText('You do not have permission to edit the actual costs.')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Product catalogue' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sync with the offer' })).not.toBeInTheDocument()
     expect(screen.getByRole('spinbutton', { name: 'Quantity, row 1' })).toBeDisabled()
+  })
+
+  it('AC-008: offers the sync with the offer only in Actual costs, in the rows header, with manage_costs', async () => {
+    renderSection(true)
+    const actualTab = await screen.findByRole('tab', { name: 'Actual costs' })
+    expect(screen.queryByRole('button', { name: 'Sync with the offer' })).not.toBeInTheDocument()
+
+    fireEvent.mouseDown(actualTab, { button: 0 })
+    fireEvent.click(actualTab)
+
+    const rows = await screen.findByRole('region', { name: 'Actual costs' })
+    expect(within(rows).getByRole('button', { name: 'Sync with the offer' })).toBeEnabled()
   })
 
   it('adds a catalogue product as a row dated today', async () => {

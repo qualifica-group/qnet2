@@ -18,7 +18,6 @@ const VALID_BASE = {
   participant_slots: [31, null],
   callback_date: null,
   description: null,
-  internal_notes: null,
   quote_line_ids: [1, 2],
   task_template_id: null,
   attribute_values: {},

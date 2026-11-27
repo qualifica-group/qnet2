@@ -30,13 +30,13 @@ function TabTriggers({ tabs }: { tabs: WorkOrderDetailTab[] }) {
 function TabContents({ tabs }: { tabs: WorkOrderDetailTab[] }) {
   return tabs.map((tab) => (
     <TabsContent key={tab.value} value={tab.value} className={cn('min-w-0', tab.padded && PADDED_CONTENT_CLASS)}>
-      {tab.subTabs ? <WorkOrderDetailSubTabs tabs={tab.subTabs} /> : tab.content}
+      {tab.subTabs ? <WorkOrderDetailSubTabs tabs={tab.subTabs} footer={tab.footer} /> : tab.content}
     </TabsContent>
   ))
 }
 
-/** The sub-tab strip of a group tab (Documenti, Amministrazione), first sub-tab open. */
-function WorkOrderDetailSubTabs({ tabs }: { tabs: WorkOrderDetailTab[] }) {
+/** The sub-tab strip of a group tab (Documenti, Amministrazione), first sub-tab open, the group's footer under it. */
+function WorkOrderDetailSubTabs({ tabs, footer }: { tabs: WorkOrderDetailTab[]; footer?: ReactNode }) {
   return (
     <Tabs defaultValue={tabs[0].value} className="gap-0">
       <div className="px-4 pt-3">
@@ -45,6 +45,7 @@ function WorkOrderDetailSubTabs({ tabs }: { tabs: WorkOrderDetailTab[] }) {
         </TabsList>
       </div>
       <TabContents tabs={tabs} />
+      {footer}
     </Tabs>
   )
 }
@@ -82,6 +83,8 @@ interface WorkOrderDetailTabsProps {
   info: ReactNode
   /** The tab to open first outside the work order's page (spec 0405); Info when absent. */
   initialTab?: string
+  /** After a change made from a tab (the progress popup of Amministrazione): the host refreshes its lists. */
+  onChanged?: () => void
 }
 
 /**
@@ -94,7 +97,7 @@ interface WorkOrderDetailTabsProps {
  * actions (the Task board's) are portaled into the slot on the right of the
  * strip, so the strip stays the only header row of the card.
  */
-export function WorkOrderDetailTabs({ workOrder, info, initialTab }: WorkOrderDetailTabsProps) {
+export function WorkOrderDetailTabs({ workOrder, info, initialTab, onChanged }: WorkOrderDetailTabsProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [actionsContainer, setActionsContainer] = useState<HTMLDivElement | null>(null)
@@ -102,6 +105,7 @@ export function WorkOrderDetailTabs({ workOrder, info, initialTab }: WorkOrderDe
     workOrder,
     info,
     actionsContainer,
+    onChanged,
     onMembersAdded: () => {
       // Spec 0353: una nota puo' aver aggiunto Partecipanti; il dettaglio li rilegge.
       void queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(workOrder.id) })

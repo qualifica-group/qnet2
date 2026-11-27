@@ -81,6 +81,24 @@ describe('WorkOrderForceCloseDialog — closing status', () => {
     )
   })
 
+  // User directive 2026-11-27: the reason is optional; left empty it is sent as null.
+  it('force-closes without a reason, sending it as null', async () => {
+    vi.mocked(updateWorkOrder).mockResolvedValue(RECORD as never)
+    renderDialog()
+    await statusCombobox()
+
+    fireEvent.change(reasonBox(), { target: { value: '   ' } })
+    fireEvent.click(submit())
+
+    await waitFor(() =>
+      expect(updateWorkOrder).toHaveBeenCalledWith(7, {
+        is_force_closed: true,
+        force_close_reason: null,
+        force_close_status_id: 31,
+      }),
+    )
+  })
+
   it('shows a server 422 under the status field', async () => {
     vi.mocked(updateWorkOrder).mockRejectedValue({
       isAxiosError: true,

@@ -142,3 +142,29 @@ describe('workOrderColumnRenderers.line_payment_statuses', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
+
+describe('workOrderColumnRenderers last note columns', () => {
+  function renderLastNote(columnId: string, row: Record<string, unknown>) {
+    const renderer = workOrderColumnRenderers[columnId]
+    if (!renderer) {
+      throw new Error(`Missing renderer for column "${columnId}"`)
+    }
+    const params = { value: row[columnId], data: row, colDef: { field: columnId } } as unknown as ICellRendererParams
+    return render(<>{renderer(params)}</>)
+  }
+
+  it.each(['last_note_at', 'supervisor_last_note_at'])('%s shows the date and names author and text', (columnId) => {
+    const at = '2026-11-20T15:30:00+01:00'
+    renderLastNote(columnId, { [columnId]: at, [`${columnId}_author`]: 'Anna Bianchi', [`${columnId}_excerpt`]: 'Called the client' })
+
+    const trigger = screen.getByText(formatDate(at))
+    expect(trigger).toHaveAccessibleName(expect.stringContaining('Anna Bianchi'))
+    expect(trigger).toHaveAccessibleName(expect.stringContaining('Called the client'))
+  })
+
+  it('renders an empty cell when the commessa has no note', () => {
+    const { container } = renderLastNote('last_note_at', { last_note_at: null })
+    expect(container).not.toHaveTextContent('Anna')
+    expect(screen.queryByRole('generic', { name: /Note by/ })).toBeNull()
+  })
+})

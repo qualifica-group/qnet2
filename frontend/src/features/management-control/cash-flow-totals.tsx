@@ -17,18 +17,20 @@ function tilesOf(data: CashFlow): Tile[] {
     { key: 'receivable', emphasis: false, value: horizon.receivable },
     { key: 'payable', emphasis: false, value: horizon.payable },
     { key: 'committed', emphasis: false, value: horizon.committed },
+    { key: 'salaries', emphasis: false, value: horizon.salaries },
+    { key: 'f24', emphasis: false, value: horizon.f24 },
     { key: 'net', emphasis: true, value: horizon.net },
     { key: 'scenario_net', emphasis: true, value: withScenario.net },
   ]
 }
 
-/** Six KPI tiles (spec 0270): net backlog, receipts, payments and commitments of the horizon, balance with and without scenario. */
+/** Eight KPI tiles (spec 0270, 0434): net backlog, receipts, payments, commitments and estimated personnel outflows of the horizon, balance with and without scenario. */
 export function CashFlowTotals({ data }: { data: CashFlow }) {
   const { t } = useTranslation()
 
   return (
     <section aria-label={t('managementControl.cashFlow.totals.title')}>
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {tilesOf(data).map(({ key, emphasis, value }) => (
           <div key={key} className="flex min-w-0 flex-col gap-0.5 rounded-lg border bg-card p-3">
             <dt className="line-clamp-2 text-xs text-muted-foreground">{t(`managementControl.cashFlow.totals.${key}`)}</dt>

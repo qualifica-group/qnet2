@@ -21,7 +21,7 @@ return [
     ],
     'workflow_status' => [
         'force_close_status_invalid' => 'The closing status must be a "Closed with positive outcome" or "Closed with negative outcome" status of the work order\'s working status set.',
-        'progress_not_above_current' => 'The status brings the progress to :percentage%, which does not exceed the progress already reached (:current%).',
+        'progress_below_current' => 'The status brings the progress to :percentage%, which is below the progress already reached (:current%).',
     ],
     'contract_closure' => [
         'cancelled' => 'Contract cancelled',

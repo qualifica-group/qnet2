@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Checkbox } from '@/components/ui/checkbox'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import {
   Select,
   SelectContent,
@@ -19,7 +20,12 @@ import {
 import type { AdvancedFilterFieldProps } from '@/features/table/advanced-filters/advanced-filter-field-props'
 
 const NO_EXCLUDED_VALUES: string[] = []
-/** `type: 'select'` -> a `Select` over the descriptor's static `options`. */
+/**
+ * `type: 'select'` -> a searchable single-select over the descriptor's static
+ * `options` (the Commesse "Mese", user request 2026-11-27: every picker of
+ * that page searches). `SearchableSelect` keys options by number, so each one
+ * is addressed by its position in `options`.
+ */
 export function SelectAdvancedFilterField({
   descriptor,
   value,
@@ -31,32 +37,30 @@ export function SelectAdvancedFilterField({
 }: AdvancedFilterFieldProps) {
   const { t } = useTranslation()
   const options = descriptor.options ?? []
-  const stringValue = value !== null && value !== undefined ? String(value) : undefined
+  const selectedIndex = options.findIndex((option) => value !== null && String(option.value) === String(value))
+  const noResults = t('table.advancedFilters.empty')
 
   return (
-    <Select
-      value={stringValue}
-      onValueChange={(next) => onChange(resolveOptionValue(options, next))}
+    <SearchableSelect
+      value={selectedIndex === -1 ? null : selectedIndex}
+      onChange={(index) => onChange(options[index]?.value ?? null)}
+      onClear={() => onChange(null)}
+      options={options.map((option, index) => ({ id: index, name: option.label }))}
       disabled={disabled}
-    >
-      <SelectTrigger
-        id={id}
-        aria-describedby={describedBy}
-        aria-invalid={invalid}
-        className="w-full"
-      >
-        <SelectValue
-          placeholder={descriptor.placeholder ? t(descriptor.placeholder) : undefined}
-        />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={String(option.value)}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      id={id}
+      aria-describedby={describedBy}
+      aria-invalid={invalid}
+      labels={{
+        placeholder: descriptor.placeholder ? t(descriptor.placeholder) : t('table.advancedFilters.selectPlaceholder'),
+        searchPlaceholder: t('table.advancedFilters.searchPlaceholder'),
+        empty: noResults,
+        noMatch: noResults,
+        error: t('table.advancedFilters.loadError'),
+        retry: t('common.retry'),
+        triggerLabel: t(descriptor.label),
+        clearLabel: t('table.advancedFilters.clearLabel'),
+      }}
+    />
   )
 }
 

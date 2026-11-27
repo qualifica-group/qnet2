@@ -131,7 +131,7 @@ describe('createColumnValuesGetter with a truncated list', () => {
   it('asks the server for the searched values after the first truncated load', async () => {
     fetchValuesMock.mockResolvedValue({ values: ['COM-10000'], hasMore: true })
     const { api, setMiniFilter } = stubApi('20265')
-    const getter = createColumnValuesGetter('work-orders', 'code', vi.fn())
+    const getter = createColumnValuesGetter('work-orders', 'code')
     const firstLoad = { api, success: vi.fn() } as unknown as SetFilterValuesFuncParams
 
     getter(firstLoad)
@@ -157,7 +157,6 @@ describe('createColumnValuesGetter with a truncated list', () => {
       'work-orders',
       // The backend serves `type: 'date'`, absent from the frontend ColumnType union.
       { id: 'start_date', label: 'label', type: 'date' as TableColumn['type'], filterType: 'date', visible: true, width: null, order: 0, sortable: true, filterable: true },
-      vi.fn(),
       (key) => key,
     )
     const setParams = (filterParams as IMultiFilterParams).filters?.[0]?.filterParams as ISetFilterParams

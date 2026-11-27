@@ -19,3 +19,9 @@ export async function syncWorkOrderCosts(
   )
   return data.data
 }
+
+/** `POST /work-orders/{id}/costs/sync-from-quote` (spec 0436): replaces the actual costs with the offer's, returns the refreshed overview. */
+export async function syncWorkOrderCostsFromQuote(workOrderId: number): Promise<WorkOrderCostOverview> {
+  const { data } = await apiClient.post<ApiResponse<WorkOrderCostOverview>>(`/work-orders/${workOrderId}/costs/sync-from-quote`)
+  return data.data
+}

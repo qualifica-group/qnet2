@@ -58,7 +58,7 @@ function summaryDateRows(ProductCategory $category, array $workOrders, array $re
 {
     $ids = test()->postJson('/api/tables/work-orders/rows', [
         'startRow' => 0, 'endRow' => 25,
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
         ...$request,
     ])->assertOk()->json('items.*.id');
     $names = array_flip(array_map(static fn (WorkOrder $workOrder): int => $workOrder->id, $workOrders));
@@ -69,7 +69,7 @@ function summaryDateRows(ProductCategory $category, array $workOrders, array $re
 it('declares a date column labelled with the grid label', function (): void {
     [$category] = summaryDateGrid();
 
-    categoryTabSaveFilters('work-orders', categoryTabFilters($category))->assertOk();
+    categoryTabSaveFilters('work-orders', workOrderCategoryFilters($category))->assertOk();
     $column = collect(categoryTabConfigColumns('work-orders'))->firstWhere('id', 'attr.inspections');
 
     expect($column['label'])->toBe(SUMMARY_DATE_LABEL)
@@ -84,7 +84,7 @@ it('shows only the date of the active row, blank without one', function (): void
 
     $items = collect($this->postJson('/api/tables/work-orders/rows', [
         'startRow' => 0, 'endRow' => 25,
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
     ])->assertOk()->json('items'))->keyBy('id');
 
     expect($items[$workOrders['active']->id]['attr.inspections'])->toBe('2025-01-10')
@@ -116,7 +116,7 @@ it('lists the summary dates and the blank entry as distinct filter values', func
 
     $values = $this->postJson('/api/tables/work-orders/values', [
         'columnId' => 'attr.inspections',
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
     ])->assertOk()->json('data.values');
 
     expect($values)->toBe([null, '2025-01-10', '2025-03-02']);

@@ -59,15 +59,3 @@ export const CONTRACT_DATA: WorkOrderContractData = {
   },
   commissions_visible: true,
 }
-
-/** What an actor without commission visibility receives (spec 0201 D-10). */
-export const CONTRACT_DATA_HIDDEN_COMMISSIONS: WorkOrderContractData = {
-  lines: [PAID_LINE, RECEIVED_LINE].map((line) => ({
-    ...line,
-    supplier_commission: null,
-    commissions_amount: null,
-    net_of_commissions: null,
-  })),
-  totals: { ...CONTRACT_DATA.totals, commissions_amount: null, net_of_commissions: null },
-  commissions_visible: false,
-}

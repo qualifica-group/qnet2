@@ -66,16 +66,10 @@ class StoreWorkOrderRequest extends FormRequest
             'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'callback_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'internal_notes' => ['sometimes', 'nullable', 'string'],
             'is_force_closed' => ['sometimes', 'boolean'],
-            // No `sometimes` here (AC-030): `sometimes` only validates a
-            // field that IS present, which would let `required_if` never
-            // fire when the client omits the key entirely — the exact case
-            // AC-030 covers ("force_close_reason assente"). Without it,
-            // Laravel validates the (absent-as-null) field unconditionally,
-            // so `required_if` correctly rejects it when `is_force_closed`
-            // is true.
-            'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
+            // Optional even on a forced closure (user directive 2026-11-27,
+            // REQUIREMENT CHANGED from AC-030): the reason may be left empty.
+            'force_close_reason' => ['sometimes', 'nullable', 'string'],
             // Spec 0324 D-6: domain (set + `closed` group) is checked by the status assigner.
             'force_close_status_id' => ['nullable', 'integer'],
             'quote_line_ids' => ['sometimes', 'array'],

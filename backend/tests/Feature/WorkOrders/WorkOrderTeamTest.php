@@ -133,9 +133,10 @@ it('AC-020: a commessa can carry SEVERAL responsabili, returned ordered by name'
         'start_date' => '2026-09-10', 'supervisor_ids' => [$zoe->id, $ada->id],
     ])->assertCreated();
 
+    // REQUIREMENT CHANGED (user request 2026-11-27): each person carries its avatar_url (the team popup shows it).
     expect($response->json('data.supervisors'))->toBe([
-        ['id' => $ada->id, 'name' => 'Ada Alberti'],
-        ['id' => $zoe->id, 'name' => 'Zoe Zanetti'],
+        ['id' => $ada->id, 'name' => 'Ada Alberti', 'avatar_url' => null],
+        ['id' => $zoe->id, 'name' => 'Zoe Zanetti', 'avatar_url' => null],
     ]);
 });
 
@@ -152,9 +153,10 @@ it('AC-021: participant_slots [7, null, 9] persists positions 1 and 3, preservin
         'participant_slots' => [$first->id, null, $third->id],
     ])->assertCreated();
 
+    // REQUIREMENT CHANGED (user request 2026-11-27): each person carries its avatar_url (the team popup shows it).
     expect($response->json('data.participants'))->toBe([
-        ['id' => $first->id, 'name' => $first->name, 'position' => 1],
-        ['id' => $third->id, 'name' => $third->name, 'position' => 3],
+        ['id' => $first->id, 'name' => $first->name, 'avatar_url' => null, 'position' => 1],
+        ['id' => $third->id, 'name' => $third->name, 'avatar_url' => null, 'position' => 3],
     ]);
 });
 
@@ -290,6 +292,27 @@ it('AC-030/031: the detail exposes start_date, responsabili and the ordered part
         ->assertJsonPath('data.participants.0.position', 2)
         ->assertJsonPath('data.participants.1.id', $second->id)
         ->assertJsonPath('data.participants.1.position', 5);
+});
+
+// User request 2026-11-27: the "Responsabili e Partecipanti" popup shows each person's photo, as the grid does.
+it('gives every responsabile and partecipante of the detail an avatar_url, eager-loaded', function () {
+    $actor = workOrderTeamActor(['view']);
+    $workOrder = WorkOrder::factory()->create();
+    $supervisor = User::factory()->create();
+    $participant = User::factory()->create();
+    $workOrder->supervisors()->attach($supervisor->id);
+    $workOrder->participants()->attach($participant->id, ['position' => 1]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/work-orders/{$workOrder->id}")
+        ->assertOk()
+        ->assertJsonPath('data.supervisors.0', ['id' => $supervisor->id, 'name' => $supervisor->name, 'avatar_url' => null])
+        ->assertJsonPath('data.participants.0', [
+            'id' => $participant->id,
+            'name' => $participant->name,
+            'avatar_url' => null,
+            'position' => 1,
+        ]);
 });
 
 // ---------------------------------------------------------------------------

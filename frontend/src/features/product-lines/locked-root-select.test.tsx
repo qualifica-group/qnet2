@@ -6,7 +6,8 @@ import type { ProductCategoryTreeNode } from '@/features/product-categories/type
 
 /**
  * Spec 0411 D-4: a request bound to one parent category offers only that root
- * to its product-line rows; a root already saved on the row stays listed.
+ * to its product-line rows; spec 0432: a legacy request offers only the roots
+ * it already has. A root already saved on the row stays listed.
  */
 
 function root(id: number): ProductCategoryTreeNode {
@@ -50,8 +51,8 @@ vi.mock('@/components/ui/searchable-select', () => ({
   },
 }))
 
-function renderRootSelect(onlyRootId: number | null, value: number | null = null): number[] {
-  render(<ProductCategoryRootSelect value={value} onChange={vi.fn()} triggerLabel="Root" onlyRootId={onlyRootId} />)
+function renderRootSelect(onlyRootIds: number[] | null, value: number | null = null): number[] {
+  render(<ProductCategoryRootSelect value={value} onChange={vi.fn()} triggerLabel="Root" onlyRootIds={onlyRootIds} />)
   return (optionsMock.mock.calls.at(-1)?.[0] ?? []).map((option) => option.id)
 }
 
@@ -65,10 +66,14 @@ describe('root select locked on a parent category (spec 0411)', () => {
   })
 
   it('lists only the bound root', () => {
-    expect(renderRootSelect(2)).toEqual([2])
+    expect(renderRootSelect([2])).toEqual([2])
+  })
+
+  it('lists only the roots a legacy request already has', () => {
+    expect(renderRootSelect([1, 3])).toEqual([1, 3])
   })
 
   it('keeps the root already saved on the row', () => {
-    expect(renderRootSelect(2, 3)).toEqual([2, 3])
+    expect(renderRootSelect([2], 3)).toEqual([2, 3])
   })
 })

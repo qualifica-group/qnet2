@@ -56,7 +56,6 @@ final readonly class CreateWorkOrderData
         public string $startDate,
         public ?string $callbackDate,
         public ?string $description,
-        public ?string $internalNotes,
         public bool $isForceClosed,
         public ?string $forceCloseReason,
         public array $quoteLineIds,
@@ -87,7 +86,6 @@ final readonly class CreateWorkOrderData
             startDate: (string) $data['start_date'],
             callbackDate: array_key_exists('callback_date', $data) ? $data['callback_date'] : null,
             description: array_key_exists('description', $data) ? $data['description'] : null,
-            internalNotes: array_key_exists('internal_notes', $data) ? $data['internal_notes'] : null,
             isForceClosed: (bool) ($data['is_force_closed'] ?? false),
             forceCloseReason: array_key_exists('force_close_reason', $data) ? $data['force_close_reason'] : null,
             quoteLineIds: self::normalizeIds($data['quote_line_ids'] ?? []),
@@ -110,7 +108,7 @@ final readonly class CreateWorkOrderData
      * Built from GenerateContractWorkOrderRequest (spec 0095, D-6/D-11):
      * `quote_id` is the CONTRACT's own (server-derived, never the client's),
      * `code` is always generated, and the fields D-11 excludes from that
-     * dialog (`callback_date`/`description`/`internal_notes`/force-close) are
+     * dialog (`callback_date`/`description`/force-close) are
      * defaulted exactly as a bare create would — the resulting work order is
      * indistinguishable from one made via POST /api/work-orders (AC-035).
      *
@@ -149,7 +147,6 @@ final readonly class CreateWorkOrderData
             startDate: $startDate,
             callbackDate: null,
             description: null,
-            internalNotes: null,
             isForceClosed: false,
             forceCloseReason: null,
             quoteLineIds: self::normalizeIds($quoteLineIds),
@@ -189,7 +186,6 @@ final readonly class CreateWorkOrderData
             startDate: $startDate,
             callbackDate: null,
             description: null,
-            internalNotes: null,
             isForceClosed: false,
             forceCloseReason: null,
             quoteLineIds: self::normalizeIds($quoteLineIds),
@@ -219,7 +215,6 @@ final readonly class CreateWorkOrderData
             startDate: $base->startDate,
             callbackDate: $base->callbackDate,
             description: $base->description,
-            internalNotes: $base->internalNotes,
             isForceClosed: false,
             forceCloseReason: null,
             quoteLineIds: [],
@@ -255,7 +250,6 @@ final readonly class CreateWorkOrderData
             'start_date' => $this->startDate,
             'callback_date' => $this->callbackDate,
             'description' => $this->description,
-            'internal_notes' => $this->internalNotes,
             'is_force_closed' => $this->isForceClosed,
             'force_close_reason' => $this->forceCloseReason,
             'task_template_id' => $this->taskTemplateId,

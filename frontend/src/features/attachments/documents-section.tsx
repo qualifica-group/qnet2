@@ -10,6 +10,7 @@ import { AttachmentTile } from '@/features/attachments/attachment-tile'
 import { LegacyRecordNote } from '@/components/detail/legacy-record-note'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { useAttachments } from '@/features/attachments/use-attachments'
+import { uploadFailureReason } from '@/features/attachments/upload-failure-reason'
 import { attachmentsQueryKey, markAttachmentsRead } from '@/features/attachments/api'
 import { useMarkReadOnLoad } from '@/hooks/use-mark-read-on-load'
 import { useAttachmentArchiveDownload } from '@/features/attachments/use-attachment-binary'
@@ -63,6 +64,8 @@ export function DocumentsSection({
   const { downloadAll, isDownloadingAll } = useAttachmentArchiveDownload(resource, id, collection)
   const [isDragging, setIsDragging] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  // One line per refused file of the last upload ("name: reason"), shown under `actionError`.
+  const [failedDetails, setFailedDetails] = useState<string[]>([])
 
   const handleFiles = (fileList: FileList | null) => {
     const files = Array.from(fileList ?? [])
@@ -70,13 +73,23 @@ export function DocumentsSection({
       return
     }
     setActionError(null)
+    setFailedDetails([])
     upload(files)
-      .then(({ failed }) => {
-        if (failed.length > 0) {
-          setActionError(
-            t('attachments.errors.uploadSome', { count: failed.length, names: failed.join(', ') }),
-          )
+      .then(({ uploaded, failed }) => {
+        if (failed.length === 0) {
+          return
         }
+        setActionError(
+          t(uploaded > 0 ? 'attachments.errors.uploadSome' : 'attachments.errors.uploadNone', {
+            count: failed.length,
+          }),
+        )
+        setFailedDetails(
+          failed.map(({ name, error }) => {
+            const reason = uploadFailureReason(error, t)
+            return reason ? t('attachments.errors.failedFile', { name, reason }) : name
+          }),
+        )
       })
       .catch(() => setActionError(t('attachments.errors.upload')))
   }
@@ -104,6 +117,7 @@ export function DocumentsSection({
       return
     }
     setActionError(null)
+    setFailedDetails([])
     try {
       await remove(attachment.id)
     } catch {
@@ -166,13 +180,24 @@ export function DocumentsSection({
       ) : null}
 
       {actionError ? (
-        <p
+        <div
           role="alert"
-          className="flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive"
+          className="flex flex-col gap-1 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive"
         >
-          <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
-          {actionError}
-        </p>
+          <p className="flex items-center gap-1.5">
+            <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+            {actionError}
+          </p>
+          {failedDetails.length > 0 ? (
+            <ul className="list-disc pl-8">
+              {failedDetails.map((detail) => (
+                <li key={detail} className="break-words">
+                  {detail}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
 
       {isLoading ? (

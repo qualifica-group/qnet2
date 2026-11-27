@@ -1,4 +1,5 @@
 import type { GridApi } from 'ag-grid-community'
+import { toTypedOnlyFilterModels } from '@/components/data-table/typed-only-filter-models'
 import { FilterViewsControl } from '@/features/table/filter-views-control'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
 import type { FilterRules, TableConfig, TableFilterView, TableRow } from '@/features/table/types'
@@ -47,7 +48,7 @@ export function SavedViewsSlot({
       currentFilters={gridApi.getFilterModel() ?? {}}
       currentAdvancedFilters={advancedFilters.activeValues}
       onApply={(filters, advancedFilterValues) => {
-        gridApi.setFilterModel(filters)
+        gridApi.setFilterModel(toTypedOnlyFilterModels(filters, config.columns))
         onFilterModelApplied(Object.keys(filters).length > 0)
         advancedFilters.applyValues(advancedFilterValues)
       }}

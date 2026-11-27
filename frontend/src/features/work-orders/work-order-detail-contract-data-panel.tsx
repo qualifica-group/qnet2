@@ -5,8 +5,6 @@ import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { useAbilities } from '@/features/auth/use-abilities'
-import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
-import type { ProductLine } from '@/features/product-lines/types'
 import { PaymentStatusBadge, PaymentStatusFieldLabel } from '@/features/work-order-contract-data/contract-data-cells'
 import { ContractDataLineBox } from '@/features/work-order-contract-data/contract-data-line-box'
 import { WorkOrderContractDataSection } from '@/features/work-order-contract-data/work-order-contract-data-section'
@@ -63,9 +61,6 @@ function WorkOrderLinesList({ lines, showRegistry }: { lines: WorkOrderQuoteLine
   )
 }
 
-/** Stable empty default: a missing `product_lines` key reads the same as `[]`. */
-const EMPTY_PRODUCT_LINES: ProductLine[] = []
-
 interface WorkOrderContractDataPanelProps {
   workOrder: WorkOrderDetailWithPermissions
   /** The work order's own data rows (Titolo, Data inizio, Contratto...) opening the section. */
@@ -75,9 +70,8 @@ interface WorkOrderContractDataPanelProps {
 /**
  * "Dati contrattuali commessa", the Info tab's main left section (user
  * directives 2026-11-16, "Dati commessa" merged in): the work order's own data
- * rows first, then the opportunity's "Linee prodotto" (not money: shown
- * whenever the work order has a single offer), then the products (spec
- * 0403): with `view_costs` and `view_contract_data` each product with
+ * rows first (no "Linee prodotto", user directive 2026-11-27), then the
+ * products (spec 0403): with `view_costs` and `view_contract_data` each product with
  * Titolo, Importo, Stato pagamento, Documento, Accordo and Insoluti, then the
  * totals; otherwise only Titolo and Stato pagamento of each product, no
  * money (user directive 2026-11-16, supersedes spec 0380's "nothing without
@@ -88,19 +82,10 @@ export function WorkOrderContractDataPanel({ workOrder, children }: WorkOrderCon
   const { t } = useTranslation()
   const { can } = useAbilities()
   const { actions } = workOrder.permissions
-  // Spec 0431: born without an offer, its functions are edited in the Riferimenti section, not repeated here.
-  const hasProductLines = !workOrder.is_multi_quote && workOrder.is_standalone !== true
 
   return (
     <RecordSection title={t('workOrders.contractData.title')} icon={<FileText />} full>
-      <RecordFieldList>
-        {children}
-        {hasProductLines ? (
-          <RecordField label={t('quotes.detail.productLines')}>
-            <ProductLinesReadOnlyList lines={workOrder.product_lines ?? EMPTY_PRODUCT_LINES} />
-          </RecordField>
-        ) : null}
-      </RecordFieldList>
+      <RecordFieldList>{children}</RecordFieldList>
       {/* User directive 2026-11-25: a work order without an offer never has offer lines, so no lines block. */}
       {workOrder.is_standalone === true ? null : actions.view_costs && actions.view_contract_data ? (
         <WorkOrderContractDataSection

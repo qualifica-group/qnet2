@@ -5,6 +5,7 @@ import { AxiosError, type AxiosResponse } from 'axios'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
+import { notifyFormErrors } from '@/features/auth/form-errors'
 import { fetchWorkOrderFormContext, updateWorkOrder } from '@/features/work-orders/api'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import {
@@ -15,13 +16,21 @@ import {
 import type { FieldPermission } from '@/features/authorization/types'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
-/** Spec 0322 AC-014: the "Stato lavorazione" row of the detail, editable in place from the resolved set. */
+/**
+ * Spec 0322 AC-014: the "Stato lavorazione", changed from the resolved set.
+ * REQUIREMENT CHANGED (user directive 2026-11-27): it left the Info tab for
+ * the record header, beside the working-phase pill; a pick saves at once.
+ */
 
 vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('@/features/auth/form-errors', async () => {
+  const actual = await vi.importActual<typeof import('@/features/auth/form-errors')>('@/features/auth/form-errors')
+  return { ...actual, notifyFormErrors: vi.fn() }
+})
 vi.mock('@/features/work-orders/task-board/work-order-task-board', () => ({
   WorkOrderTaskBoard: () => <div>task-board</div>,
 }))
@@ -31,8 +40,8 @@ vi.mock('@/features/work-orders/api', async () => {
 })
 
 const label = (key: string, options?: Record<string, unknown>) => i18n.t(key, options)
-const FIELD_LABEL = () => label('workOrders.detail.workflowStatus')
-const queryPencil = () => screen.queryByRole('button', { name: label('common.inlineEdit.edit', { field: FIELD_LABEL() }) })
+const trigger = (status = OPEN_WORKFLOW_STATUS.name) =>
+  screen.queryByRole('button', { name: label('workOrders.detail.workflowStatusChange', { status }) })
 
 const FIELD_PERMISSION: FieldPermission = {
   visible: true,
@@ -61,7 +70,6 @@ function workOrder(statusPermission: FieldPermission = FIELD_PERMISSION): WorkOr
     supervisors: [{ id: 21, name: 'Ada Alberti' }],
     participants: [],
     description: null,
-    internal_notes: null,
     is_multi_quote: false,
     source_quotes: [],
     contract_number: 'QUO-0004',
@@ -96,33 +104,30 @@ function renderDetail(record: WorkOrderDetailWithPermissions) {
   )
 }
 
+async function openMenu(): Promise<HTMLElement> {
+  fireEvent.pointerDown(trigger()!, { button: 0, ctrlKey: false })
+  return screen.findByRole('menu')
+}
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
   vi.mocked(updateWorkOrder).mockReset()
+  vi.mocked(notifyFormErrors).mockReset()
   vi.mocked(fetchWorkOrderFormContext).mockReset()
   vi.mocked(fetchWorkOrderFormContext).mockResolvedValue({ applicable_attributes: [], attribute_layout: null, locked_attributes: [] })
 })
 
-describe('WorkOrderDetailView — Stato lavorazione', () => {
-  // REQUIREMENT CHANGED (user directive 2026-11-16): "Stato lavorazione" is its own section, under the contract data.
-  it('shows the current working status next to its advancement', () => {
+describe('WorkOrderDetailView — Stato lavorazione in the header', () => {
+  it('shows the current working status beside the phase pill, no longer as an Info section', () => {
     renderDetail(workOrder())
 
-    expect(screen.getByRole('heading', { level: 3, name: FIELD_LABEL() })).toBeInTheDocument()
-    expect(screen.getByText(OPEN_WORKFLOW_STATUS.name)).toBeInTheDocument()
-    expect(screen.getByText(`${label('workflowStatuses.progressPercentage')}: 0%`)).toBeInTheDocument()
-  })
-
-  it('keeps a long status name inside the column, truncated with the full name on hover', () => {
-    renderDetail(workOrder())
-
-    const name = screen.getByText(OPEN_WORKFLOW_STATUS.name)
-    expect(name).toHaveClass('truncate')
-    expect(name).toHaveAttribute('title', OPEN_WORKFLOW_STATUS.name)
-    expect(name.closest('[data-slot="badge"]')).toHaveClass('max-w-full', 'min-w-0')
+    const pill = trigger()!
+    expect(within(pill).getByText(OPEN_WORKFLOW_STATUS.name)).toHaveAttribute('title', OPEN_WORKFLOW_STATUS.name)
+    expect(pill.parentElement).toBe(screen.getByRole('button', { name: label('workOrders.detail.actionsMenu') }).parentElement)
+    expect(screen.queryByRole('heading', { level: 3, name: label('workOrders.detail.workflowStatus') })).not.toBeInTheDocument()
   })
 
   it('lists only the resolved set and PATCHes the chosen id alone', async () => {
@@ -134,43 +139,52 @@ describe('WorkOrderDetailView — Stato lavorazione', () => {
     })
     renderDetail(record)
 
-    fireEvent.click(queryPencil()!)
-    fireEvent.click(screen.getByRole('combobox', { name: FIELD_LABEL() }))
-    const options = screen.getAllByRole('option')
-    expect(options).toHaveLength(2)
-    fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: new RegExp(IN_PROGRESS_WORKFLOW_STATUS.name) }))
-    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.save') }))
+    const menu = await openMenu()
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(2)
+    expect(within(menu).getByRole('menuitemradio', { name: new RegExp(OPEN_WORKFLOW_STATUS.name) })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: new RegExp(IN_PROGRESS_WORKFLOW_STATUS.name) }))
 
     await waitFor(() =>
-      expect(updateWorkOrder).toHaveBeenCalledWith(4, {
-        work_order_workflow_status_id: IN_PROGRESS_WORKFLOW_STATUS.id,
-      }),
+      expect(updateWorkOrder).toHaveBeenCalledWith(4, { work_order_workflow_status_id: IN_PROGRESS_WORKFLOW_STATUS.id }),
     )
   })
 
-  it('offers no edit when the field permission is read-only', () => {
+  it('does not save when the current status is picked again', async () => {
+    renderDetail(workOrder())
+
+    const menu = await openMenu()
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: new RegExp(OPEN_WORKFLOW_STATUS.name) }))
+
+    expect(updateWorkOrder).not.toHaveBeenCalled()
+  })
+
+  it('shows the bare pill, with no menu, when the field permission is read-only', () => {
     renderDetail(workOrder({ ...FIELD_PERMISSION, editable: false, readonly: true }))
 
     expect(screen.getByText(OPEN_WORKFLOW_STATUS.name)).toBeInTheDocument()
-    expect(queryPencil()).not.toBeInTheDocument()
+    expect(trigger()).not.toBeInTheDocument()
   })
 
-  it('shows the server 422 on the field and keeps the editor open (spec 0323 D-2)', async () => {
+  it('shows nothing when the field is hidden', () => {
+    renderDetail(workOrder({ ...FIELD_PERMISSION, visible: false, hidden: true }))
+
+    expect(screen.queryByText(OPEN_WORKFLOW_STATUS.name)).not.toBeInTheDocument()
+  })
+
+  it('raises the server 422 reasons in the foreground toast (spec 0323 D-2)', async () => {
     const message = "Lo stato porta l'avanzamento al 20%, che non supera l'avanzamento gia' raggiunto (20%)."
     vi.mocked(updateWorkOrder).mockRejectedValueOnce(
-      Object.assign(new AxiosError('Unprocessable', '422', undefined, undefined, {
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
         status: 422,
         data: { success: false, message: 'Validation failed', errors: { work_order_workflow_status_id: [message] } },
-      } as AxiosResponse), {}),
+      } as AxiosResponse),
     )
     renderDetail(workOrder())
 
-    fireEvent.click(queryPencil()!)
-    fireEvent.click(screen.getByRole('combobox', { name: FIELD_LABEL() }))
-    fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: new RegExp(IN_PROGRESS_WORKFLOW_STATUS.name) }))
-    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.save') }))
+    const menu = await openMenu()
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: new RegExp(IN_PROGRESS_WORKFLOW_STATUS.name) }))
 
-    expect(await screen.findByText(message)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: label('common.inlineEdit.save') })).toBeInTheDocument()
+    await waitFor(() => expect(notifyFormErrors).toHaveBeenCalledWith([message]))
+    expect(trigger()).toBeInTheDocument()
   })
 })

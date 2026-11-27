@@ -269,7 +269,7 @@ it('gives a subcategory the root Commessa fields and an always visible form, and
 
     expect(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::WorkOrder)->pluck('code')->sort()->values()->all())
         ->toBe($ownCodes)
-        ->and(array_column($sections, 'title'))->toBe(['Dettagli lavorazioni', 'Focus lavorazione ISO', 'Verifiche ispettive'])
+        ->and(array_column($sections, 'title'))->toBe(['Dettagli lavorazioni', 'Focus lavorazione ISO', 'Verifiche ispettive', 'Dettagli lavorazioni ISO'])
         ->and(array_merge(...array_values(isoSectionCodes($sections))))->toEqualCanonicalizing($ownCodes)
         ->and(array_filter(array_column($sections, 'visible_when')))->toBe([])
         ->and(Attribute::query()->where('code', 'iso_inspections')->sole()->config['selectable'])->toBe(['key' => 'active', 'label' => 'Attivo']);

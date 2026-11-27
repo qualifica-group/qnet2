@@ -92,8 +92,11 @@ final class RequestProductLineWriter
         );
 
         // Step 1-ter (spec 0411, D-4): a bound offer never leaves its root,
-        // and the sibling offers' roots keep their own lines.
-        if ($rootId !== null) {
+        // and the sibling offers' roots keep their own lines. Spec 0432: an
+        // unbound request with old-catalogue lines never gains another root.
+        if ($rootId === null) {
+            $this->rootScope->assertWithinLegacyRoots($nextCategoryIds, $current, self::ERROR_FIELD);
+        } else {
             $this->rootScope->assertUnderRoot($nextCategoryIds, $rootId, self::ERROR_FIELD);
             $next = [...$this->normalize(array_map(
                 static fn (int $id): array => ['product_category_id' => $id],

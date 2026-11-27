@@ -7,6 +7,9 @@ import type {
   AdvancedFilterValues,
 } from '@/features/table/advanced-filters/types'
 
+/** Pause after the last change before a live-applied filter set reloads the grid (same as the quick search). */
+const LIVE_APPLY_DEBOUNCE_MS = 350
+
 /** A range value has neither bound set. */
 function isEmptyRange(value: { from?: unknown; to?: unknown }): boolean {
   return value.from === undefined && value.to === undefined
@@ -104,6 +107,11 @@ interface UseAdvancedFiltersArgs {
   override?: AdvancedFilterValues | null
   /** Invoked once Apply/Reset persists, so the caller drops the one-time deep link (e.g. from the URL). */
   onOverrideCleared?: () => void
+  /**
+   * Applies the draft by itself shortly after the last change, with no Apply
+   * button (the pinned filters of the Commesse page, user request 2026-11-27).
+   */
+  liveApply?: boolean
 }
 
 export interface UseAdvancedFiltersResult {
@@ -164,6 +172,7 @@ export function useAdvancedFilters({
   onApplied,
   override,
   onOverrideCleared,
+  liveApply = false,
 }: UseAdvancedFiltersArgs): UseAdvancedFiltersResult {
   const saveFilters = useSaveTableFilters(domain, scope)
 
@@ -202,12 +211,20 @@ export function useAdvancedFilters({
   // actually changed — a content compare keeps this effect a true no-op
   // (never re-triggers itself) instead of depending on that guarantee.
   const lastSeenInitialRef = useRef<string | null>(null)
+  // What the saved config will echo back after the last apply(): that echo
+  // leaves the draft alone, so a field still being typed in (live mode) keeps
+  // what was typed while the save was in flight.
+  const ownSaveEchoRef = useRef<string | null>(null)
   useEffect(() => {
     const serialized = JSON.stringify(initial)
     if (serialized === lastSeenInitialRef.current) {
       return
     }
     lastSeenInitialRef.current = serialized
+    if (serialized === ownSaveEchoRef.current) {
+      ownSaveEchoRef.current = null
+      return
+    }
     setDraft(initial)
     setApplied(initial)
     appliedRef.current = initial
@@ -310,13 +327,25 @@ export function useAdvancedFilters({
     }
     setApplied(draft)
     appliedRef.current = draft
-    persist(computeActiveValues(descriptors, draft))
+    const active = computeActiveValues(descriptors, draft)
+    ownSaveEchoRef.current = JSON.stringify({ ...defaults, ...active })
+    persist(active)
     onApplied()
     // The normal flow always wins over a one-time deep-link override (spec
     // 0151 D-2): drop it (e.g. the caller strips `status`/`assignment` from
     // the URL) now that the user has explicitly applied filters.
     onOverrideCleared?.()
-  }, [canApply, draft, descriptors, persist, onApplied, onOverrideCleared])
+  }, [canApply, draft, defaults, descriptors, persist, onApplied, onOverrideCleared])
+
+  // Live mode: a debounced timer (an external system) commits the draft once
+  // the user stops changing it, so typing in a text field reloads the grid once.
+  useEffect(() => {
+    if (!liveApply || JSON.stringify(draft) === JSON.stringify(appliedRef.current)) {
+      return
+    }
+    const timer = setTimeout(apply, LIVE_APPLY_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [liveApply, draft, apply])
 
   const reset = useCallback(() => {
     setDraft(defaults)

@@ -8,7 +8,6 @@ import {
   WorkOrderCallbackDateField,
   WorkOrderCodeField,
   WorkOrderStartDateField,
-  WorkOrderTextAreaField,
   WorkOrderTitleField,
   WorkOrderTypeField,
 } from '@/features/work-orders/work-order-identity-fields'
@@ -59,7 +58,7 @@ export function WorkOrderStartDateRow({ form, inline, startDate }: RowProps & { 
   )
 }
 
-/** "Motivo chiusura": only while the closure is forced, written by the header's action, read-only here. */
+/** "Motivo chiusura": only while the closure is forced and a reason was written (the actions menu's "Chiusura forzata"), read-only here. */
 export function WorkOrderForceCloseReasonRow({ reason }: { reason: string | null }) {
   const { t } = useTranslation()
 
@@ -127,23 +126,3 @@ export function WorkOrderCallbackDateRow({ form, inline, callbackDate }: RowProp
   )
 }
 
-/** "Descrizione", capped and scrollable so a long text does not push the rest of the section away. */
-export function WorkOrderDescriptionRow({ form, inline, description }: RowProps & { description: string | null }) {
-  const { t } = useTranslation()
-  const label = t('workOrders.detail.description')
-
-  return (
-    <RecordInlineField
-      field="description"
-      label={label}
-      inline={inline}
-      editor={<WorkOrderTextAreaField control={form.form.control} name="description" label={label} />}
-    >
-      {description ? (
-        <p className="max-h-40 overflow-y-auto break-words whitespace-pre-wrap">{description}</p>
-      ) : (
-        <DetailEmpty />
-      )}
-    </RecordInlineField>
-  )
-}

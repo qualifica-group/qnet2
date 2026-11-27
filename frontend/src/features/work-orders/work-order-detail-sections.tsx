@@ -15,10 +15,9 @@ import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-at
 import { WorkOrderClientInfoSection } from '@/features/work-orders/work-order-client-info-section'
 import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
 import { WorkOrderDescriptionSections } from '@/features/work-orders/work-order-record-description'
-import { WorkOrderAmountRow } from '@/features/work-orders/work-order-amount-row'
-import { WorkOrderInternalNotesRow, WorkOrderWorkflowStatusSection } from '@/features/work-orders/work-order-record-identity'
+import { WorkOrderDescriptionCalloutRow } from '@/features/work-orders/work-order-record-identity'
+import { WorkOrderProgressSection } from '@/features/work-orders/work-order-progress-section'
 import { WorkOrderForceCloseReasonRow, WorkOrderStartDateRow } from '@/features/work-orders/work-order-record-rows'
-import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
 import {
   WorkOrderProductsSection,
   WorkOrderReferencesSection,
@@ -26,9 +25,6 @@ import {
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
-
-/** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
-const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
 /** Stable empty default: a missing `product_lines` key reads the same as `[]`. */
 const EMPTY_PRODUCT_LINES: ProductLine[] = []
@@ -53,6 +49,8 @@ function LinkedField({ label, domain, record }: { label: string; domain: string;
 interface DetailSectionProps {
   workOrder: WorkOrderDetailWithPermissions
   editor: WorkOrderDetailEditor
+  /** After a change outside the inline editor (the progress popup): the host refreshes its lists. */
+  onChanged?: () => void
 }
 
 /** The distinct business functions of the work order's product lines, joined; the empty marker without any. */
@@ -63,8 +61,8 @@ function businessFunctionsOf(workOrder: WorkOrderDetailWithPermissions): ReactNo
 }
 
 /**
- * "Riferimenti Società e Funzioni Aziendali" (top of the Info tab's right
- * column): the linked offer's company and sites, the same three relations,
+ * "Riferimenti Società e Funzioni Aziendali" (right column, under the
+ * description): the linked offer's company and sites, the same three relations,
  * labels and links the Contract detail shows, projected live through `quote`,
  * then the business functions of the opportunity's product lines.
  */
@@ -101,21 +99,23 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
 /**
  * The work order's Info tab, laid out as the legacy "Info" tab (user
  * directives 2026-11-16), every user-written field editable in place (spec
- * 0195 applied to Commesse): the internal notes callout first, then two
- * columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
- * (Importo, Data inizio, the link to the Contratto, the Linee prodotto, then
+ * 0195 applied to Commesse), in two columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
+ * (Data inizio, the link to the Contratto, then
  * each product with its payment fields (spec 0403) and the totals; no title
- * and no commessa-wide payment status, user directive 2026-11-16), "Stato
- * lavorazione", "Team". Right: "Riferimenti società",
- * "Data richiamo", "Descrizione commessa" (Commessa n., Tipo commessa,
- * Descrizione), then the flexible fields ("Informazioni aggiuntive"). Not on
+ * and no commessa-wide payment status, user directive 2026-11-16; no Importo,
+ * user directive 2026-11-27),
+ * "Avanzamento commessa" (the "Stato lavorazione" moved to the header, user
+ * directive 2026-11-27). The Team block is the "Responsabili e Partecipanti"
+ * action of the "..." menu (user directive 2026-11-27). Right: the "Descrizione" callout (user
+ * decision 2026-11-27), "Riferimenti società", "Data richiamo", "Descrizione
+ * commessa" (Commessa n., Tipo commessa), then the flexible fields ("Informazioni aggiuntive"). Not on
  * the commessa: Contesto (Fonte), Buoni, Documento e pagamento, Modello di
  * Task. Everything the offer owns is a read-only projection. Status and
- * completion are computed (spec 0149): they stay the header pill and the KPI
- * strip. The forced closure is an action of the header (user directive
- * 2026-10-06), its reason a read-only row of the data.
+ * completion are computed (spec 0149): the status is the header pill, the
+ * completion the "Avanzamento commessa" popup. The forced closure is a record
+ * action (user directive 2026-10-06), its reason a read-only row of the data.
  */
-export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProps) {
+export function WorkOrderDetailSections({ workOrder, editor, onChanged }: DetailSectionProps) {
   const { t } = useTranslation()
   const { inline } = editor
   // Spec 0267: a multi-offer work order has no single client/contract/company; each product line names its own client.
@@ -125,13 +125,6 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
 
   return (
     <RecordSectionsGrid>
-      <WorkOrderInternalNotesRow
-        notes={workOrder.internal_notes}
-        form={editor}
-        inline={inline}
-        className={FULL_WIDTH_SECTION_CLASS}
-      />
-
       {/* Own @container per column: the grids inside break on the column's width, not the card's. */}
       <div className={RECORD_COLUMN_CLASS}>
         {hasSingleQuote && workOrder.registry && workOrder.client_info ? (
@@ -149,8 +142,6 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
           />
         ) : null}
         <WorkOrderContractDataPanel workOrder={workOrder}>
-          {/* User directive 2026-11-25: no amount on a work order without an offer, it is never billed. */}
-          {isStandalone ? null : <WorkOrderAmountRow amount={workOrder.amount} />}
           <WorkOrderStartDateRow form={editor} inline={inline} startDate={workOrder.start_date} />
           {hasSingleQuote && !isStandalone ? (
             <LinkedField
@@ -165,20 +156,11 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
           ) : null}
           <WorkOrderForceCloseReasonRow reason={workOrder.is_force_closed ? workOrder.force_close_reason : null} />
         </WorkOrderContractDataPanel>
-        <WorkOrderWorkflowStatusSection
-          workflowStatus={{ current: workOrder.work_order_workflow_status, statuses: workOrder.work_order_workflow_statuses }}
-          form={editor}
-          inline={inline}
-        />
-        <WorkOrderTeamSection
-          title={t('workOrders.detail.sections.detailTeam')}
-          supervisors={workOrder.supervisors}
-          participants={workOrder.participants}
-          form={editor}
-          inline={inline}
-        />
+        <WorkOrderProgressSection workOrder={workOrder} onChanged={onChanged} />
       </div>
       <div className={RECORD_COLUMN_CLASS}>
+        {/* User decision 2026-11-27: the description (the yellow callout) heads the right column. */}
+        <WorkOrderDescriptionCalloutRow description={workOrder.description} form={editor} inline={inline} />
         {isStandalone ? (
           <WorkOrderReferencesSection
             values={{
@@ -201,7 +183,6 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
             code: workOrder.code,
             type: workOrder.type,
             callback_date: workOrder.callback_date,
-            description: workOrder.description,
           }}
           form={editor}
           inline={inline}
@@ -215,6 +196,7 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
             inline={inline}
             control={editor.form.control}
             collapsible={false}
+            sectionEdit
           />
         ) : null}
       </div>

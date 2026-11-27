@@ -8,6 +8,7 @@ import { AdditionalInformationSection } from '@/features/attributes/additional-i
 import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { AttributeLayoutView, type AttributeFieldRenderer } from '@/features/attributes/attribute-layout-view'
+import { useAttributeSectionEditAction } from '@/features/attributes/use-attribute-section-edit-action'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
 import { SyncedAttributeHint } from '@/features/attributes/synced-attribute-hint'
@@ -43,6 +44,8 @@ interface WorkOrderAttributesSectionProps {
   control: Control<WorkOrderFormValues>
   /** Create form: the operator can fold it away. Detail: a fixed column of its own (user directive 2026-11-05). */
   collapsible?: boolean
+  /** Detail only: each section's pencil edits all its fields in one popup (user directive 2026-11-27). */
+  sectionEdit?: boolean
   className?: string
 }
 
@@ -57,7 +60,9 @@ interface WorkOrderAttributesSectionProps {
  *
  * The whole block follows the single `attribute_values` field permission
  * (AC-024). Absent when the quote lines resolve no Attribute. Collapsible
- * (state remembered in the browser) unless `collapsible` is false.
+ * (state remembered in the browser) unless `collapsible` is false. With
+ * `sectionEdit` every section also edits as a whole (`AttributeSectionEditDialog`),
+ * the integration-owned values read-only there.
  */
 export function WorkOrderAttributesSection({
   attributes,
@@ -67,6 +72,7 @@ export function WorkOrderAttributesSection({
   inline,
   control,
   collapsible = true,
+  sectionEdit = false,
   className,
 }: WorkOrderAttributesSectionProps) {
   const { t } = useTranslation()
@@ -75,12 +81,19 @@ export function WorkOrderAttributesSection({
     () => new Map(lockedAttributes.map((locked) => [locked.code, locked.source])),
     [lockedAttributes],
   )
+  const effectiveByCode = new Map(effectiveAttributes.map((attribute) => [attribute.code, attribute]))
+  const renderSectionAction = useAttributeSectionEditAction({
+    enabled: sectionEdit,
+    attributesByCode: effectiveByCode,
+    readOnlyCodes: new Set(lockedSources.keys()),
+    control,
+    inline,
+  })
 
   if (attributes.length === 0) {
     return null
   }
 
-  const effectiveByCode = new Map(effectiveAttributes.map((attribute) => [attribute.code, attribute]))
   const syncedCodes = new Set(attributes.filter((attribute) => attribute.is_synced).map((attribute) => attribute.code))
 
   const renderField: AttributeFieldRenderer = (attribute, value, fieldClassName) => {
@@ -114,7 +127,13 @@ export function WorkOrderAttributesSection({
   const title = t('workOrders.detail.additionalInformation')
   const icon = <ClipboardList />
   const content = (
-    <AttributeLayoutView layout={layout} attributes={attributes} values={values} renderField={renderField} />
+    <AttributeLayoutView
+      layout={layout}
+      attributes={attributes}
+      values={values}
+      renderField={renderField}
+      renderSectionAction={renderSectionAction}
+    />
   )
 
   if (!collapsible) {

@@ -249,6 +249,8 @@ export interface RequestWorkPanel extends RequestForecast, ContractedQuoteFlags 
   product_lines: RequestProductLine[]
   /** Spec 0411: the parent category the request (offer) is bound to, `null` for an unbound one. */
   root_product_category?: { id: number; name: string } | null
+  /** Spec 0432: the parent categories an unbound request with old-catalogue lines is locked to, `[]` otherwise. */
+  legacy_root_categories?: { id: number; name: string }[]
   /** Spec 0411: every offer the POST created, one per parent category (create response only). */
   created_quote_ids?: number[]
   /**

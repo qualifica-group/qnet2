@@ -430,9 +430,10 @@ class WorkOrderService
 
     /**
      * Spec 0323 D-2/D-8: an explicitly submitted status that really changed
-     * moves the progress like the legacy: a positive percentage not above the
+     * moves the progress like the legacy: a positive percentage below the
      * progress reached is a 422 (the surrounding transaction rolls the status
-     * write back), a higher one adds the delta entry. Nothing for a
+     * write back), an equal one changes the status only, a higher one adds the
+     * delta entry. Nothing for a
      * force-closed commessa (spec 0321 D-8).
      */
     private function applyManualStatusProgress(WorkOrder $workOrder, ?int $previousStatusId, ?int $submittedStatusId): void
@@ -446,7 +447,7 @@ class WorkOrderService
         $percentage = $workOrder->workOrderWorkflowStatus()->value('progress_percentage');
         $percentage = $percentage === null ? null : (int) $percentage;
 
-        $this->progressEntries->assertStatusPercentageAboveCurrent($workOrder, $percentage);
+        $this->progressEntries->assertStatusPercentageNotBelowCurrent($workOrder, $percentage);
         // auth:sanctum guarantees a resolved actor on the update route.
         /** @var User $actor */
         $actor = Auth::user();

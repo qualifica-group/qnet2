@@ -14,4 +14,7 @@ enum DocumentRequestOperation: string
     case Approve = 'approve';
     case Reject = 'reject';
     case Complete = 'complete';
+    case RefreshRules = 'refresh_rules';
+    case Revalidate = 'revalidate';
+    case StopValidation = 'stop_validation';
 }

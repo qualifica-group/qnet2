@@ -24,19 +24,14 @@ export const workOrderContractData = {
   },
   totals: {
     revenue: 'Total revenue',
-    commissions: 'Commissions',
-    netOfCommissions: 'Net of commissions',
     typology: 'Total {{name}}',
     typologyRevenue: 'revenue {{revenue}}',
   },
   hint: {
     netAmountRule: 'Quantity × unit price.',
     netAmountFormula: '{{quantity}} × {{unitPrice}} = {{net}}',
-    netOfCommissionsFormula: '{{net}} − {{commissions}} = {{result}}',
     totals: {
       revenue: 'Sum of the lines\' effective revenue: the received commission, otherwise the net amount.',
-      commissions: 'Sum of the commissions of all the lines.',
-      netOfCommissions: 'Net amount minus commissions.',
     },
   },
   warnings: {

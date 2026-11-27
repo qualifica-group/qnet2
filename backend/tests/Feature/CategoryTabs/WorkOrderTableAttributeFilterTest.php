@@ -54,7 +54,7 @@ function inspectionsFiltered(ProductCategory $category, array $workOrders, array
 {
     $ids = test()->postJson('/api/tables/work-orders/rows', [
         'startRow' => 0, 'endRow' => 25,
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
         'filterModel' => ['attr.inspections' => $filter],
     ])->assertOk()->json('items.*.id');
     $names = array_flip(array_map(static fn (WorkOrder $workOrder): int => $workOrder->id, $workOrders));
@@ -88,7 +88,7 @@ it('lists the summary or, without one, every row value as distinct filter values
 
     $values = $this->postJson('/api/tables/work-orders/values', [
         'columnId' => 'attr.inspections',
-        'advancedFilters' => categoryTabFilters($category),
+        'advancedFilters' => workOrderCategoryFilters($category),
     ])->assertOk()->json('data.values');
 
     expect($values)->toBe(['2024-04-08', '2024-04-10', '2025-01-10']);
