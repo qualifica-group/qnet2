@@ -3,13 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Cash flow: stima uscite per il personale, fase 3 statini (spec 0432, 2026-11-27) — VERDE, NON COMMITTATO
+## Cambio di stato massivo degli ODA (spec 0433, 2026-11-27) — VERDE, NON COMMITTATO
+
+- `POST /api/purchase-orders/bulk-status` `{ids, to_status, dry_run}` -> `{applied, to_status, total, changed[{id,code}], skipped[{id,code,reason}]}`; `PurchaseOrderBulkStatusService` riusa `PurchaseOrderStatusService::change()` per ODA (transazione propria); nuovo `PurchaseOrderStatusService::check()` (permesso, matrice, guard ricevimenti, senza scrivere) usato da change() e dall'anteprima. Esito parziale; id duplicati contati una volta; 5 stati manuali; max `config('purchase-orders.bulk_status_max')` = 200. Permesso: changeStatus o approve. Aperto: il cambio singolo richiede anche `view` sull'ODA, la massiva no (la spec D-3 non lo prevede).
+- FE: "Cambia stato" nel menu Azioni della griglia ODA (`use-purchase-order-bulk-status.tsx`, `purchase-order-bulk-status-dialog.tsx`), anteprima "N di M possono passare", riepilogo, refresh griglia e invalidazione ODA/RDA; guida ODA IT/EN (sezione status).
+- Verifica: backend PurchaseOrders 269/270 (rosso PurchaseOrderMigrationTest, preesistente: il `down()` di `2026_12_27_100000_create_payslips_table.php` (spec 0431) usa `dropConstrainedForeignId('supplier_registry_id')`, che SQLite non supporta; fix con il pattern di `2026_10_30_100000_drop_collective_agreements.php`), ApiDocsParity verde con memory_limit 2G; FE purchase-orders+help+i18n 526/526; tsc, ESLint, Pint puliti.
+
+## Cash flow: stima uscite per il personale, fase 3 statini (spec 0432, 2026-11-27) — COMMITTATO (f2ed769b2)
 
 - `PersonnelForecast` + `PersonnelForecastData` (`app/Services/ManagementControl/CashFlow/`), quarta fonte di `CashFlowBuilder`: Flow += `salaries`, `f24`; net = receivable - payable - committed - salaries - f24. Base = ultimo periodo con costi e cedolini ordinari (MENSILITA_NORMALE); netto il giorno G (giorno piu' frequente delle scadenze dei cedolini base, default 15) del mese dopo; 13a 20/12, 14a 15/07 = un netto base; F24 il 16 del mese dopo = costo - netto - netto x 2/12 (ratei); sostituite dai cedolini reali; cessati esclusi; stime passate omesse; un mese oltre l'orizzonte in `beyond` (`LOOKAHEAD_MONTHS`); filtri di sede escludono le stime.
 - `include_personnel` (default true) in `CashFlowFilters`/`CashFlowRequest`, in `applied` e nella cache. `config/payroll.php` sezione `forecast`. Helper test `tests/Helpers/CashFlowPersonnelHelpers.php` caricato da `tests/Pest.php`.
 - FE: righe "Stipendi (stima)" e "F24 (stima)", 8 riquadri, grafico e scenario aggiornati, interruttore "Includi stima personale"; guida cash flow IT/EN sezione `personnel-estimate`.
 - Verifica (mirata, file per file: PHP e Node vanno in segmentation fault a caso su questo PC, anche la suite completa del verifier): ManagementControl 164/168 (i 4 rossi noti del menu), PayrollCosts 21/21, Payslips 51/51; vitest management-control+help+i18n 564/564; tsc pulito; ESLint e Pint puliti.
-- In progettazione: spec 0433 cambio di stato massivo degli ODA (decisioni utente 1A esito parziale, 2A cinque stati manuali con anteprima), non ancora approvata in forma di piano.
 
 ## Cedolini, parte B statini (spec 0431, 2026-11-25) — COMMITTATO (0e659054e)
 

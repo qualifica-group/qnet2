@@ -5,6 +5,7 @@ return [
     'not_editable' => 'This purchase order can no longer be changed.',
     'linked_to_purchase_invoice' => 'This purchase order is linked to a purchase invoice.',
     'not_sendable_status' => 'Only approved or sent purchase orders can be sent to the supplier.',
+    'bulk_already_in_status' => 'The purchase order is already in this status.',
     'has_receipts' => 'A purchase order with receipts or closed residuals cannot go back to draft or validation, nor be cancelled.',
     'not_receivable' => 'Receipts can only be recorded on approved, sent or partially fulfilled purchase orders.',
     'cancelled' => 'The purchase order is cancelled.',

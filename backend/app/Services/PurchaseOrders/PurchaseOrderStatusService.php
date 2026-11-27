@@ -28,27 +28,37 @@ class PurchaseOrderStatusService
     public function change(PurchaseOrder $order, PurchaseOrderStatus $to, User $actor): PurchaseOrder
     {
         return DB::transaction(function () use ($order, $to, $actor): PurchaseOrder {
-            // Step 1: serialize on the order, then check the permission of the target (403)
+            // Step 1: serialize on the order
             $locked = PurchaseOrder::query()->whereKey($order->getKey())->lockForUpdate()->firstOrFail();
 
-            Gate::forUser($actor)->authorize($this->ability($to), $locked);
+            // Step 2: permission (403), matrix (422) and deliveries guard (422)
+            $this->check($locked, $to, $actor);
 
-            // Step 2: the matrix decides (422 on to_status)
-            if (! $locked->status->canTransitionTo($to)) {
-                throw ValidationException::withMessages(['to_status' => [__('This status change is not allowed for the order.')]]);
-            }
-
-            // Step 3: an order with deliveries cannot go back or be cancelled (D-5)
-            $this->assertNoReceiptsToDiscard($locked, $to);
-
-            // Step 4: apply
+            // Step 3: apply
             $locked->forceFill(['status' => $to])->save();
 
-            // Step 5: propagate to the linked request lines (same transaction)
+            // Step 4: propagate to the linked request lines (same transaction)
             $this->propagate($locked, $to, $actor);
 
             return $locked;
         });
+    }
+
+    /**
+     * Read-only gate of a change, shared with the bulk dry run so both decide
+     * the same way: permission of the target (403), matrix (422 on to_status),
+     * deliveries guard (422).
+     */
+    public function check(PurchaseOrder $order, PurchaseOrderStatus $to, User $actor): void
+    {
+        Gate::forUser($actor)->authorize($this->ability($to), $order);
+
+        if (! $order->status->canTransitionTo($to)) {
+            throw ValidationException::withMessages(['to_status' => [__('This status change is not allowed for the order.')]]);
+        }
+
+        // An order with deliveries cannot go back or be cancelled (D-5)
+        $this->assertNoReceiptsToDiscard($order, $to);
     }
 
     /**
