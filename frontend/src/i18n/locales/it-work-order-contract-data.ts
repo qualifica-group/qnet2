@@ -24,19 +24,14 @@ export const workOrderContractData = {
   },
   totals: {
     revenue: 'Totale Ricavi',
-    commissions: 'Commissioni',
-    netOfCommissions: 'Netto commissioni',
     typology: 'Totale {{name}}',
     typologyRevenue: 'ricavo {{revenue}}',
   },
   hint: {
     netAmountRule: 'Quantità × prezzo unitario.',
     netAmountFormula: '{{quantity}} × {{unitPrice}} = {{net}}',
-    netOfCommissionsFormula: '{{net}} − {{commissions}} = {{result}}',
     totals: {
       revenue: 'Somma dei ricavi effettivi delle righe: commissione ricevuta, altrimenti imponibile.',
-      commissions: 'Somma delle commissioni di tutte le righe.',
-      netOfCommissions: 'Imponibile meno commissioni.',
     },
   },
   warnings: {

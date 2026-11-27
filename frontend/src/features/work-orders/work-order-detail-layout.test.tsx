@@ -210,6 +210,16 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     expect(subtitleOf()).toBe('COM-0001')
   })
 
+  // REQUIREMENT CHANGED (user directive 2026-11-27): the opportunity's product lines left the contract data.
+  it('does not list the product lines in the contract data, even when the work order has some', () => {
+    const productLine = { id: 1, business_function: { id: 10, name: 'Formazione' }, product_category: { id: 100, name: 'Corsi' } }
+    render(<WorkOrderDetailView workOrder={workOrder({ product_lines: [productLine] })} />)
+
+    const data = screen.getByRole('heading', { level: 3, name: /work order contract data/i }).closest('section') as HTMLElement
+    expect(within(data).getAllByRole('term').map((term) => term.textContent)).not.toContain('Product lines')
+    expect(within(data).queryByText('Corsi')).not.toBeInTheDocument()
+  })
+
   it('links the Contratto from the data section, not from a section of its own', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 

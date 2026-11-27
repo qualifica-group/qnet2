@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa: tolti Linee prodotto e i totali Commissioni / Netto commissioni da "Dati contrattuali commessa" (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- Solo frontend, contratto API invariato: `product_lines` (usate ancora da "Funzione aziendale") e `totals.commissions_amount` / `net_of_commissions` restano nella risposta, non piu' letti dal dettaglio.
+- `work-order-detail-contract-data-panel.tsx`: tolto il campo Linee prodotto. `contract-data-totals.tsx`: restano "Totale {tipologia}" e "Totale Ricavi" (`RevenueTotal`); `contract-data-formulas.ts`: `totalsHint`/`TotalsHintKind` sostituiti da `revenueTotalHint`. i18n: - `totals.commissions/netOfCommissions`, `hint.netOfCommissionsFormula`, `hint.totals.commissions/netOfCommissions`. Fixture `CONTRACT_DATA_HIDDEN_COMMISSIONS` cancellata.
+- Test (REQUIREMENT CHANGED): `work-order-contract-data-section.test.tsx`, `contract-data-formulas.test.ts`, nuovo caso in `work-order-detail-layout.test.tsx`. Spec 0400 D-8.
+- Verifica: Vitest work-orders + work-order-contract-data 428/428, help 166/166, ESLint e `tsc -b --force` puliti.
+- Manuale: guide in-app IT+EN `work-orders.ts` aggiornate; manuale Claude Docs DA AGGIORNARE (sezione Commessa > Dati contrattuali: niente Linee prodotto, niente Commissioni/Netto commissioni).
+- In sospeso: richiesta utente "rinominare Stato lavorazione in Avanzamento commessa e metterlo anche nel tab Amministrazione come nel vecchio QNet" da chiarire (nel legacy il blocco Amministrazione e' l'avanzamento % per mese, non lo stato lavorazione).
+
 ## Dettaglio Commessa come il vecchio QNet: intestazione con stato + menu tre puntini, niente KPI, motivo chiusura facoltativo (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Intestazione (`work-order-detail-header.tsx`): tolti la striscia KPI grigia (avanzamento, data inizio, data richiamo, scadenza contratto: `WorkOrderStatsStrip`/`WorkOrderDetailStats` cancellati, anche dal form di creazione) e il badge Tipo commessa; in alto a destra lo **stato** (fase spec 0395) accanto al menu **tre puntini verticali** senza bordo (`ghost`, `MoreVertical`; deroga voluta a `frontend.md` §9 su richiesta utente).

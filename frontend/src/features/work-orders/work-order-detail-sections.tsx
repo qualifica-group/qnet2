@@ -90,7 +90,7 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
  * directives 2026-11-16), every user-written field editable in place (spec
  * 0195 applied to Commesse): the internal notes callout first, then two
  * columns. Left: "Info cliente" (spec 0400), "Dati contrattuali commessa"
- * (Importo, Data inizio, the link to the Contratto, the Linee prodotto, then
+ * (Importo, Data inizio, the link to the Contratto, then
  * each product with its payment fields (spec 0403) and the totals; no title
  * and no commessa-wide payment status, user directive 2026-11-16), "Stato
  * lavorazione", "Team". Right: "Riferimenti società",
