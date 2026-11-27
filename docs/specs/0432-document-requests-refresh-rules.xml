@@ -115,6 +115,7 @@
       <response status="200">{ data: forma della richiesta } con la voce in verifica manuale</response>
       <errors>422 `document`, `status`, `reviewer_name`; 404/409.</errors>
     </endpoint>
+    <note>Confermato da ArchivioSmart il 2026-11-27: stop-validation risponde 200 (nessuna delle tre risponde 204), con un webhook document.validated per file fermato; updated_items = id di data.items[] e solo voci con valori cambiati davvero; revalidate ripetuta su voce con file uploaded/validating non riaccoda nulla e risponde 202 (retry sicuro); 422 `ai_validation_enabled` in forma standard, messaggio mostrabile; data.item.id del webhook = data.items[].id.</note>
   </data_contract>
 
   <acceptance_criteria>
