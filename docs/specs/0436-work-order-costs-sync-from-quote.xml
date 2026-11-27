@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0436-work-order-costs-sync-from-quote" status="approved" owner="utente" date="2026-11-27">
+
+  <goal>
+    Richiesta utente 2026-11-27: in Commessa > Amministrazione > Costi un pulsante chiede se sincronizzare i costi
+    dell'offerta nei costi effettivi della commessa; se ci sono gia' costi effettivi, il popup avvisa che verranno
+    sostituiti. Chi puo' inserire i costi puo' anche sincronizzarli.
+  </goal>
+
+  <context>
+    - Spec 0190: costi effettivi (`work_order_costs`) sostituiti in blocco da PUT `/work-orders/{id}/costs`
+      (`WorkOrderCostWriter`); il "budget" sono le righe COSTO dell'offerta assegnate ai ricavi della commessa piu'
+      quelle generiche (`WorkOrderCostOverviewBuilder`), su tutte le offerte d'origine per la commessa multi-offerta
+      (spec 0267 D-10).
+  </context>
+
+  <decisions>
+    D-1 Righe sincronizzate = le stesse del budget del Confronto: righe COSTO delle offerte d'origine assegnate a un
+        ricavo DI QUESTA commessa, piu' le generiche (`offer_line_id` nullo); ordine dell'offerta. La selezione e'
+        condivisa (`WorkOrderBudgetLines`) tra riepilogo e sincronizzazione.
+    D-2 Mappatura riga offerta -> costo effettivo: prodotto, quantita', prezzo unitario, aliquota IVA, fornitore,
+        descrizione aggiuntiva; `quote_line_id` = ricavo a cui e' assegnata (nullo per le generiche); tipo di costo =
+        predefinito del prodotto; data = oggi; riferimento documento vuoto. Fornitore mancante su un prodotto con
+        fornitori = fornitore predefinito del prodotto. Gli importi li calcola il writer (prezzo 0 se il fornitore
+        e' pagato a provvigione, spec 0320 D-23).
+    D-3 Sostituzione completa dei costi effettivi inseriti a mano; ODA e fatture passive non sono toccati.
+    D-4 Autorizzazione `WorkOrderPolicy::manageCosts` (lo stesso permesso dell'inserimento, decisione utente).
+    D-5 Offerta senza righe di costo = 422 `lines`; prodotti non piu' utilizzabili come costo = 422 `lines` con i
+        nomi dei prodotti; nessuna modifica in entrambi i casi.
+    D-6 FE: pulsante "Sincronizza con l'offerta" solo nella sotto-scheda Costi effettivi, a destra del titolo del
+        riquadro righe "Costi effettivi (N)" (`headerAction` del frame), solo con `manage_costs` (Rev. 2026-11-27,
+        richiesta utente). Sempre cliccabile: senza righe di budget il popup spiega che non c'e' nulla da
+        sincronizzare, con solo Chiudi (prima era nascosto sul ~90% delle commesse); popup di conferma sempre; con costi effettivi gia' salvati il popup dice quanti verranno sostituiti. Le
+        modifiche non salvate del modulo vengono scartate.
+  </decisions>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/costs/sync-from-quote">
+      <request>Nessun corpo.</request>
+      <response>200 `data` = WorkOrderCostOverview (stessa shape di GET `/costs`); 403 senza `manageCosts`;
+        422 `errors.lines` (D-5).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Commessa senza costi: la sincronizzazione crea un costo per riga di budget con i valori di D-2.</criterion>
+    <criterion id="AC-002">Commessa con costi effettivi: vengono tutti sostituiti dalle righe dell'offerta.</criterion>
+    <criterion id="AC-003">Righe COSTO assegnate a ricavi di un'altra commessa non vengono copiate.</criterion>
+    <criterion id="AC-004">403 senza `manageCosts` (anche con `viewCosts`).</criterion>
+    <criterion id="AC-005">Offerta senza righe di costo: 422, costi invariati.</criterion>
+    <criterion id="AC-006">Prodotto non piu' utilizzabile come costo: 422 con il nome, costi invariati.</criterion>
+    <criterion id="AC-007">Fornitore mancante su prodotto con fornitori: usato il predefinito del prodotto.</criterion>
+    <criterion id="AC-008">FE: pulsante solo in Costi effettivi, nascosto senza permesso; senza budget il popup lo spiega e non sincronizza; popup con avviso di sostituzione se ci sono costi.</criterion>
+  </acceptance>
+</spec>

@@ -9,6 +9,14 @@
 - Test: `WorkOrderManualStatusProgressTest` (AC-014 diviso: 10 su 20 -> 422, 20 su 20 -> ok senza entry; REQUIREMENT CHANGED) + `WorkOrderProgressEntriesTest` 26/26; Pint pulito; help Vitest 166/166.
 - Manuale: guida in-app `work-orders.ts` IT/EN; Claude Docs paragrafo "Stato lavorazione e avanzamento" (rev 1045).
 
+## Costi commessa: "Sincronizza con l'offerta" (spec 0436, richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- BE: `POST /api/work-orders/{workOrder}/costs/sync-from-quote` (`WorkOrderCostController::syncFromQuote`, gate `manageCosts`: chi inserisce i costi sincronizza, decisione utente). `WorkOrderCostQuoteSync` mappa le righe di budget su costi (prodotto, qta, prezzo, IVA, fornitore o predefinito del prodotto, `quote_line_id` = `offer_line_id`, `cost_type_id` del prodotto, data oggi, descrizione) e passa per `WorkOrderCostWriter` (sostituzione completa, ODA/fatture passive intatti). 422 `lines` se nessuna riga di costo o prodotti non piu' COST (con i nomi). Selezione budget estratta in `WorkOrderBudgetLines::for()` (usata anche da `WorkOrderCostOverviewBuilder`). Lang `work_order_costs.sync_*`, api-docs aggiornata.
+- FE: `WorkOrderCostsQuoteSyncButton` + `use-work-order-costs-quote-sync.ts` solo in "Costi effettivi", a destra di "Costi effettivi (N)" (nuova prop `headerAction` di `WorkOrderCostsLinesField` -> `QuoteLineEditorFrame`), solo `canManage`, size `xs`; senza budget sempre cliccabile e il popup spiega `quoteSync.noBudget` con solo Chiudi (solo ~1.560 commesse su 16.780 hanno righe costo nell'offerta: prima era nascosto e l'utente non lo vedeva); AlertDialog sempre, testo di sostituzione con N costi presenti. Mutation `useSyncWorkOrderCostsFromQuote` (stesso aggiornamento cache del PUT). i18n `workOrders.costs.quoteSync.*`.
+- Test: Pest `WorkOrderCostsSyncFromQuoteTest` 6/6, cartella costi 39/39; Vitest work-order-costs 50 (nuovo `work-order-costs-quote-sync-button.test.tsx` + 1 test nella sezione), help 166; `tsc -b --force` EXIT 0; ESLint e Pint puliti. `ApiDocsDescriptionsTest` rosso preesistente (altre rotte: attachments/notes/merge/page).
+- Manuale: guida in-app `parts/work-orders-costs.ts` IT/EN; Claude Docs paragrafo "Costi effettivi: sincronizza con l'offerta" dopo "Dati contrattuali senza il permesso costi" (rev 1048).
+- Da provare nel browser.
+
 ## Commesse, colonne "Ultima nota data" / "Ultima nota responsabile" (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Legacy: `OrdersTable` "Ultima Nota" (ultima nota/chiamata/appuntamento della commessa, risposte incluse) e "U.N. Responsabile" (`nota_contabile`: ultima nota scritta dal responsabile), data in cella + testo in tooltip.

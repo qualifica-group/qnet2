@@ -15,3 +15,4 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('work-orders/{workOrder}/costs', [WorkOrderCostController::class, 'show']);
 Route::put('work-orders/{workOrder}/costs', [WorkOrderCostController::class, 'sync']);
+Route::post('work-orders/{workOrder}/costs/sync-from-quote', [WorkOrderCostController::class, 'syncFromQuote']);

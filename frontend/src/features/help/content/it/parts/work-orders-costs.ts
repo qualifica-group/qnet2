@@ -39,6 +39,10 @@ export const costsSections: HelpSection[] = [
           ],
         },
         {
+          type: 'paragraph',
+          text: 'Con il permesso di gestire i costi, nella scheda **Costi effettivi** c\'è **Sincronizza con l\'offerta**, a destra del titolo **Costi effettivi (N)** (se l\'offerta non ha righe di costo per la commessa, il popup lo spiega e non sincronizza nulla). Copia nei costi effettivi le righe di costo dell\'offerta (quelle imputate alle righe di ricavo della commessa e quelle generiche): prodotto, quantità, prezzo, IVA, fornitore (il predefinito del prodotto se la riga non ne ha), riga offerta di riferimento, descrizione e sottoconto costo del prodotto, con la data di oggi. Prima chiede conferma; se ci sono già costi effettivi, il popup avvisa che verranno **tutti sostituiti** e che le modifiche non salvate andranno perse. ODA e fatture d\'acquisto non cambiano. Se un prodotto dell\'offerta non è più utilizzabile come costo, la sincronizzazione non avviene e il messaggio dice quale.',
+        },
+        {
           type: 'tip',
           text: 'I costi effettivi si possono inserire anche su una commessa completata o chiusa, perché spesso arrivano dopo la chiusura.',
         },

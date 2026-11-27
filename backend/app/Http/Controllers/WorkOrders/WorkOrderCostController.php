@@ -6,6 +6,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\WorkOrderCosts\SyncWorkOrderCostsRequest;
 use App\Models\WorkOrder;
 use App\Services\WorkOrders\WorkOrderCostOverviewBuilder;
+use App\Services\WorkOrders\WorkOrderCostQuoteSync;
 use App\Services\WorkOrders\WorkOrderCostWriter;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,7 @@ class WorkOrderCostController extends BaseApiController
     public function __construct(
         private readonly WorkOrderCostWriter $writer,
         private readonly WorkOrderCostOverviewBuilder $overview,
+        private readonly WorkOrderCostQuoteSync $quoteSync,
     ) {}
 
     /**
@@ -49,6 +51,22 @@ class WorkOrderCostController extends BaseApiController
             $this->writer->handle($workOrder, $request->lines());
 
             return $this->ok($this->overview->build($workOrder->refresh()), 'Costs saved');
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['workOrder' => $workOrder->id]);
+        }
+    }
+
+    /**
+     * POST /api/work-orders/{workOrder}/costs/sync-from-quote (spec 0436): no
+     * body, so the `manageCosts` gate sits here instead of a FormRequest.
+     */
+    public function syncFromQuote(WorkOrder $workOrder): JsonResponse
+    {
+        try {
+            $this->authorize('manageCosts', $workOrder);
+            $this->quoteSync->handle($workOrder);
+
+            return $this->ok($this->overview->build($workOrder->refresh()), 'Costs synced from the offer');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['workOrder' => $workOrder->id]);
         }

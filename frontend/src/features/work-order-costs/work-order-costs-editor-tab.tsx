@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { WorkOrderCostsQuoteSyncButton } from '@/features/work-order-costs/work-order-costs-quote-sync-button'
 import { WorkOrderCostsLinesField } from '@/features/work-order-costs/work-order-costs-lines-field'
 import type { RevenueLineOption } from '@/features/work-order-costs/work-order-cost-card'
 import { useWorkOrderCostsEditor } from '@/features/work-order-costs/use-work-order-costs-editor'
@@ -41,6 +42,11 @@ export function WorkOrderCostsEditorTab({ workOrderId, overview, canManage }: Wo
         onChangeField={editor.changeField}
         onAddProducts={editor.addProducts}
         onRemove={editor.removeRow}
+        headerAction={
+          canManage ? (
+            <WorkOrderCostsQuoteSyncButton workOrderId={workOrderId} overview={overview} disabled={editor.isSaving} />
+          ) : null
+        }
       />
 
       {canManage ? (

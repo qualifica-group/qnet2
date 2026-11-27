@@ -47,6 +47,22 @@ export const workOrderCosts = {
       empty: 'No actual costs by cost type.',
     },
   },
+  /** Spec 0436: replace the actual costs with the offer's cost lines. */
+  quoteSync: {
+    button: 'Sync with the offer',
+    title: "Sync the offer's costs?",
+    description_one: "The offer's cost line will be copied into the actual costs, dated today.",
+    description_other: "The offer's {{count}} cost lines will be copied into the actual costs, dated today.",
+    replaceDescription_one:
+      "The actual cost already entered will be replaced by the offer's cost products ({{budget}} lines), dated today. Unsaved changes will be lost. Purchase orders and purchase invoices do not change.",
+    replaceDescription_other:
+      "The {{count}} actual costs already entered will be replaced by the offer's cost products ({{budget}} lines), dated today. Unsaved changes will be lost. Purchase orders and purchase invoices do not change.",
+    noBudget: 'The offer has no cost lines for this work order.',
+    confirm: 'Sync',
+    syncing: 'Syncing…',
+    synced: 'Actual costs synced with the offer.',
+    error: 'Unable to sync the costs with the offer.',
+  },
   editor: {
     readOnly: 'You do not have permission to edit the actual costs.',
     empty: 'No actual costs entered.',

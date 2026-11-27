@@ -39,6 +39,10 @@ export const costsSections: HelpSection[] = [
           ],
         },
         {
+          type: 'paragraph',
+          text: 'With the permission to manage costs, the **Actual costs** tab has **Sync with the offer**, to the right of the **Actual costs (N)** title (when the offer has no cost lines for the work order, the popup says so and nothing is synced). It copies the offer\'s cost lines (those allocated to the work order\'s revenue lines and the generic ones) into the actual costs: product, quantity, price, VAT, supplier (the product\'s default one when the line has none), reference offer line, description and the product\'s cost sub-account, dated today. It asks for confirmation first; when actual costs already exist, the popup warns that they will **all be replaced** and that unsaved changes will be lost. Purchase orders and purchase invoices do not change. If a product of the offer can no longer be used as a cost, nothing is synced and the message names it.',
+        },
+        {
           type: 'tip',
           text: 'Actual costs can also be entered on a completed or closed work order, since they often arrive after closure.',
         },
