@@ -69,7 +69,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **Supervisors and Participants** popup you add or remove Supervisors and Participants with the pencil. The same popup opens in the work order detail from the **three dots** at the top (**Supervisors and Participants**). At the bottom, if you may request proformas, there is **Request proforma**; **Close** closes the popup.",
+          text: "The **Supervisors and Participants** popup shows the work order's people in two groups, each with its head count: **Supervisors** and **Participants**, the latter numbered (Participant 1, 2...) with any **free slots**. With **Add** you search for a colleague and tick them: they are saved at once; ticking them again takes them out. Hovering a person shows their actions: the **X** removes a Supervisor, a Participant's three-dots menu moves them **up** or **down** or **removes** them (their slot stays free and the others keep their number). Every change is saved at once and the confirmation message has **Undo** to go back. Without the permission to change them you see the people but not the commands. The same popup opens in the work order detail from the **three dots** at the top (**Supervisors and Participants**). At the bottom, if you may request proformas, there is **Request proforma**; **Close** closes the popup.",
         },
         {
           type: 'note',

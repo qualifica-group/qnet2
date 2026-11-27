@@ -191,29 +191,31 @@ class WorkOrderResource extends JsonResource
      * ordered by name at the relation, not by any stored rank.
      *
      * @param  Collection<int, User>  $users
-     * @return array<int, array{id: int, name: string}>
+     * @return array<int, array{id: int, name: string, avatar_url: string|null}>
      */
     private function summarizeUsers(Collection $users): array
     {
         return $users->map(static fn (User $user): array => [
             'id' => $user->id,
             'name' => $user->name,
+            'avatar_url' => $user->avatarDataUri(),
         ])->all();
     }
 
     /**
-     * The ordered Partecipanti (spec 0096, D-3), byte-identical to
-     * QuoteResource::summarizeManagers(): `position` is the 1-based slot the
+     * The ordered Partecipanti (spec 0096, D-3), the shape of
+     * QuoteResource::summarizeManagers() plus the avatar: `position` is the 1-based slot the
      * shared ManagerSlotsField reconstructs its gaps from.
      *
      * @param  Collection<int, User>  $participants
-     * @return array<int, array{id: int, name: string, position: int}>
+     * @return array<int, array{id: int, name: string, avatar_url: string|null, position: int}>
      */
     private function summarizeSlots(Collection $participants): array
     {
         return $participants->map(static fn (User $participant): array => [
             'id' => $participant->id,
             'name' => $participant->name,
+            'avatar_url' => $participant->avatarDataUri(),
             'position' => (int) $participant->pivot->position,
         ])->all();
     }

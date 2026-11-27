@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Euro } from 'lucide-react'
-import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
+import { DetailError } from '@/components/detail/detail-panel'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,12 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Form } from '@/components/ui/form'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { ProformaRequestDialog } from '@/features/work-orders/proforma-request-dialog'
-import { useWorkOrderInlineEdit } from '@/features/work-orders/use-work-order-inline-edit'
-import { WorkOrderTeamFields } from '@/features/work-orders/work-order-record-team'
+import { useWorkOrderTeamEditor } from '@/features/work-orders/use-work-order-team-editor'
+import { WorkOrderTeamPanel } from '@/features/work-orders/work-order-team-panel'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 interface WorkOrderTeamDialogProps {
@@ -34,8 +35,9 @@ const BODY_SCROLL_CLASS = '-mx-1 max-h-[70vh] overflow-y-auto px-1'
 /**
  * "Responsabili e Partecipanti" (spec 0405, legacy
  * `orders.responsabili-partecipanti`), the one popup of the grid row and of
- * the detail's "..." menu: the record's Team rows, edited in place with the
- * detail's rules, and the "Richiesta Proforma" button of the legacy modal.
+ * the detail's "..." menu: the commessa's team as a CRM team panel
+ * (`WorkOrderTeamPanel`, each change saved at once) and the "Richiesta
+ * Proforma" button of the legacy modal.
  */
 export function WorkOrderTeamDialog({ workOrderId, onOpenChange, onMutated }: WorkOrderTeamDialogProps) {
   return (
@@ -61,12 +63,13 @@ function WorkOrderTeamContent({ workOrderId, onClose, onMutated }: WorkOrderTeam
   })
 
   return (
-    <DialogContent size="sm">
-      <DialogHeader>
+    // `grid-cols-1` = minmax(0, 1fr): no content may widen the dialog past its max width.
+    <DialogContent size="sm" className="grid-cols-1">
+      <DialogHeader className="min-w-0">
         <DialogTitle>{t('workOrders.actions.team.label')}</DialogTitle>
         {/* The commessa it is about: the same popup opens from rows of any list. */}
-        <DialogDescription className="truncate">
-          {workOrder ? t('workOrders.actions.team.description', { code: workOrder.code, title: workOrder.title }) : null}
+        <DialogDescription className="line-clamp-2 break-words">
+          {workOrder ? workOrderCaption(workOrder, t) : null}
         </DialogDescription>
       </DialogHeader>
       {isError ? (
@@ -81,9 +84,37 @@ function WorkOrderTeamContent({ workOrderId, onClose, onMutated }: WorkOrderTeam
           <WorkOrderTeamBody workOrder={workOrder} onClose={onClose} onMutated={onMutated} />
         </ResourcePermissionsProvider>
       ) : (
-        <DetailLoading />
+        <TeamPanelSkeleton />
       )}
     </DialogContent>
+  )
+}
+
+/** Code and title, the code once: a generated title already starts with it ("COM-20533 - ..."). */
+function workOrderCaption(workOrder: WorkOrderDetailWithPermissions, t: TFunction): string {
+  return workOrder.title.startsWith(workOrder.code)
+    ? workOrder.title
+    : t('workOrders.actions.team.description', { code: workOrder.code, title: workOrder.title })
+}
+
+/** Loading: the two groups' heading and rows, as they will stand. */
+function TeamPanelSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-hidden="true">
+      {[0, 1].map((group) => (
+        <div key={group} className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-28" />
+          <div className="flex flex-col gap-2 rounded-lg border bg-card p-2">
+            {[0, 1].map((row) => (
+              <div key={row} className="flex items-center gap-2">
+                <Skeleton className="size-6 rounded-full" />
+                <Skeleton className="h-3.5 w-40" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -95,22 +126,14 @@ interface WorkOrderTeamBodyProps {
 
 function WorkOrderTeamBody({ workOrder, onClose, onMutated }: WorkOrderTeamBodyProps) {
   const { t } = useTranslation()
-  const editor = useWorkOrderInlineEdit(workOrder, onMutated)
+  const editor = useWorkOrderTeamEditor(workOrder, onMutated)
   const [proformaOpen, setProformaOpen] = useState(false)
 
   return (
     <>
-      {/* Provider only (no DOM): the inline editors share the edit form. */}
-      <Form {...editor.form}>
-        <div className={BODY_SCROLL_CLASS}>
-          <WorkOrderTeamFields
-            supervisors={workOrder.supervisors}
-            participants={workOrder.participants}
-            form={editor}
-            inline={editor.inline}
-          />
-        </div>
-      </Form>
+      <div className={BODY_SCROLL_CLASS}>
+        <WorkOrderTeamPanel editor={editor} />
+      </div>
       <DialogFooter className="gap-2">
         {workOrder.permissions.actions.request_proforma ? (
           <Button

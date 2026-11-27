@@ -69,7 +69,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Nel popup **Responsabili e Partecipanti** aggiungi o togli Responsabili e Partecipanti con la matita. Lo stesso popup si apre nel dettaglio della commessa dai **tre puntini** in alto (**Responsabili e Partecipanti**). In fondo, se puoi richiedere proforma, c'è **Richiedi proforma**; **Chiudi** chiude il popup.",
+          text: "Il popup **Responsabili e Partecipanti** mostra le persone della commessa in due gruppi, ognuno con il numero di persone: **Responsabili** e **Partecipanti**, questi ultimi numerati (Partecipante 1, 2...) con gli eventuali **posti liberi**. Con **Aggiungi** cerchi un collega e lo spunti: viene salvato subito; spuntandolo di nuovo lo togli. Passando sopra una persona compaiono le sue azioni: la **X** toglie un Responsabile, il menu con i tre puntini di un Partecipante lo **sposta su** o **giù** o lo **rimuove** (il suo posto resta libero e gli altri tengono il loro numero). Ogni modifica è salvata subito e il messaggio di conferma ha **Annulla** per tornare indietro. Senza il permesso di modificarli vedi le persone ma non i comandi. Lo stesso popup si apre nel dettaglio della commessa dai **tre puntini** in alto (**Responsabili e Partecipanti**). In fondo, se puoi richiedere proforma, c'è **Richiedi proforma**; **Chiudi** chiude il popup.",
         },
         {
           type: 'note',

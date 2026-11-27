@@ -47,6 +47,8 @@ export interface WorkOrderWorkflowStatusRef {
 export interface WorkOrderSupervisor {
   id: number
   name: string
+  /** The person's photo (data URI), `null` without one; optional so older fixtures stay valid. */
+  avatar_url?: string | null
 }
 
 /**
@@ -56,6 +58,8 @@ export interface WorkOrderSupervisor {
 export interface WorkOrderParticipant {
   id: number
   name: string
+  /** As on `WorkOrderSupervisor`. */
+  avatar_url?: string | null
   position: number
 }
 
