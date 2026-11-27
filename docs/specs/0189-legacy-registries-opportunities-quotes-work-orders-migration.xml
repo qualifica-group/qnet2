@@ -78,6 +78,15 @@
       Il legacy non lo collega, non lo mette nel layout e non ne invia il valore
       (`WorkflowStates::ISO_ROOT_ID`/`fieldCodesByCategory()`); lo stesso seeder lo stacca dalla Commessa di [OLD] ISO.
       Gli stati degli altri flussi restano campi.
+      Rev. 2026-11-27 ter (decisione utente): "Standard ISO" (`standard`) tolto dalla Commessa di [OLD] ISO
+      (gli standard stanno gia' nella tabella `orderiso_details`; valori e [OLD] PROGETTI- intatti) e nuovo campo
+      "Scopo" `iso_visit_scope` (textarea, lo "Scopo" di "Dettagli Lavorazioni" del legacy, `scopo_visita`, mai
+      migrato) su una riga propria subito dopo "Data urgenza emissione". La Commessa di ISO prende sezioni, campi e
+      ordine di [OLD] ISO (`IsoWorkOrderCatalogue::SECTIONS`): via `iso_standards`, stesso `iso_visit_scope`, nuova
+      sezione "Dettagli lavorazioni ISO" con `iso_scope` (rinominato "Scopo proposto", continua `scopo`),
+      `iso_scope_confirmed`, `iso_outgoing_scope`, `iso_consultant_notes`, `iso_official_audit_date`;
+      `iso_interview_location` prende l'etichetta "Intervista in sede" di [OLD] ISO. Seeder
+      one-shot `QualificaIsoWorkDetailsSeeder`. Il legacy non e' stato toccato: manda ancora `standard` nella card.
       G-21 dati contabili (decisione utente 2026-10-14): due nuovi attributi commessa comuni a ogni card, nella
       sezione "Dati contrattuali": `status_contabile` boolean "Proforma emessa" (`orders.status_contabile` = 1),
       `totale_commessa_manuale` decimal "Totale commessa manuale" (solo se > 0).

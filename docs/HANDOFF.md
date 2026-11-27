@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ISO e [OLD] ISO, Commessa: via "Standard ISO", nuovo "Scopo" dopo "Data urgenza emissione", ISO identica a [OLD] ISO (richieste utente 2026-11-27) — VERDE MIRATO, COMMITTATO, SEEDER NON LANCIATO SU qnet2
+
+- Seeder one-shot `QualificaIsoWorkDetailsSeeder` (`php artisan db:seed --class=QualificaIsoWorkDetailsSeeder --force`), radici "ISO" e "[OLD] ISO" + discendenti, contesto work_order, in transazione:
+  1. "Standard ISO" staccato dalla Commessa (`STANDARD_CODES`: `iso_standards`, `standard`), valori in `attribute_values` intatti; [OLD] PROGETTI- (cat 188) tiene `standard`.
+  2. Nuovo attributo `iso_visit_scope` "Scopo" textarea (lo `scopo_visita` del legacy, mai migrato: vuoto), stesso campo nei due alberi: sulla radice ISO (ereditato da "ISO - Ente"/"ISO - Consulenza") e in [OLD] ISO dove e' assegnata `data_urgenza_emissione`, con lo stesso sort_order.
+  3. Etichette di [OLD] ISO (`RELABELED_CODES`, nomi dal catalogo): `iso_scope` "Scopo proposto" (collegato a `scopo`), `iso_interview_location` "Intervista in sede" (decisione utente: vince [OLD] ISO).
+  4. Form [OLD] ISO (55): `standard` tolto (`AttributeLayoutPruner`), `iso_visit_scope` su riga piena dopo la riga della data urgenza (id `<section>-iso_visit_scope`).
+  5. Form ISO (radice, layout 9) riscritto da `IsoWorkOrderCatalogue::SECTIONS` via `AttributeLayoutService::upsert` (saltato se `composesAs`): 4 sezioni come [OLD] ISO — Dettagli lavorazioni (certificati; ultimo audit + annualita'; urgenza + data urgenza; Scopo), Focus lavorazione ISO (... ; Quotazione da sola), Verifiche ispettive (solo tabella), Dettagli lavorazioni ISO (Scopo proposto, Scopo confermato, Scopo in uscita, Note consulente, Data verifica effettiva). Idempotente.
+- Decisione utente: prima "sposto quello esistente" (`iso_scope` dopo l'urgenza), superata dalla richiesta "ISO uguale a [OLD] ISO": in [OLD] ISO lo "Scopo proposto" e' un altro campo, quindi ISO prende lo stesso `iso_visit_scope`.
+- `IsoWorkOrderCatalogue`: tolti `iso_standards` e il suo `STANDARD_OPTIONS` privato, aggiunto `iso_visit_scope`, `iso_scope` "Scopo proposto", SECTIONS a 4 sezioni. `QualificaIsoCatalogueTest`: REQUIREMENT CHANGED, titoli attesi con la quarta sezione.
+- Differenze che restano (decisione utente: va rettificata solo "Intervista"): etichette ISO "Fine lavorazione" (OLD "Data fine lavorazione"), "Note consulente" (OLD "Note"), maiuscole; i campi soli sulla riga sono larghi in ISO e mezzi in OLD; codici diversi per i campi non collegabili (tabelle, scelte, ore testo/decimale). "[OLD] STANDARD MULTIPLI" (253) ha in piu' la sezione SOA "Pianificazione (da commesse precedenti)".
+- Verifica: Pest `Seeding/QualificaIsoWorkDetailsSeederTest` 5/5 + `QualificaIsoCatalogueTest` + `QualificaContactProcessingSeederTest` + `QualificaOldIsoWorkOrderFieldsRemovalSeederTest` (26 verdi), Pint pulito. Simulazione su qnet2 in transazione annullata: ISO e [OLD] ISO con stesse sezioni, stesse righe, stessi campi (via `current_attribute_id`) nello stesso ordine; secondo giro senza scritture ne' log.
+- Aperto: il legacy (`MigrationAttributeCards`/`MigrationLayoutSections::iso()`) manda ancora `standard` e non manda `scopo_visita`: una ri-migrazione di layout/link lo rimetterebbe. Da allineare se l'utente lo chiede (ed eventualmente migrare `scopo_visita` in `iso_visit_scope`).
+
 ## Commessa: Team nei tre puntini, popup "Responsabili e Partecipanti" migliorato, via l'Importo (richiesta utente 2026-11-27) — VERDE, COMMITTATO
 
 - Solo frontend, contratto API invariato. Info non ha piu' la sezione "Team": il menu tre puntini (`useWorkOrderActionsMenu`, voce `team`, sempre visibile, icona `Contact`, dopo Avanzamento) apre `WorkOrderTeamDialog`, lo STESSO popup dell'azione di riga `team` della tabella (`useWorkOrderRowActions`).
