@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, FileCheck2, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText, TrendingUp } from 'lucide-react'
+import { Euro, FileCheck2, Info, ListChecks, MessageSquare, MessagesSquare, NotebookPen, Paperclip, Receipt, ReceiptText } from 'lucide-react'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -30,11 +30,13 @@ export const WORK_ORDER_INFO_TAB = 'info'
  * section that expects the host to pad it (notes, documents, email, activity);
  * the others (Info, Task, Costi, Proforma, Chat) bring their own padding.
  * `subTabs`: a group tab (Documenti, Amministrazione) that switches between
- * its own sub-tabs.
+ * its own sub-tabs; `footer`: what the group shows under whichever sub-tab is
+ * open (Amministrazione's "Avanzamento commessa").
  */
 export interface WorkOrderDetailTab extends RecordCollaborationTab {
   padded?: boolean
   subTabs?: WorkOrderDetailTab[]
+  footer?: ReactNode
 }
 
 interface GroupTab {
@@ -43,21 +45,24 @@ interface GroupTab {
   icon: ReactNode
   badge?: ReactNode
   subTabs: WorkOrderDetailTab[]
+  footer?: ReactNode
 }
 
 /**
  * A legacy group tab: absent with no authorized sub-tab, the sub-tab itself
- * when it is the only one (no strip of one), the group otherwise.
+ * when it is the only one (no strip of one, the footer under its content),
+ * the group otherwise.
  */
-function groupTab({ value, label, icon, badge, subTabs }: GroupTab): WorkOrderDetailTab | null {
+function groupTab({ value, label, icon, badge, subTabs, footer }: GroupTab): WorkOrderDetailTab | null {
   if (subTabs.length === 0) {
     return null
   }
   if (subTabs.length === 1) {
-    return subTabs[0]
+    const [only] = subTabs
+    return footer ? { ...only, content: <>{only.content}{footer}</> } : only
   }
 
-  return { value, label, icon, badge, content: null, subTabs }
+  return { value, label, icon, badge, content: null, subTabs, footer }
 }
 
 interface UseWorkOrderDetailTabsArgs {
@@ -150,7 +155,7 @@ export function useWorkOrderDetailTabs({
     })
   }
 
-  // Step 4: Amministrazione = Costi + proforma attive e passive + Avanzamento commessa (legacy "€" tab).
+  // Step 4: Amministrazione = Costi + proforma attive e passive, "Avanzamento commessa" under them (legacy "€" tab).
   const accountingTabs: WorkOrderDetailTab[] = []
   if (actions.view_costs) {
     accountingTabs.push({
@@ -182,17 +187,6 @@ export function useWorkOrderDetailTabs({
       },
     )
   }
-  // The Info tab's progress section, as in the legacy "€" tab (user directive 2026-11-27): only
-  // beside the accounting tabs, so an actor who sees neither costs nor proformas gets no tab of it alone.
-  if (accountingTabs.length > 0) {
-    accountingTabs.push({
-      value: 'progress',
-      label: t('workOrders.progress.action'),
-      icon: <TrendingUp className="size-3.5" aria-hidden="true" />,
-      padded: true,
-      content: <WorkOrderProgressSection workOrder={workOrder} onChanged={onChanged} />,
-    })
-  }
 
   const documentsGroup = groupTab({
     value: 'documents-group',
@@ -206,6 +200,13 @@ export function useWorkOrderDetailTabs({
     label: t('workOrders.detail.tabs.accounting'),
     icon: <Euro className="size-3.5" aria-hidden="true" />,
     subTabs: accountingTabs,
+    // The Info tab's progress section, always in sight under the open sub-tab like the legacy "€"
+    // page (user directive 2026-11-27); only with an accounting sub-tab, never a tab of its own.
+    footer: (
+      <div className="border-t p-4">
+        <WorkOrderProgressSection workOrder={workOrder} onChanged={onChanged} />
+      </div>
+    ),
   })
   for (const group of [documentsGroup, accountingGroup]) {
     if (group) {

@@ -329,10 +329,8 @@ describe('WorkOrderDetailView — Costi section (spec 0190)', () => {
     return workOrder({ permissions: { ...base.permissions, actions } })
   }
 
-  // REQUIREMENT CHANGED (user directive 2026-11-27): Costs sits in Administration beside Work order progress.
   function openCostsTab() {
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Administration' }))
-    expect(screen.getByRole('tab', { name: 'Costs' })).toHaveAttribute('data-state', 'active')
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
   }
 
   it('is not rendered without view_costs', () => {

@@ -29,13 +29,13 @@ function TabTriggers({ tabs }: { tabs: WorkOrderDetailTab[] }) {
 function TabContents({ tabs }: { tabs: WorkOrderDetailTab[] }) {
   return tabs.map((tab) => (
     <TabsContent key={tab.value} value={tab.value} className={cn('min-w-0', tab.padded && PADDED_CONTENT_CLASS)}>
-      {tab.subTabs ? <WorkOrderDetailSubTabs tabs={tab.subTabs} /> : tab.content}
+      {tab.subTabs ? <WorkOrderDetailSubTabs tabs={tab.subTabs} footer={tab.footer} /> : tab.content}
     </TabsContent>
   ))
 }
 
-/** The sub-tab strip of a group tab (Documenti, Amministrazione), first sub-tab open. */
-function WorkOrderDetailSubTabs({ tabs }: { tabs: WorkOrderDetailTab[] }) {
+/** The sub-tab strip of a group tab (Documenti, Amministrazione), first sub-tab open, the group's footer under it. */
+function WorkOrderDetailSubTabs({ tabs, footer }: { tabs: WorkOrderDetailTab[]; footer?: ReactNode }) {
   return (
     <Tabs defaultValue={tabs[0].value} className="gap-0">
       <div className="px-4 pt-3">
@@ -44,6 +44,7 @@ function WorkOrderDetailSubTabs({ tabs }: { tabs: WorkOrderDetailTab[] }) {
         </TabsList>
       </div>
       <TabContents tabs={tabs} />
+      {footer}
     </Tabs>
   )
 }

@@ -3,10 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Commessa: Stato lavorazione nell'intestazione, "Avanzamento commessa" in Info e in Amministrazione (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO
+## Commessa: Stato lavorazione nell'intestazione, "Avanzamento commessa" in Info e in Amministrazione (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO (27e0f0869 + seguito)
+
+- Seguito (richiesta utente "deve stare pure nel tab amministrazione": la sotto-scheda in fondo non si notava): in Amministrazione "Avanzamento commessa" non e' piu' una sotto-scheda ma il `footer` del gruppo (`WorkOrderDetailTab.footer`, reso da `WorkOrderDetailSubTabs` sotto la sotto-scheda aperta, come in fondo alla pagina "€" legacy); con una sola sotto-scheda (solo Costi) il footer va sotto il suo contenuto. Test tabs/related riallineati (Costs da solo torna tab "Costs").
 
 - Solo frontend, contratto API invariato. Intestazione: `WorkOrderWorkflowStatusMenu` (badge dello Stato lavorazione con freccia, accanto al badge della fase; la scelta salva subito via `useWorkOrderWorkflowStatusChange`, PATCH del solo `work_order_workflow_status_id`; 422 => `notifyFormErrors`; permesso di campo: hidden = niente, readonly = badge senza menu). Sotto `sm` i badge vanno a capo (`ACTIONS_CLASS`).
-- Info, colonna sinistra: `WorkOrderProgressSection` ("Avanzamento commessa": Totale % raggiunto, Ultimo avanzamento, pulsante "Gestione avanzamento" che apre `WorkOrderProgressDialog`) al posto di "Stato lavorazione". Stessa sezione come ultima sotto-scheda `progress` di Amministrazione, solo se Amministrazione esiste gia' (view_costs o view_invoices). `onChanged` passa da `WorkOrderDetailView` a sezioni e tab. La voce del menu tre puntini resta.
+- Info, colonna sinistra: `WorkOrderProgressSection` ("Avanzamento commessa": Totale % raggiunto, Ultimo avanzamento, pulsante "Gestione avanzamento" che apre `WorkOrderProgressDialog`) al posto di "Stato lavorazione". Stessa sezione in Amministrazione (vedi Seguito), solo se Amministrazione esiste gia' (view_costs o view_invoices). `onChanged` passa da `WorkOrderDetailView` a sezioni e tab. La voce del menu tre puntini resta.
 - Cancellati: `WorkOrderWorkflowStatusSection`/`WorkOrderWorkflowStatusContext`, `work-order-workflow-status-field.tsx` (+ test), il campo `work_order_workflow_status_id` dal form inline (schema, default, SERVER_ERROR_FIELDS, `buildUpdatePayload`), i18n `detail.workflowStatusPlaceholder`. i18n nuove: `detail.workflowStatusChange`, `progress.manage`, `progress.lastRecordedOn`.
 - Test: nuovi `work-order-workflow-status-menu.test.tsx`, `work-order-progress-section.test.tsx`; `work-order-detail.test.tsx` (era 719 righe) diviso in `work-order-detail.test.tsx` + `work-order-detail-related.test.tsx` con fixture/render in `work-order-detail-test-utils.tsx`; REQUIREMENT CHANGED in tabs/detail/layout test. Spec 0322 e 0321 amendment 2026-11-27.
 - Verifica: Vitest work-orders 392/392, help 166/166, ESLint, `tsc -b --force` puliti. Non verificato a vista nel browser.
@@ -21,8 +23,6 @@
 - Manuale: guide in-app IT+EN `work-orders.ts` aggiornate; manuale Claude Docs DA AGGIORNARE (sezione Commessa > Dati contrattuali: niente Linee prodotto, niente Commissioni/Netto commissioni).
 - Seguito: Stato lavorazione / Avanzamento commessa, voce sopra.
 
-## Dettaglio Commessa come il vecchio QNet: intestazione con stato + menu tre puntini, niente KPI, motivo chiusura facoltativo (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
-
 ## Commessa: le "Note commessa" diventano la "Descrizione" (decisione utente 2026-11-27) — VERDE MIRATO, COMMITTATO (qnet-2), MIGRAZIONE NON LANCIATA SU qnet2
 
 - DB: migrazione `2026_12_28_100000_merge_internal_notes_into_description_on_work_orders_table` sposta `work_orders.internal_notes` in `description` (con entrambi: note, riga vuota, vecchia descrizione; query builder, nessun log, `updated_at` intatto) ed elimina la colonna; `down()` rimette solo la colonna vuota. Su qnet2: 9.293 commesse con note, 4 con descrizione, 1 con entrambe. `quotes.internal_notes` invariato.
@@ -32,6 +32,8 @@
 - Verifica: Pest WorkOrders (5 rossi preesistenti, vedi sotto), Migration 943/943, TimeEntries 142/142, Contracts 243/243, Seeding 324/324, nuovo `WorkOrderInternalNotesMergeMigrationTest`; Vitest work-orders+record-form+help+i18n 101 file/816 test; ESLint e `tsc -b --force` puliti; Pint pulito sui file toccati.
 - Manuale: guide IT/EN e Claude Docs aggiornati; spec 0093 D-10 REQUIREMENT CHANGED.
 - Prossimo passo: lanciare `php artisan migrate` su qnet2 quando l'utente lo decide; rilanciare la sorgente Commesse dal legacy solo dopo il deploy del controller legacy.
+
+## Dettaglio Commessa come il vecchio QNet: intestazione con stato + menu tre puntini, niente KPI, motivo chiusura facoltativo (richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Intestazione (`work-order-detail-header.tsx`): tolti la striscia KPI grigia (avanzamento, data inizio, data richiamo, scadenza contratto: `WorkOrderStatsStrip`/`WorkOrderDetailStats` cancellati, anche dal form di creazione) e il badge Tipo commessa; in alto a destra lo **stato** (fase spec 0395) accanto al menu **tre puntini verticali** senza bordo (`ghost`, `MoreVertical`; deroga voluta a `frontend.md` §9 su richiesta utente).
 - Menu: `work-order-actions-menu.tsx` + `use-work-order-actions-menu.ts` (voci filtrate dai permessi, popup montati fuori dal menu). Ordine: Avanzamento commessa, Copia dati dall'offerta, Richiedi aggiornamento, Richiedi proforma | separatore | Chiusura forzata / Riapri, Elimina. Cancellati `work-order-closure-actions.tsx`, `work-order-delete-action.tsx`, `work-order-copy-quote-attributes-action.tsx` (+ i loro test, confluiti in `work-order-actions-menu.test.tsx`). Helper test: `work-order-actions-menu-test-utils.ts`. i18n: + `workOrders.detail.actionsMenu`; - `detail.startDate/callbackDate/contractExpiryDate`, `form.forceCloseReasonRequired`.
