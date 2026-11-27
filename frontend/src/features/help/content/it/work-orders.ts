@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga). Una sezione legata a un campo sì/no compare solo con il campo attivo: spegnendolo, i valori della sezione vengono svuotati. Nel dettaglio le Informazioni aggiuntive restano sempre aperte. Nella creazione, invece, cliccando il titolo **Informazioni aggiuntive** la sezione si chiude o si riapre: la scelta resta salvata nel browser e vale per tutte le commesse.',
+          text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga). Ogni sezione delle Informazioni aggiuntive ha anche una **matita accanto al titolo**: apre un popup con tutti i campi della sezione (comprese le tabelle, per esempio le **Verifiche ispettive**) e **Salva** li registra tutti insieme; **Annulla** o la chiusura del popup scartano le modifiche. I campi gestiti da un\'integrazione restano in sola lettura anche nel popup. Una sezione legata a un campo sì/no compare solo con il campo attivo: spegnendolo, i valori della sezione vengono svuotati. Nel dettaglio le Informazioni aggiuntive restano sempre aperte. Nella creazione, invece, cliccando il titolo **Informazioni aggiuntive** la sezione si chiude o si riapre: la scelta resta salvata nel browser e vale per tutte le commesse.',
         },
         {
           type: 'steps',

@@ -9,6 +9,7 @@ import { QuoteDetailView } from '@/features/quotes/quote-detail'
 import { quoteLineFixture, SYSTEM_STATUS_OPEN, SYSTEM_STATUS_REQUIRES_NOTE } from '@/features/quotes/quote-fixtures'
 import { openRow, pressRowButton, queryPencil, rowValue } from '@/features/quotes/quote-test-helpers'
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ApplicableAttributeSummary, QuoteDetailWithPermissions } from '@/features/quotes/types'
 
 /**
@@ -431,5 +432,42 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
 
     await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(2))
     expect(vi.mocked(updateQuote).mock.calls[1][1]).toMatchObject({ promote_managers_to_opportunity: true })
+  })
+})
+
+// User directive 2026-11-27: a flexible-fields section edits as a whole, in one popup, one save.
+describe('QuoteDetailView — flexible fields, a whole section at once', () => {
+  const GATE_CODE: ApplicableAttributeSummary = { ...SITE_ACCESS, id: 2, code: 'gate_code', name: 'Gate code', sort_order: 1 }
+  const ACCESS_LAYOUT: LayoutBlob = {
+    sections: [
+      {
+        id: 'access', title: 'Accesso', description: null, variant: 'default', collapsible: false,
+        default_collapsed: false, columns: 1, sort_order: 0,
+        rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'full' }, { attribute_code: 'gate_code', width: 'full' }] }],
+      },
+    ],
+  }
+  const sectionQuote = () =>
+    quote({
+      applicable_attributes: [SITE_ACCESS, GATE_CODE],
+      attribute_view_layout: ACCESS_LAYOUT,
+      attribute_values: { site_access: 'Gate 3', gate_code: 'A1' },
+    })
+
+  it('saves every field changed in the section popup with a single PATCH', async () => {
+    const record = sectionQuote()
+    vi.mocked(updateQuote).mockResolvedValueOnce({ ...record, attribute_values: { site_access: 'Gate 4', gate_code: 'B2' } })
+    renderDetail(record)
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('attributes.layout.editSection', { section: 'Accesso' }) }))
+    const dialog = screen.getByRole('dialog', { name: 'Accesso' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Site access' }), { target: { value: 'Gate 4' } })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Gate code' }), { target: { value: 'B2' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(updateQuote).toHaveBeenCalledWith(9, { attribute_values: { site_access: 'Gate 4', gate_code: 'B2' } }),
+    )
+    expect(updateQuote).toHaveBeenCalledTimes(1)
   })
 })

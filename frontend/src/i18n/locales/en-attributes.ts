@@ -66,5 +66,8 @@ export const attributes = {
     // Hint on a conditional section (spec 0288): the boolean attribute that shows it.
     visibleWhen: 'Visible if: {{name}}',
     visibleWhenAny: 'Visible if {{name}} holds at least one of: {{options}}',
+    // Whole-section edit from a record detail (Offerta, Commessa): pencil and popup.
+    editSection: 'Edit section {{section}}',
+    editSectionDescription: 'Edit the fields of this section and save them all at once.',
   },
 }

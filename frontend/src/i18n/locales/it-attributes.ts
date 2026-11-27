@@ -66,5 +66,8 @@ export const attributes = {
     // Hint on a conditional section (spec 0288): the boolean attribute that shows it.
     visibleWhen: 'Visibile se: {{name}}',
     visibleWhenAny: 'Visibile se in {{name}} è scelta almeno una tra: {{options}}',
+    // Modifica di una sezione intera dal dettaglio (Offerta, Commessa): matita e popup.
+    editSection: 'Modifica sezione {{section}}',
+    editSectionDescription: 'Modifica i campi della sezione e salvali tutti insieme.',
   },
 }

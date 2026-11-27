@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. On the detail the Additional information is always open. On the create form, clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order.',
+          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). Each Additional information section also has a **pencil beside its title**: it opens a popup with every field of the section (tables included, e.g. the **Inspection visits**) and **Save** records them all at once; **Cancel** or closing the popup discards the changes. Fields owned by an integration stay read-only in the popup too. A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. On the detail the Additional information is always open. On the create form, clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order.',
         },
         {
           type: 'steps',

@@ -154,6 +154,7 @@ export function WorkOrderDetailSections({ workOrder, editor, onChanged }: Detail
             inline={inline}
             control={editor.form.control}
             collapsible={false}
+            sectionEdit
           />
         ) : null}
       </div>

@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import axios from 'axios'
@@ -10,6 +10,7 @@ import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import { hasWorkOrderAction, selectWorkOrderAction } from '@/features/work-orders/work-order-actions-menu-test-utils'
 import { OPEN_WORKFLOW_STATUS, WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { FieldPermission } from '@/features/authorization/types'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /**
@@ -243,6 +244,84 @@ describe('WorkOrderDetailView — flexible fields, one in-place row each', () =>
 
     expect(screen.getByText('Gate 3')).toBeInTheDocument()
     expect(queryPencil('Site access')).not.toBeInTheDocument()
+  })
+})
+
+const GATE_CODE: ApplicableAttributeSummary = { ...SITE_ACCESS, id: 2, code: 'gate_code', name: 'Gate code', sort_order: 1 }
+
+/** One configured section holding both Attributes ("Accesso"), as the form layout places them. */
+const ACCESS_LAYOUT: LayoutBlob = {
+  sections: [
+    {
+      id: 'access', title: 'Accesso', description: null, variant: 'default', collapsible: false,
+      default_collapsed: false, columns: 2, sort_order: 0,
+      rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' }, { attribute_code: 'gate_code', width: 'half' }] }],
+    },
+  ],
+}
+
+function sectionWorkOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}) {
+  return workOrder({
+    applicable_attributes: [SITE_ACCESS, GATE_CODE],
+    attribute_layout: ACCESS_LAYOUT,
+    attribute_values: { site_access: 'Gate 3', gate_code: 'A1' },
+    ...overrides,
+  })
+}
+
+const sectionPencilName = () => label('attributes.layout.editSection', { section: 'Accesso' })
+
+// User directive 2026-11-27: a flexible-fields section edits as a whole, in one popup, one save.
+describe('WorkOrderDetailView — flexible fields, a whole section at once', () => {
+  it('saves every field changed in the section popup with a single PATCH', async () => {
+    const record = sectionWorkOrder()
+    vi.mocked(updateWorkOrder).mockResolvedValueOnce({ ...record, attribute_values: { site_access: 'Gate 4', gate_code: 'B2' } })
+    renderDetail(record)
+
+    fireEvent.click(screen.getByRole('button', { name: sectionPencilName() }))
+    const dialog = screen.getByRole('dialog', { name: 'Accesso' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Site access' }), { target: { value: 'Gate 4' } })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Gate code' }), { target: { value: 'B2' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: label('common.inlineEdit.save') }))
+
+    await waitFor(() =>
+      expect(updateWorkOrder).toHaveBeenCalledWith(4, { attribute_values: { site_access: 'Gate 4', gate_code: 'B2' } }),
+    )
+    expect(updateWorkOrder).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('discards the popup edits on cancel, without any request', () => {
+    renderDetail(sectionWorkOrder())
+
+    fireEvent.click(screen.getByRole('button', { name: sectionPencilName() }))
+    const dialog = screen.getByRole('dialog', { name: 'Accesso' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Site access' }), { target: { value: 'Gate 9' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: label('common.inlineEdit.cancel') }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
+    expect(updateWorkOrder).not.toHaveBeenCalled()
+  })
+
+  it('shows an integration-owned value read-only in the popup', () => {
+    renderDetail(sectionWorkOrder({ locked_attributes: [{ code: 'gate_code', source: 'Gestionale' }] }))
+
+    fireEvent.click(screen.getByRole('button', { name: sectionPencilName() }))
+    const dialog = screen.getByRole('dialog', { name: 'Accesso' })
+
+    expect(within(dialog).getByRole('textbox', { name: 'Gate code' })).toHaveAttribute('readonly')
+    expect(within(dialog).getByRole('textbox', { name: 'Site access' })).not.toHaveAttribute('readonly')
+  })
+
+  it('offers no section edit when attribute_values is read-only', () => {
+    const record = sectionWorkOrder()
+    renderDetail({
+      ...record,
+      permissions: { ...record.permissions, fields: { ...record.permissions.fields, attribute_values: READ_ONLY_FIELD } },
+    })
+
+    expect(screen.queryByRole('button', { name: sectionPencilName() })).not.toBeInTheDocument()
   })
 })
 

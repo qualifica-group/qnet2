@@ -1,9 +1,7 @@
 import type { Control } from 'react-hook-form'
 import { Eye } from 'lucide-react'
 import { ConfigSection } from '@/components/ui/config-section'
-import { cn } from '@/lib/utils'
-import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
-import { LAYOUT_GRID_GAP_CLASS, gridColsClass, itemSpanClass } from '@/features/attributes/attribute-layout-grid'
+import { AttributeLayoutRows } from '@/features/attributes/attribute-layout-rows'
 import type { AttributeLayoutFormShape, LayoutSection } from '@/features/attributes/attribute-layout-types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 
@@ -19,11 +17,7 @@ interface AttributeLayoutSectionProps<TFieldValues extends AttributeLayoutFormSh
 
 /**
  * Renders one configured `LayoutSection`: a `ConfigSection` shell hosting its
- * `rows` — each row its own CSS grid (`section.columns` wide, collapsing per
- * `attribute-layout-grid.ts`), each item spanning its configured `width`. An
- * item whose `attribute_code` no longer resolves against `attributesByCode`
- * (stale layout referencing a removed/reassigned attribute) is skipped
- * rather than crashing the form.
+ * rows (`AttributeLayoutRows`, the same grid the detail's section popup uses).
  */
 export function AttributeLayoutSection<TFieldValues extends AttributeLayoutFormShape>({
   section,
@@ -49,26 +43,13 @@ export function AttributeLayoutSection<TFieldValues extends AttributeLayoutFormS
             {conditionHint}
           </p>
         ) : null}
-        {section.rows.map((row) => (
-          <div key={row.id} className={cn('grid', LAYOUT_GRID_GAP_CLASS, gridColsClass(section.columns))}>
-            {row.items.map((item) => {
-              const attribute = attributesByCode.get(item.attribute_code)
-              if (!attribute) {
-                return null
-              }
-              return (
-                <div key={item.attribute_code} className={itemSpanClass(section.columns, item.width)}>
-                  <AttributeLayoutField
-                    control={control}
-                    attribute={attribute}
-                    disabled={disabled}
-                    readOnly={readOnly}
-                  />
-                </div>
-              )
-            })}
-          </div>
-        ))}
+        <AttributeLayoutRows
+          section={section}
+          attributesByCode={attributesByCode}
+          control={control}
+          disabled={disabled}
+          readOnly={readOnly}
+        />
       </div>
     </ConfigSection>
   )

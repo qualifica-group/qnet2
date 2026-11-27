@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Campi flessibili: modifica di una sezione intera in un popup, Offerte e Commesse (richiesta utente 2026-11-27) — VERDE MIRATO, NON COMMITTATO
+
+- Solo frontend, nessun endpoint nuovo: la PATCH diff di `buildUpdatePayload` (quote/work-order) manda gia' l'intera mappa `attribute_values` quando cambia un codice, quindi piu' campi salvano in una richiesta.
+- `features/attributes/attribute-layout-rows.tsx` (nuovo): righe/griglia di una `LayoutSection` estratte da `AttributeLayoutSection` (ora le usa), con `readOnlyCodes`.
+- `attribute-section-edit-dialog.tsx` (nuovo): matita `icon-xs` nella fascia del titolo + Dialog (size `xl` con un attributo `table`, `lg` con columns>=2, altrimenti `md`); e' un editor del normale `InlineEdit` con chiave `attribute_sections.<section.id>` (mai un path del form: nessuna riga si apre insieme). Salva = `inline.save`, chiusura/Annulla = `inline.cancel` (non durante il salvataggio).
+- `use-attribute-section-edit-action.tsx` (nuovo): `useAttributeSectionEditAction({ enabled, attributesByCode, readOnlyCodes, control, inline })` -> `renderSectionAction` per `AttributeLayoutView` (nuova prop), gate sul permesso campo `attribute_values`; nessuna matita se la sezione non ha campi modificabili.
+- Cablato con `sectionEdit` su `WorkOrderAttributesSection` (locked_attributes in sola lettura nel popup) e `QuoteAttributesSection`, acceso solo nei dettagli (`work-order-detail-sections.tsx`, `quote-detail-sections.tsx`); non nella creazione e non nei Prodotti (fuori scope, attivabile con lo stesso hook).
+- Nota: con la chiave di sezione l'`handleInvalid` degli hook inline mostra anche il toast oltre al messaggio sotto il campo nel popup (comportamento invariato degli hook).
+- i18n `attributes.layout.editSection` / `editSectionDescription` (IT/EN). Guide in-app IT/EN `work-orders` e `quotes` aggiornate; manuale Claude Docs rev 1040 (paragrafo "Modificare una sezione intera" dopo "Informazioni aggiuntive collassabili").
+- Test: `work-order-detail-inline-edit.test.tsx` (+4: una PATCH con due campi, Annulla senza richieste, campo bloccato readonly, nessuna matita senza permesso), `quote-detail-inline-edit.test.tsx` (+1). Vitest attributes/work-orders/quotes/products/product-categories 1563/1563, help 166/166, ESLint e `tsc -b --force` puliti.
+
 ## Bug offerta 31044: "attribute is not part of the applicable attribute set" in modifica (segnalazione utente 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Causa: richiesta con righe di due categorie madri -> due offerte legate (spec 0411; 31043 Sicurezza, 31044 Gare). In modifica, appena cambiano i prodotti delle righe offerta, il form chiama `POST /api/quotes/form-context` con il solo `opportunity_id`, e `QuoteAttributeResolver::formContext()` univa TUTTE le righe dell'opportunita' (12 campi `safety_*` anche sull'offerta Gare). Il salvataggio (`resolve()`, via `QuoteRootScope::linesOf`) le filtra per radice -> 422 su ogni campo Sicurezza.
