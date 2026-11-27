@@ -75,8 +75,8 @@ export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIden
   )
 }
 
-/** User directive 2026-11-27: a long description scrolls past 300px, reading and writing alike. */
-const DESCRIPTION_MAX_HEIGHT_CLASS = 'max-h-[300px] overflow-y-auto'
+/** User directive 2026-11-27: a long description scrolls past 100px, reading and writing alike (300px narrowed to 100px the same day). */
+const DESCRIPTION_MAX_HEIGHT_CLASS = 'max-h-[100px] overflow-y-auto'
 
 interface WorkOrderDescriptionCalloutRowProps {
   description: string | null

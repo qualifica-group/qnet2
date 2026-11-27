@@ -189,8 +189,8 @@ describe('WorkOrderDetailView — record skeleton layout (spec 0331)', () => {
     expect(within(description).getByText('Processing')).toBeInTheDocument()
     expect(within(description).queryByText('Testo libero')).not.toBeInTheDocument()
     const callout = screen.getByRole('heading', { level: 3, name: 'Description' }).closest('section') as HTMLElement
-    // User directive 2026-11-27: a long description scrolls past 300px instead of the shared callout's cap.
-    expect(within(callout).getByText('Testo libero')).toHaveClass('max-h-[300px]', 'overflow-y-auto')
+    // User directive 2026-11-27: a long description scrolls past 100px instead of the shared callout's cap (REQUIREMENT CHANGED: was 300px).
+    expect(within(callout).getByText('Testo libero')).toHaveClass('max-h-[100px]', 'overflow-y-auto')
     expect(within(callout).getByText('Testo libero')).not.toHaveClass('max-h-64')
     // User decision 2026-11-27: the callout heads the right column, above the company references.
     const company = screen.getByRole('heading', { level: 3, name: 'Company references and business functions' }).closest('section') as HTMLElement
