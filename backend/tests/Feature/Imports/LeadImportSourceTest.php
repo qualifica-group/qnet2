@@ -93,3 +93,32 @@ it('the commit writes the campaign source, or the run source when set', function
     expect(Lead::query()->pluck('source_id')->sort()->values()->all())
         ->toBe(collect([$campaignSource->id, $runSource->id])->sort()->values()->all());
 });
+
+/**
+ * @return array<string, mixed>
+ */
+function leadImportSourceField(): array
+{
+    return collect(app(LeadsImportDefinition::class)->globalConfig())->firstWhere('id', 'source_id');
+}
+
+it('the configuration step starts from the source named in the config', function () {
+    Source::factory()->create(['name' => 'Sito']);
+    $social = Source::factory()->create(['name' => 'Social']);
+
+    expect(leadImportSourceField()['default'])->toBe($social->id);
+});
+
+it('the source default follows the configured name', function () {
+    Source::factory()->create(['name' => 'Social']);
+    $site = Source::factory()->create(['name' => 'Sito']);
+    config(['imports.leads_default_source' => 'Sito']);
+
+    expect(leadImportSourceField()['default'])->toBe($site->id);
+});
+
+it('the source starts empty when no source carries the configured name', function () {
+    Source::factory()->create(['name' => 'Sito']);
+
+    expect(leadImportSourceField()['default'])->toBeNull();
+});

@@ -3,6 +3,12 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Import lead: Fonte predefinita "Social" (spec 0176 D-9, richiesta utente 2026-11-27) — VERDE MIRATO, COMMITTATO
+
+- BE: `LeadImportFieldCatalog::globalConfig()` mette nel `default` di `source_id` l'id della fonte con nome `config('imports.leads_default_source')` (env `IMPORT_LEADS_DEFAULT_SOURCE`, default "Social"); nome non trovato -> null. Il FE onorava gia' `field.default` (`resolveGlobalConfigValue`): nessuna modifica FE. La scelta della campagna con Fonte la sostituisce (D-5, invariato).
+- Test: `LeadImportSourceTest` +3 (default da config, nome configurato diverso, nome assente -> null); `tests/Feature/Imports` + `tests/Unit` 1685/1687 — i 2 rossi (`ProductsTableRendererTest` AC-245, `EmploymentProductLineTest` fillable) sono fuori da questo scope, da verificare; Pint pulito; Vitest help+imports 432/432; `tsc -b --force` pulito.
+- Manuale: guida in-app `imports.ts` IT/EN; Claude Docs paragrafo "Configurazione globale" dell'import lead (rev 1049).
+
 ## Stato lavorazione manuale con % uguale all'avanzamento (spec 0323 D-2 rev. 2026-11-27) — VERDE MIRATO, COMMITTATO
 
 - Richiesta utente (commessa 12519 all'80%): scegliere a mano uno stato all'80% deve essere accettato. Il blocco 422 ora scatta solo se la % dello stato e' INFERIORE all'avanzamento (era `<=`); uguale = cambia solo lo stato, nessuna registrazione (`raiseTo` gia' non scrive). Metodo rinominato `WorkOrderProgressEntryService::assertStatusPercentageNotBelowCurrent`, chiave lang `work_orders.workflow_status.progress_below_current` (IT/EN).
@@ -361,7 +367,7 @@
 - Test: `tests/Feature/WorkOrders/WorkOrderAmountColumnsTest.php` (9), `column-renderers.test.tsx` (+2). Pest WorkOrders 618/623 (5 rossi preesistenti: WorkOrderAttributeLocksTest 3, QuoteLineWorkOrderMigrationTest 2), Tables 74, Projects 100, Exports 43; Vitest work-orders+help 61 file/549; ESLint, Pint, `tsc -b --force` puliti. Verifica DB dev: 200 commesse a caso, 0 differenze fra `total_revenue` e `effective_revenue` della tab Dati contrattuali.
 - Guide in-app `work-orders` IT/EN (paragrafo dopo "Stato pagamento") + manuale Claude Docs (paragrafo "Colonne Importo consulenza e Totale ricavo." dopo "Colonna Stato pagamento.").
 
-## Avanzamento commesse riallineato al legacy (2026-11-24) — VERDE MIRATO, NON COMMITTATO, SEEDER NON ANCORA ESEGUITO
+## Avanzamento commesse riallineato al legacy (2026-11-24) — VERDE MIRATO, COMMITTATO, SEEDER NON ANCORA ESEGUITO
 
 - Causa: `WorkOrderProgressSource` crea soltanto (salta la commessa che ha gia' avanzamenti) e le cancellazioni del legacy (`ListaAvanzamentoCommesseModale::deleteAvanzamento`, hard delete, nessun activity log ne' utente) non arrivano a qnet-2. Esempio: legacy 12574 al 100% (righe rifatte il 29/10), qnet-2 COM-12574 al 37%.
 - Conteggio sulle copie locali: 173 commesse migrate con percentuale diversa; 37 senza avanzamenti inseriti in qnet-2 (allineabili), 136 con righe manuali qnet-2 (da decidere caso per caso, non toccate).
@@ -513,7 +519,7 @@
   - manuale Claude Docs (gruppi, select "Gruppo", "Più documenti", "Campo data estratto");
   - spec delle richieste documentali (gruppi e categoria sulle richieste).
 
-## Formalab: Nome corso = select sulle classi, abbinamento solo per edition_id, menu "Integrazioni esterne" (spec 0426, 2026-11-23) — VERDE MIRATO, NON COMMITTATO, MIGRAZIONE E SEEDER NON ESEGUITI SU qnet2
+## Formalab: Nome corso = select sulle classi, abbinamento solo per edition_id, menu "Integrazioni esterne" (spec 0426, 2026-11-23) — VERDE MIRATO, COMMITTATO, MIGRAZIONE E SEEDER NON ESEGUITI SU qnet2
 
 - Tabella d'appoggio = `formalab_classes` (gemella di `classi` legacy). Invariante nuova `id = edition_id` (mapper + migrazione `2026_11_23_110000_align_formalab_class_ids_with_edition_ids`, due passaggi senza collisioni): il campo relazione salva l'id, quindi salva l'edition_id.
 - Core, punto di estensione generico: `config('custom-fields.relation_only_targets')` (entity_type => {model, label}) letto da `CustomFieldEntityRegistry` (non memoizzato). Formalab registra `formalab-classes` (`FormalabClass::ENTITY_TYPE`, for-select `integrations/formalab/classes` = `FOR_SELECT_RESOURCE`).
@@ -529,7 +535,7 @@
 - Committato b8a6b598f (qnet-2 main); legacy su `develop` cfefaed5 (NON su master: regola utente, il legacy si committa su develop).
 - D-12 (2026-11-23, VERDE MIRATO, COMMITTATO f6b08cdd8): classe non piu' su Formalab -> `Services/RemovedClassCleanup` (link eliminati, select svuotata con PeopleChangeLog, classe cancellata dal catalogo; altri campi intatti). Chiamato da `ClassCatalogSync` Step 3 (edizioni locali assenti dall'elenco, solo lettura completa e non vuota: `fetchAll` ritorna `complete`) e da `ClassCatalog::refresh` su 404 (Sincronizza commessa, webhook). Colonna `formalab_sync_runs.classes_removed` (migrazione 2026_11_23_120000) + `last_sync.classes_removed` + riga nella card Ultima sincronizzazione. `CourseFieldWriter::keyCodeOf` nuovo. Verificato su Formalab reale: 39 edizioni note al legacy e assenti dall'elenco danno 404 anche per id (nessuna con commesse collegate in dev). Test `FormalabRemovedClassTest` (5); Pest Integrations 78, System 27, WorkOrders 608; Vitest integrations+help 21 file/191; tsc, ESLint, Pint puliti. Guida `formalab` IT/EN sezione automatic-sync (corretta anche: il giro collega solo le non collegate, spostamenti/scollegamenti avvengono al salvataggio).
 - Fix (2026-11-23, COMMITTATO 823617dc1): il "Nome Corso / Ed." in sola lettura mostrava l'edition_id. Causa: `features/attributes/attribute-value-display.tsx` (dettaglio Commessa/Offerta/Prodotto) stampava l'id nudo di ogni attributo `relation` (difetto generico, colpiva anche gli altri campi relazione). Ora risolve l'etichetta con `useForSelectLabels` su `relation_target.for_select_resource` ('…' in attesa); `DisplayableAttribute.relation_target` opzionale. Test nuovo `attribute-value-display.test.tsx`; Vitest attributes/work-orders/quotes/products 150 file/1231, tsc, ESLint puliti. Se l'attributo e' ancora `text` (ClassSelectSeeder non lanciato) il numero resta: serve la conversione.
-- Sync ogni ORA (richiesta utente 2026-11-23, VERDE MIRATO, NON COMMITTATO): default `FORMALAB_SYNC_INTERVAL_MINUTES` 60 (config + .env.example); `FormalabServiceProvider::schedule` con intervallo >= 60 usa `0 * * * *` (prima tetto a 59 = */59). Health "sync_stale" scala con l'intervallo (STALE_AFTER_INTERVALS x 60 min). Se l'.env di produzione imposta 10 esplicitamente va cambiato/tolto + config:cache. Test: Activation (+dataset default/60/120), Admin (REQUIREMENT CHANGED 10->60); Pest Formalab 81 verdi. Guida formalab IT/EN "ogni ora".
+- Sync ogni ORA (richiesta utente 2026-11-23, VERDE MIRATO, COMMITTATO): default `FORMALAB_SYNC_INTERVAL_MINUTES` 60 (config + .env.example); `FormalabServiceProvider::schedule` con intervallo >= 60 usa `0 * * * *` (prima tetto a 59 = */59). Health "sync_stale" scala con l'intervallo (STALE_AFTER_INTERVALS x 60 min). Se l'.env di produzione imposta 10 esplicitamente va cambiato/tolto + config:cache. Test: Activation (+dataset default/60/120), Admin (REQUIREMENT CHANGED 10->60); Pest Formalab 81 verdi. Guida formalab IT/EN "ogni ora".
 
 ## Categorie delle checklist + sincronizzazione ArchivioSmart (spec 0410, 2026-11-23) — COMMITTATO (6d5beb16a), NON PROVATO NEL BROWSER
 
@@ -602,7 +608,7 @@
 - Test: nuovo `tests/Feature/WorkOrders/WorkOrderMemberManagementTest.php` (4); REQUIREMENT CHANGED `TaskWorkOrderVisibilityTest` AC-005, `TaskWorkOrderParticipantClaimTest` AC-004, `work-order-progress-dialog.test.tsx` (fixture). WorkOrders 597, Tasks 732, Notes 121, Seeding 295 verdi; Pint, help Vitest 162, `tsc -b --force` puliti.
 - Manuale: guide in-app IT/EN `work-orders.ts`, `tasks.ts`, `parts/work-orders-tasks.ts`; Claude Docs rev 949. Nota: prima di questa modifica il manuale (rev 942) diceva "chiusura forzata a chiunque possa aprire la commessa": corretto in "Responsabile o Partecipante".
 
-## Ruoli `reparto-*`: menziona chiunque, Sicurezza solo commesse proprie (spec 0408 D-16, spec 0353 D-2 rev., segnalazione utente 2026-11-23) — VERDE MIRATO, NON COMMITTATO, SEEDER DA RIESEGUIRE
+## Ruoli `reparto-*`: menziona chiunque, Sicurezza solo commesse proprie (spec 0408 D-16, spec 0353 D-2 rev., segnalazione utente 2026-11-23) — VERDE MIRATO, COMMITTATO, SEEDER DA RIESEGUIRE
 
 - Sicurezza (domanda 29 "Solo quelle in cui e' coinvolto"): tolto `work_orders_view_competence` da `DepartmentGrantSets::SAFETY` (supera la scelta D-6).
 - Documenti: nessun cambio. La regola "chi vede il modulo ne vede i documenti" e' stata provata e ritirata (decisione utente 2026-11-23): restano le risposte del questionario.
@@ -799,7 +805,7 @@
 - FE: etichette `permissions.abilities.notifyAssignment(Email)` IT/EN. Manuale: guida in-app `notifications` IT/EN sezione `assignment-notices`; Claude Docs rev 924 (paragrafo + tabella "Avvisi di assegnazione" dopo "Notifiche del tuo team"). PDF da rigenerare.
 - Da verificare nel browser: matrice del ruolo (caselle nei moduli Opportunita'/Offerte/Gestione Richieste/Iscritti), assegnazione di un Gestore Account con e senza caselle.
 
-## Notifica email sugli stati di lavorazione dell'offerta (spec 0419, task 10 riunione 12-16 novembre, 2026-11-20) — VERDE MIRATO, NON COMMITTATO (branch staging), MIGRAZIONI LANCIATE SU qnet2 2026-11-20, NON PROVATO NEL BROWSER
+## Notifica email sugli stati di lavorazione dell'offerta (spec 0419, task 10 riunione 12-16 novembre, 2026-11-20) — VERDE MIRATO, COMMITTATO (branch staging), MIGRAZIONI LANCIATE SU qnet2 2026-11-20, NON PROVATO NEL BROWSER
 
 - Richiesta utente: nel configuratore stati, come la nota obbligatoria, uno stato puo' prevedere una notifica email con testo e destinatari scelti.
 - BE: colonna `quote_workflow_statuses.notify` json nullable (migrazione `2026_12_20_100000_add_notify_to_quote_workflow_statuses_table`, DA LANCIARE con ok utente). Shape `{subject, message, record_team, user_ids, role_ids, emails}`; regole e normalizzazione in `App\DataObjects\QuoteWorkflows\WorkflowStatusNotify` (usate da `ValidatesWorkflowCriteria::statusesRules`, `UpdateDefaultStatusesRequest`, DTO Create/UpdateQuoteWorkflowData); `distinct` per lista con closure (il `distinct` di Laravel su wildcard annidato confronta tutti gli stati). `WorkflowStatusWriter` scrive `notify` (assente = null, come `requires_note`). Resource: `notify` in `QuoteWorkflowStatusResource` e `QuoteWorkflowResource` (solo endpoint del configuratore).
@@ -866,7 +872,7 @@
 - DB locale: anagrafiche bloccate 707 -> 436; la 134 non e' piu' bloccata.
 - Test: 2 nuovi in `OpportunityOpenPerRegistryTest` (No categoria + legacy non blocca; attuale + No categoria blocca). Opportunities/Leads/MultipleOpen/SingleQuote verdi, Pint ok. Guida in-app opportunities IT/EN aggiornata (help vitest verde). Manuale Claude Docs aggiornato (paragrafo "Attenzione: una sola opportunita' aperta" + cella "Piu' opportunita' aperte" nella tabella categorie); PDF derivato da rigenerare.
 
-## Layout preventivi "Layout servizi" (id 2) e "Preventivo ISO" (id 4) sostituiti con le revisioni di novembre (task 427544, 2026-11-18) — VERDE MIRATO, NON COMMITTATO, NON APPLICATO AL DB LOCALE
+## Layout preventivi "Layout servizi" (id 2) e "Preventivo ISO" (id 4) sostituiti con le revisioni di novembre (task 427544, 2026-11-18) — VERDE MIRATO, COMMITTATO, NON APPLICATO AL DB LOCALE
 
 - Fonte: `LAYOUT_PREVENTIVO_GENERICO_SERVIZI rev.12.11.2026.docx` e `Template preventivo_ISO Rev. 10.11.2026.docx`. Novita': "Allegato A" informativa privacy (3 tabelle statiche `table`, elenco puntato reso con prefisso "• ", dichiarazione di consenso); ISO anche clausole "PRIVACY E PROTEZIONE DEI DATI PERSONALI" 10.1-10.4; servizi perde la clausola "Ai sensi degli art. 1341-1342".
 - Riconvertiti con un convertitore Python una-tantum (NON nel repo, come quello del 2026-10-28) che rifa' le stesse convenzioni: verifica di fedelta' = i blocchi invariati (24 servizi, 38 ISO) escono identici a quelli gia' in `assets/quote-layouts/{services,iso}.json`; il diff degli asset e' solo aggiunta (+ la clausola tolta). Carta intestata invariata (`letterhead-75cb7b747891.png`).
@@ -1163,7 +1169,7 @@
 - Secondo buco, stessa area: `AttributeDateFilterApplier` ignorava Set e multi (dateFrom assente): blank/not_blank del filtro personalizzato (`values:[null]`) e la checklist della griglia sugli attributi data non filtravano. Ora `apply()` gestisce multi (AND), set (valori esatti + "(Vuoti)" = null/'') e condizione data; `AttributeSummaryDateColumn::applyFilter` delega tutto a lui (tolto il trait `AppliesSetFilter`).
 - Test: `WorkOrderSummaryDateAttributeColumnTest` (+1: blank/not_blank/gt via `customFilterRules`), nuovo `WorkOrderDateAttributeCustomFilterTest` (2). Mirati 132/132; suite CategoryTabs/RequestManagement/Contracts/Table/Attributes/CustomFields/WorkOrders 2365/2439: i rossi sono TUTTI del refactor in corso della sessione parallela sulle colonne manager/operatore di Gestione richieste (`RequestManagerColumns::OPERATOR_COLUMN_ID` ecc.) + 2 preesistenti (TableBulkDelete, TableDefinitionContract). Pint pulito. Manuale: nessun impatto (comportamento atteso gia' descritto).
 
-## Commessa: colonna "Data verifica ispettiva" al posto di "Verifiche ispettive" (2026-11-16) — VERDE MIRATO, NON COMMITTATO, SEEDER DA LANCIARE
+## Commessa: colonna "Data verifica ispettiva" al posto di "Verifiche ispettive" (2026-11-16) — VERDE MIRATO, COMMITTATO, SEEDER DA LANCIARE
 
 - Richiesta utente 2026-11-16: nella griglia commesse la colonna delle verifiche ispettive mostra solo la data della riga attiva (vuota se nessuna riga attiva), e' una data e si chiama "Data verifica ispettiva". Il valore esiste gia': `summary` (strategia `selected` su `data_verifica`) salvato in `attribute_values.<code>.summary`; su qnet2 116 commesse con riga attiva, 0 incongruenze.
 - Contratto: nuova chiave opzionale `config.summary.grid_label` di un campo tabella, ammessa solo se la colonna di riepilogo e' `date`/`datetime` (`TableFieldSchema::GRID_LABEL_COLUMN_TYPES`, validata in `TableFieldConfigValidator::validateGridLabel`, max 191). Con la chiave la colonna `attr.<code>` diventa `type: datetime`, `filterType: date`, label = grid_label, senza `table`, valore = summary scalare. Logica in `App\Tables\RequestManagement\AttributeSummaryDateColumn` (valore, filtro set+data+multi solo sul summary, valori distinti con "(Vuoti)"), usata da `AttributeColumnBuilder` (label/mapping) e `AttributeGridColumns` (mapValues/applyFilter/distinctValues); sort invariato (gia' sul summary). Solo griglie ATTRIBUTI: i campi personalizzati tabella non la usano e l'editor non la mostra (prop `gridLabel` di `DefinitionTableColumnsEditor`, passata solo da `attribute-type-sections.tsx`).
@@ -1177,7 +1183,7 @@
 - Richiesta utente 2026-11-16: "metti un link alla proforma su documenti". Nel blocco di ogni prodotto il numero del Documento e' un link (`DocumentNumber` di `work-order-invoices/invoice-table-parts.tsx`, lo stesso della scheda Proforma attiva) che apre `InvoiceDetailSheet`; `onChanged` invalida `workOrderContractDataKeys.detail` (un incasso cambia lo stato del documento). Solo con `invoices.view`: calcolato in `work-order-detail-contract-data-panel.tsx` e passato come prop `canOpenDocuments` (`WorkOrderContractDataSection` -> `ContractDataLines` -> `ContractDataLineFields`), senza hook di auth nei componenti contract-data. Nessun cambio backend.
 - Test: `work-order-contract-data-section.test.tsx` (+2: link con permesso, testo senza). Vitest work-order-contract-data+work-orders 399/399, help 161/161, ESLint e `tsc -b --force` puliti. Guide IT/EN `work-orders` (riga Documento) e manuale Claude Docs rev 824 aggiornati.
 
-## Commessa: eliminati 5 campi flessibili legacy (2026-11-16) — VERDE MIRATO, NON COMMITTATO, SEEDER GIA' LANCIATO SU qnet2 DALL'UTENTE
+## Commessa: eliminati 5 campi flessibili legacy (2026-11-16) — VERDE MIRATO, COMMITTATO, SEEDER GIA' LANCIATO SU qnet2 DALL'UTENTE
 
 - Richiesta utente 2026-11-16: eliminare i campi flessibili "Accordo sui Pagamenti" (`accordo_pagamento`), "Insoluti" (`insoluti`), "Comunicazioni Email Commerciale" (`comunicazione_email`), "Proforma emessa" (`status_contabile`), "Totale commessa manuale" (`totale_commessa_manuale`) + seeder one-shot. Su qnet2 solo contesto Commessa: valori su 298/298/260/16392/416 commesse, 140-170 assegnazioni, 110 layout ciascuno.
 - **One-shot: `php artisan db:seed --class=RemoveRetiredWorkOrderAttributesSeeder --force`** (lanciato dall'utente su qnet2 il 2026-11-16: attributi e valori gia' rimossi; i dati originali restano nel legacy `orders`/`orderisos`). Usa il nuovo `App\Services\AttributeRemover::remove(codes)` (valori da products/quotes/work_orders, attribute_category, layout via AttributeLayoutPruner, opzioni, attributi; query builder, idempotente). `WorkOrderPaymentStatusAttributeMover` (0402) ora usa lo stesso servizio. `AttributeService::VALUE_TABLES` reso pubblico. Cancellati `QualificaWorkOrderPaymentAttributesSeeder` e il suo test (assegnava due di questi campi). Accordo e insoluti restano sui pagamenti per riga (0403, `LegacyWorkOrderLinePaymentWriter` invariato).
@@ -1667,7 +1673,7 @@
 - Da notare: durante la sessione `git diff` mostrava modifiche di un'altra sessione (WorkOrderResource,
   AttributeGridColumns, data-table column-filters/summary-cell, i18n custom-fields/referents): non toccate.
 
-## Colonna tabella "N righe": badge + filtro sulle righe (task 427477) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Colonna tabella "N righe": badge + filtro sulle righe (task 427477) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 427477 (qnet2 task id, /work-orders): in "Verifiche Ispettive" (attributo 455 `orderiso_verificas`, tipo
   `table`, riepilogo = riga Attivo) la cella mostrava "1 righe"/"2 righe". Dati dev: 3187 commesse su 3302 non hanno
@@ -1714,7 +1720,7 @@
   Vitest referents/work-orders/quotes/contracts/i18n/help 1498 verdi, Pint/ESLint/`tsc -b --force` puliti. NON provato
   in browser. Manuale: guida in-app `work-orders` IT/EN + paragrafo "Referente e recapiti nella commessa" nel manuale Docs.
 
-## Filtro personalizzato che si disattiva da solo (task 428054) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Filtro personalizzato che si disattiva da solo (task 428054) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 428054 (qnet2 task id, /request-management): "metto il filtro dei richiami di oggi, dopo poco si toglie da
   solo" (+ "non prende tutti i richiami", gia' risolto da #428096, commit 60e2f89fe).
@@ -1730,7 +1736,7 @@
 - Non escluso: se l'utente usava invece il filtro di colonna o i Filtri avanzati, chiedere i passi (nessuna altra causa
   trovata; il giro salva/rileggi dei filtri sul backend e' corretto).
 
-## Filtro "Data inizio" sulle commesse: ricerca in formato utente (task 427789) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Filtro "Data inizio" sulle commesse: ricerca in formato utente (task 427789) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Task 427789 (qnet2 task id, /work-orders): "Data inizio" ha lo stesso problema di Anagrafica: tutto gennaio 2026
   introvabile. Causa: l'elenco di `start_date` sono le prime 200 date in ordine crescente (dev, utente 162: si ferma al
@@ -1786,7 +1792,7 @@
 - Manuale: guida `general` IT/EN (tabella comandi Documenti). Manuale Claude Docs: riga "Scarica tutti" nella sezione
   Note e documenti.
 
-## Nuova anagrafica da Gestione Richieste eredita Fonte/Commerciale/Segnalatore (#427523) — VERDE MIRATO, NON COMMITTATO (2026-11-14)
+## Nuova anagrafica da Gestione Richieste eredita Fonte/Commerciale/Segnalatore (#427523) — VERDE MIRATO, COMMITTATO (2026-11-14)
 
 - Ticket di Martina: creando una richiesta con un NUOVO cliente, Fonte, Commerciale e Segnalatore restavano solo su
   offerta/opportunita'; l'anagrafica nasceva vuota. Causa: `RequestCreationService::newClientRegistryData()` passava
@@ -1798,7 +1804,7 @@
 - Manuale: guida `request-management` IT/EN (passo Attribuzione) + manuale Claude Docs (stesso passo).
 - Le anagrafiche gia' create cosi' in passato restano senza i tre campi (nessun backfill).
 
-## Filtri data a giorno intero su colonne data+ora (#428096) — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+## Filtri data a giorno intero su colonne data+ora (#428096) — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Causa: `AdvancedFilterApplier` (date_range) e `FilterApplier::applyDate` (inRange/greaterThan) confrontavano un
   giorno nudo ("2026-11-13", o "2026-11-13 00:00:00" da AG Grid) con una colonna DATETIME: l'estremo "a" valeva
@@ -1828,7 +1834,7 @@
   salvato potrebbe dover riattivare la colonna. Test: `PurchaseRequestTablesTest` (#426856).
 - Guide in-app aggiornate IT+EN: request-statistics, work-orders, request-management, purchase-requests.
 
-## Attributi di tipo data mostrati nel formato utente — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+## Attributi di tipo data mostrati nel formato utente — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Ticket #428276 (commessa 16201): "Data inizio corso" / "Data fine corso" in "Informazioni aggiuntive" uscivano in ISO
   (`2025-10-07`). Causa: `formatAttributeScalar` in `features/attributes/attribute-value-display.tsx` non aveva il ramo
@@ -1837,7 +1843,7 @@
 - Test: `attribute-layout-view.test.tsx` ("renders a date attribute in the user date format").
 - Non toccato: l'editor resta `<input type="date">` nativo, il cui formato segue la lingua del browser (85 input in app).
 
-## Email delle notifiche su coda `mail` dedicata — VERDE MIRATO, NON COMMITTATO (2026-11-13)
+## Email delle notifiche su coda `mail` dedicata — VERDE MIRATO, COMMITTATO (2026-11-13)
 
 - Incidente prod 2026-11-13 (disservizio Microsoft): 129 job su `default`, 108 email di notifica che fallivano ogni
   ~21 s e venivano rimesse in coda senza backoff; campanelle (`database`), `GenerateApiDocsJob` e

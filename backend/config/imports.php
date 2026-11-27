@@ -87,6 +87,12 @@ return [
     // reference dataset (via ItalianGeoLocalizer). Empty disables the tiebreak.
     'default_country' => env('IMPORT_DEFAULT_COUNTRY', 'Italy'),
 
+    // Leads import: NAME of the Fonte the configuration step starts from
+    // (LeadImportFieldCatalog), still editable by the operator and replaced
+    // by the campaign's own Fonte when one is picked (spec 0176 D-5). A name
+    // matching no source leaves the field empty.
+    'leads_default_source' => env('IMPORT_LEADS_DEFAULT_SOURCE', 'Social'),
+
     /*
     |--------------------------------------------------------------------------
     | Column mapping aliases (spec 0033 — App\Imports\Support\ColumnMapper)

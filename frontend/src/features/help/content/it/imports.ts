@@ -84,7 +84,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'La **Fonte** è sempre obbligatoria, anche quando la campagna arriva dal file, e vale per tutte le righe importate. Se scegli la Campagna qui (non dal file), la Fonte si precompila con quella della campagna, se ne ha una, e resta modificabile.',
+          text: 'La **Fonte** è sempre obbligatoria, anche quando la campagna arriva dal file, e vale per tutte le righe importate. Parte già impostata su **Social**. Se scegli la Campagna qui (non dal file), la Fonte si precompila con quella della campagna, se ne ha una. In ogni caso resta modificabile.',
         },
         {
           type: 'tip',
