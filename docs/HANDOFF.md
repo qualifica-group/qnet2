@@ -19,13 +19,6 @@
 - Test: Pest `TableLargeValueColumnsTest` (5), `TableValuesTest` cap (REQUIREMENT CHANGED); Vitest `typed-only-filter-models.test.ts` (3), `resolveFilter` (3 casi), test delle firme senza callback (REQUIREMENT CHANGED). Pest Table 318/320 (rossi preesistenti `TableBulkDeleteTest`:131, `TableDefinitionContractTest` FormalabCallLog), CategoryTabs 106/106; Vitest data-table+table+help 812/812; ESLint, Pint, `tsc -b --force` EXIT=0. Non provato nel browser.
 - Spec 0005: contratto `limit`, AC-015, AC-015b. Manuale: guida in-app `general` IT/EN "Filtro di colonna" + manuale Claude Docs aggiornati.
 
-## Dicitura "Fatta con MCP AI" nella Cronologia attivita', spec 0434 (richiesta utente 2026-11-26) — VERDE
-
-- Backend: `EnforceMcpLinkLife` mette l'id del collegamento vivo nell'attributo di richiesta `McpLink::REQUEST_ATTRIBUTE` (`mcp_link_id`); `McpLinksServiceProvider` (ascoltatore `Activity::creating`) lo copia nelle `properties` come `McpLink::ACTIVITY_PROPERTY`. `ActivityLogEntryResource` espone `via`: `'mcp'` | null. Il segno e' il collegamento (abilita' `mcp-link:<id>`), NON `api_client_id`: la chiave del client e il login da client restano `via` null. Nessuna migrazione; righe precedenti senza segno; scritture fuori richiesta (code, comandi) senza segno, come `api_client_id`.
-- Frontend: tipo `ActivityLogVia`, campo `via` in `ActivityLogEntry`; distintivo `Badge outline` con icona `Bot` accanto all'autore in `ActivityLogSection`; i18n `activityLog.via.mcp` ("Fatta con MCP AI" / "Made with MCP AI").
-- Test: Pest `tests/Feature/McpLinks/McpLinkActivityOriginTest.php` (4: creazione e modifica via MCP, app, chiave del client); Vitest `activity-log-section.test.tsx` (fixture con `via: null`, REQUIREMENT CHANGED). Cartelle ActivityLog, McpLinks, ApiClients, UserActivityLog, Impersonation verdi salvo `ApiDocsDescriptionsTest` (rosso PREESISTENTE, 12 operazioni non descritte). ESLint, Pint, `tsc -b --force` puliti.
-- Manuale: guida in-app `general` IT/EN, sezione `activity-history`, aggiornata.
-
 ## Commesse: filtro Titolo "contiene" (2026-11-26) — VERDE, NON COMMITTATO
 
 - `WorkOrderColumnCatalog` colonna `title`: `hasFilterValues => false` -> la griglia usa solo `agTextColumnFilter` (default "contiene"), niente lista a checkbox (richiesta utente).

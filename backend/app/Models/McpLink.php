@@ -23,14 +23,6 @@ class McpLink extends Model
      */
     public const string ABILITY_PREFIX = 'mcp-link:';
 
-    /**
-     * Request attribute and activity property that carry the id of the link a request
-     * went through (spec 0434): set by EnforceMcpLinkLife once the link is checked alive.
-     */
-    public const string REQUEST_ATTRIBUTE = 'mcp_link_id';
-
-    public const string ACTIVITY_PROPERTY = 'mcp_link_id';
-
     protected $fillable = [
         'user_id',
         'api_client_id',

@@ -33,9 +33,6 @@ export interface ActivityLogCauser {
   name: string | null
 }
 
-/** What a change went through, when not the app itself: `mcp` = an MCP link token (spec 0434). */
-export type ActivityLogVia = 'mcp'
-
 /** A single dirty field captured on the logged event. */
 export interface ActivityLogChange {
   field: string
@@ -56,8 +53,6 @@ export interface ActivityLogEntry {
   module: string
   subject_id: number
   causer: ActivityLogCauser
-  /** Null for a change made from the app (or by the system). */
-  via: ActivityLogVia | null
   changes: ActivityLogChange[]
 }
 

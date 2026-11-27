@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\ActivityLog;
 
-use App\Models\McpLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
@@ -28,9 +27,6 @@ class ActivityLogEntryResource extends JsonResource
 
     /** Same `{ kind, from, to }` shape (spec 0404 B-D5, QuoteRegistryTransferService). */
     private const string EVENT_REGISTRY_TRANSFERRED = 'registry_transferred';
-
-    /** `via` of a change made with an MCP link token (spec 0434), shown as "made with MCP AI". */
-    private const string VIA_MCP = 'mcp';
 
     /**
      * @param  Activity  $resource
@@ -63,7 +59,6 @@ class ActivityLogEntryResource extends JsonResource
                 'id' => $activity->causer?->id,
                 'name' => $activity->causer?->name,
             ],
-            'via' => ($activity->properties ?? new Collection)->has(McpLink::ACTIVITY_PROPERTY) ? self::VIA_MCP : null,
             'changes' => $this->changes($activity),
         ];
     }

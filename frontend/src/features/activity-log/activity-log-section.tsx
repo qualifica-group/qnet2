@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, Bot, Loader2, User as UserIcon } from 'lucide-react'
+import { ArrowRight, Loader2, User as UserIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime } from '@/lib/formatting/date-display'
 import { Button } from '@/components/ui/button'
@@ -148,15 +148,9 @@ function ActivityLogItem({ entry }: ActivityLogItemProps) {
         </div>
         <span className="text-muted-foreground">{formatDateTime(entry.logged_at)}</span>
       </div>
-      <p className="flex flex-wrap items-center gap-1 text-muted-foreground">
+      <p className="flex items-center gap-1 text-muted-foreground">
         <UserIcon className="size-3" aria-hidden="true" />
         {causerName}
-        {entry.via ? (
-          <Badge variant="outline" className="gap-1">
-            <Bot className="size-3" aria-hidden="true" />
-            {t(`activityLog.via.${entry.via}`)}
-          </Badge>
-        ) : null}
       </p>
       {entry.changes.length > 0 ? (
         <ul className="flex flex-col gap-0.5 border-t pt-1.5">

@@ -19,9 +19,6 @@ import type { ActivityLogEntry, ActivityLogPage } from '@/features/activity-log/
  * `ActivityLogChange` grew `old_display`/`new_display`, and the diff row no
  * longer shows a "— →" for `created`/`deleted` entries — the field-label
  * assertion also moved from the raw key to its (now translated) label.
- *
- * Requirement change (spec 0434): every entry carries `via` (`'mcp'` for a change
- * made with an MCP link token, else null), so the fixture grew `via: null`.
  */
 
 const fetchActivityLogMock = vi.fn()
@@ -39,7 +36,6 @@ function entry(overrides: Partial<ActivityLogEntry> = {}): ActivityLogEntry {
     module: 'user',
     subject_id: 1,
     causer: { id: 9, name: 'Jane Doe' },
-    via: null,
     changes: [
       {
         field: 'email',
@@ -256,23 +252,6 @@ describe('ActivityLogSection', () => {
     renderSection()
 
     await waitFor(() => expect(screen.getByText('Unmapped custom column')).toBeInTheDocument())
-  })
-
-  it('spec 0434: marks a change made with MCP AI next to its author, and only that one', async () => {
-    fetchActivityLogMock.mockResolvedValue(
-      page({
-        items: [
-          entry({ id: 1, causer: { id: 9, name: 'Jane Doe' }, via: 'mcp' }),
-          entry({ id: 2, causer: { id: 10, name: 'John Roe' } }),
-        ],
-      }),
-    )
-
-    renderSection()
-
-    await waitFor(() => expect(screen.getByText('John Roe')).toBeInTheDocument())
-    expect(screen.getAllByText('Made with MCP AI')).toHaveLength(1)
-    expect(screen.getByText('Jane Doe').closest('p')).toHaveTextContent('Made with MCP AI')
   })
 
   it('falls back to the system-causer label when causer is null', async () => {
