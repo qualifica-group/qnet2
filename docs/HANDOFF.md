@@ -3,6 +3,47 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Seeder richieste da Excel strutturati (lotto 2026-11-28): APL + Autofinanziato — VERDE, NON COMMITTATO, SEEDER NON ESEGUITO
+
+- Richiesta utente: come i 6 seeder del 2026-11-07 (motore `database/seeders/Support/RequestSheet*`), per i 4 "Modello import
+  trattative - <famiglia>.xlsx" in `~/Downloads/smartsheet da importare` (APL, Autofinanziato, Consulenza, Finanziato).
+  Fatto APL: 273 righe, 3 categorie nello stesso file (Orientamento specialistico, Ricerca & Selezione, Accompagamento al
+  lavoro). Eseguire: `php artisan db:seed --class=QualificaAplTemplateRequestSeeder`. Prova su qnet2 in transazione
+  annullata: 272 create + 1 doppione interno (r206 = r161), seconda passata 273 gia' presenti, 0 discrepanze file->DB.
+- File: catalogo GENERATO `QualificaCatalog/AplTemplateRequestCatalogue.php` (dati, 327 righe) + seeder
+  `QualificaAplTemplateRequestSeeder`. Il modello ha la colonna "Codice" = id utente (controllato contro l'Operatore).
+- Motore esteso (vale per i prossimi file): chiave riga `partner` -> Partner commerciale (`commercial_partner_id`, anche
+  in RequestSheetOfferAppender); `address` (`line1`, `postal_code`, `city`) -> indirizzo di residenza del nuovo cliente
+  (provincia/regione/paese dal Comune, `RequestSheetLookups::city()`); `referentId(int|string)`: id dove il nome e' doppio.
+- Decisioni utente 2026-11-28: stato fuori flusso -> "Da Richiamare" + "Stato nel file: X" in nota; Misura,
+  Convocazione, Orientamento, CPI assegnati a Orientamento specialistico anche in contesto Offerta (prima solo Commessa;
+  il seeder li assegna, nessun layout offerta per la categoria); creato commerciale "Gabriele Schirmo"; Jessica Virgolini
+  sede principale Riesi 56 + remote 57/58/59, Maria Dallara Palermo 49 + remota 50 (solo se senza sede principale; il
+  seeder verifica che gli id siano ancora sedi di quel Comune). Mie scelte: PATRONATO EPAS -> "PATRONATO EPAS COMISO";
+  Cecinati #3748, Simone D'angelo #4622 (referenti doppi); "Decreto" con valore di Misura -> Misura; CF non validi in nota.
+- Report per l'utente: `~/Downloads/Report_import_trattative_APL_2026-11-28.xlsx` (71 avvertenze, scelte, tutte le righe).
+  Script di pulizia/prova/report solo nello scratchpad della sessione (non nel repo).
+- Verifiche APL: RequestSheetWriterTest 13 (+2 partner/indirizzo). Manuale: nessun impatto (carico dati).
+- Secondo file FATTO: Autofinanziato (253 righe, Sicilia/Lazio/Campania/Lombardia) -> `QualificaCatalog/SelfFundedTemplateRequestCatalogue.php`
+  (GENERATO, 241 righe scritte: 12 doppioni del Lazio uniti alla prima riga) + `QualificaSelfFundedTemplateRequestSeeder`
+  (`php artisan db:seed --class=QualificaSelfFundedTemplateRequestSeeder`). Prova annullata su qnet2: 240 create + 1 gia'
+  presente (r59 Sancamillo, richiesta Campania dell'11/11), rerun 241 gia' presenti, 0 discrepanze file->DB.
+  Decisioni utente 2026-11-28: prodotto non della categoria (anche stesso corso con il nome di un'altra regione) -> offerta
+  senza riga prodotto + "Prodotto: X" in nota; "oepac" solo nota; doppione nel file -> resta la prima riga, i dati diversi
+  della seconda in nota ("Riga doppia N del file: ..."); r55-56 (Codice 437 senza Operatore) -> Imma Pascale; r163 = 2/12/2026;
+  date insolite tenute e segnalate; sedi: Roberto De Simone Frattamaggiore 1 (HQ) + remota Frattamaggiore 2, Lilly Claderon
+  Grumello del Monte (+ Dallara/Virgolini come APL). Segnalatori creati: MFC (azienda), Carmelo Giordano.
+- Motore (2026-11-28, secondo giro): `RequestSheetSeeder::operatorSites()` + `assignSites()` nella base (tolto dal seeder
+  APL); `RequestSheetLookups::transferOriginId(int|string)` (id sede dove il Comune ha piu' sedi, es. Frattamaggiore);
+  BUG CORRETTO `RequestSheetLookups::city()`: la collation ignora gli accenti ("Paternò" trovava anche "Paterno" PZ), ora
+  sceglie il nome esatto. Test nuovi `tests/Feature/Seeding/RequestSheetSeederSitesTest.php` (5).
+- Report (regola utente 2026-11-28: OGNI scelta nel report per i supervisori, foglio "Scelte e regole applicate" con
+  "Deciso da"): `~/Downloads/Report_import_trattative_APL_2026-11-28.xlsx` (rigenerato) e
+  `~/Downloads/Report_import_trattative_Autofinanziato_2026-11-28.xlsx` (147 avvertenze, 24 scelte). Ordine di esecuzione
+  consigliato: APL poi Autofinanziato (entrambi creano "Gabriele Schirmo" e le sedi se mancano: indipendenti).
+- Verifiche: Pest Seeding 342/342, Pint ok. Manuale: nessun impatto.
+- Prossimi passi: Consulenza, Finanziato con lo stesso schema (casi nuovi: chiedere all'utente); alla fine eventuale seeder unico.
+
 ## Cambio di stato massivo degli ODA (spec 0433, 2026-11-27) — COMMITTATO (43dd11f2d)
 
 - `POST /api/purchase-orders/bulk-status` `{ids, to_status, dry_run}` -> `{applied, to_status, total, changed[{id,code}], skipped[{id,code,reason}]}`; `PurchaseOrderBulkStatusService` riusa `PurchaseOrderStatusService::change()` per ODA (transazione propria); nuovo `PurchaseOrderStatusService::check()` (permesso, matrice, guard ricevimenti, senza scrivere) usato da change() e dall'anteprima. Esito parziale; id duplicati contati una volta; 5 stati manuali; max `config('purchase-orders.bulk_status_max')` = 200. Permesso: `view` piu' changeStatus o approve (come il cambio singolo, decisione utente 2026-11-27). ApiDocsDescriptionsTest rosso preesistente: 12 operazioni senza descrizione da main (attachments, notes, merge referenti/anagrafiche, pagina commessa).

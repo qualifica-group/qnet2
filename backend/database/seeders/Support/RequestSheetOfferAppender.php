@@ -29,7 +29,7 @@ final class RequestSheetOfferAppender
 
     /**
      * @param  array<string, mixed>  $row
-     * @param  array{source_id: int, reporter_id: ?int, commercial_id: ?int, operational_site_id: ?int}  $refs
+     * @param  array{source_id: int, reporter_id: ?int, commercial_id: ?int, commercial_partner_id: ?int, operational_site_id: ?int}  $refs
      * @param  array<int, int|null>  $managerSlots
      */
     public function append(User $actor, Opportunity $opportunity, ProductCategory $category, array $row, array $refs, array $managerSlots): void
@@ -46,6 +46,8 @@ final class RequestSheetOfferAppender
             note: null,
             commercialId: $refs['commercial_id'],
             commercialIdSubmitted: true,
+            commercialPartnerId: $refs['commercial_partner_id'],
+            commercialPartnerIdSubmitted: true,
             reporterId: $refs['reporter_id'],
             reporterIdSubmitted: true,
             supervisorId: null,

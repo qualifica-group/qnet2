@@ -42,6 +42,9 @@ final class RequestSheetLookups
     /** @var array<string, ProductCategory> */
     private array $categories = [];
 
+    /** @var array<string, City> */
+    private array $cities = [];
+
     public function __construct(
         private readonly RequestWorkflowStatuses $statuses,
         private readonly ReferentService $referents,
@@ -62,9 +65,15 @@ final class RequestSheetLookups
         return $this->remember("source:{$name}", fn (): ?int => Source::query()->where('name', $name)->value('id'));
     }
 
-    public function referentId(string $name): int
+    /**
+     * A referent by its exact name, or by id where the referents hold the name
+     * twice (e.g. two "Simone D'angelo"): a name alone would pick either.
+     */
+    public function referentId(int|string $reference): int
     {
-        return $this->remember("referent:{$name}", fn (): ?int => Referent::query()->where('name', $name)->value('id'));
+        return is_int($reference)
+            ? $this->remember("referent-id:{$reference}", fn (): ?int => Referent::query()->whereKey($reference)->value('id'))
+            : $this->remember("referent:{$reference}", fn (): ?int => Referent::query()->where('name', $reference)->value('id'));
     }
 
     public function category(string $name): ProductCategory
@@ -85,6 +94,17 @@ final class RequestSheetLookups
     }
 
     /**
+     * The Sede a transferred request came from: its id where the Comune holds more
+     * than one Sede (Frattamaggiore 1 and 2), otherwise the Comune itself.
+     */
+    public function transferOriginId(int|string $origin): int
+    {
+        return is_int($origin)
+            ? $this->remember("site-id:{$origin}", fn (): ?int => OperationalSite::query()->whereKey($origin)->value('id'))
+            : $this->siteIdInCity($origin);
+    }
+
+    /**
      * The Sede a transferred request came from, identified by the Comune of its address.
      */
     public function siteIdInCity(string $city): int
@@ -100,12 +120,18 @@ final class RequestSheetLookups
 
     public function cityId(?string $name): ?int
     {
-        if ($name === null) {
-            return null;
-        }
+        return $name === null ? null : $this->city($name)->id;
+    }
 
-        return $this->remember("city:{$name}", fn (): ?int => City::query()
-            ->where('country_code', self::ITALY)->where('name', $name)->value('id'));
+    /**
+     * The collation ignores accents ("Paternò" also matches "Paterno", in another
+     * province): the exact spelling is picked in PHP.
+     */
+    public function city(string $name): City
+    {
+        return $this->cities[$name] ??= City::query()->where('country_code', self::ITALY)->where('name', $name)->get()
+            ->first(static fn (City $city): bool => $city->name === $name)
+            ?? throw new RuntimeException("Request sheet: no record matches \"city:{$name}\".");
     }
 
     /**

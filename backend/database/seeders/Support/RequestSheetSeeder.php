@@ -2,12 +2,14 @@
 
 namespace Database\Seeders\Support;
 
+use App\Models\OperationalSite;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use Database\Seeders\Concerns\ResolvesSeedActor;
 use Illuminate\Database\Seeder;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 /**
  * The run shared by the seeders that load one of the user's "trattative" sheets
@@ -72,6 +74,18 @@ abstract class RequestSheetSeeder extends Seeder
         return [];
     }
 
+    /**
+     * Operators the sheet names with no Sede, which their requests take (user
+     * decisions 2026-11-28): operator name => primary Sede and remote Sedi, by id
+     * (Sedi of one Comune share the name), checked against that Comune.
+     *
+     * @return array<string, array{city: string, primary: int, remote: list<int>}>
+     */
+    protected function operatorSites(): array
+    {
+        return [];
+    }
+
     /** Catalogue changes the rows depend on, run before them. */
     protected function prepare(ProductCategory $category): void {}
 
@@ -83,6 +97,9 @@ abstract class RequestSheetSeeder extends Seeder
 
         // Step 2: what the rows point to.
         $this->prepare($category);
+        foreach ($this->operatorSites() as $operator => $sites) {
+            $this->assignSites($operator, $sites);
+        }
         $this->lookups->ensureReferents($actor, $this->newReporters(), self::REPORTER_TYPE);
         $this->lookups->ensureReferents($actor, $this->newCommercials(), self::COMMERCIAL_TYPE);
 
@@ -102,6 +119,37 @@ abstract class RequestSheetSeeder extends Seeder
         foreach ($outcomes['refused'] as $line) {
             $this->command?->warn($line);
         }
+    }
+
+    /**
+     * The primary Sede plus the remote ones, written only while the operator has
+     * no primary Sede: one set by hand since then is left alone.
+     *
+     * @param  array{city: string, primary: int, remote: list<int>}  $sites
+     */
+    protected function assignSites(string $operator, array $sites): void
+    {
+        $profile = User::query()->where('name', $operator)->sole()->employment
+            ?? throw new RuntimeException("Request sheet: {$operator} has no employment.");
+
+        if ($profile->primaryOperationalSite()->exists()) {
+            return;
+        }
+
+        // The ids were read on the database of 2026-11-28: each must still be a Sede of that Comune.
+        $ids = [$sites['primary'], ...$sites['remote']];
+        $found = OperationalSite::query()->whereKey($ids)
+            ->whereHas('addresses.city', static fn ($query) => $query->where('name', $sites['city']))
+            ->count();
+
+        if ($found !== count($ids)) {
+            throw new RuntimeException("Request sheet: the Sedi of {$operator} are not all in {$sites['city']}.");
+        }
+
+        // `+`, not a spread: a spread renumbers the integer keys (the Sede ids).
+        $profile->operationalSites()->syncWithoutDetaching(
+            [$sites['primary'] => ['is_primary' => true]] + array_fill_keys($sites['remote'], ['is_primary' => false]),
+        );
     }
 
     /**

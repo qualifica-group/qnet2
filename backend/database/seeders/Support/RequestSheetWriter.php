@@ -2,9 +2,11 @@
 
 namespace Database\Seeders\Support;
 
+use App\DataObjects\PersonalData\CreateAddress;
 use App\DataObjects\PersonalData\CreateContact;
 use App\DataObjects\PersonalData\CreatePersonalData;
 use App\DataObjects\RequestManagement\CreateRequestData;
+use App\DataObjects\Users\AddressInput;
 use App\DataObjects\Users\ContactInput;
 use App\DataObjects\Users\ProfileData;
 use App\Enums\CategoryManagementMode;
@@ -31,8 +33,9 @@ use Illuminate\Support\Facades\DB;
  * the operator's Sede and records the origin Sede with the transfer flag, plus the
  * same explicit history entry RequestTransferService writes, so the panel shows a
  * completed transfer. Its notifications are not sent: nobody is moving it now.
- * A company row (`company`) may name its contact person, created as a referent
- * of the company; `team` adds other Gestori Account beside the operator. A
+ * A row may name a Partner commerciale (`partner`) and, for a new client, the
+ * residence address (`address`). A company row (`company`) may name its contact
+ * person, created as a referent of the company; `team` adds other Gestori Account beside the operator. A
  * client that already has an open opportunity gets the row as a new Offerta on it
  * (RequestSheetOfferAppender) instead of a second opportunity the rule refuses.
  */
@@ -87,7 +90,7 @@ final class RequestSheetWriter
 
             // Step 4: the transfer the sheet reports as already done.
             if (isset($row['transferred_from'])) {
-                $this->markTransferred($quote, $actor, $this->lookups->siteIdInCity($row['transferred_from']));
+                $this->markTransferred($quote, $actor, $this->lookups->transferOriginId($row['transferred_from']));
             }
 
             // Step 5: the company's contact person, among its referents.
@@ -115,6 +118,7 @@ final class RequestSheetWriter
             sourceId: $refs['source_id'],
             reporterId: $refs['reporter_id'],
             commercialId: $refs['commercial_id'],
+            commercialPartnerId: $refs['commercial_partner_id'],
             managerSlots: $this->teamSlots($operatorId, $row['team'] ?? []),
             operationalSiteId: $refs['operational_site_id'],
             nextCallbackAt: isset($row['callback']) ? $row['callback'].' '.config('imports.request_management.callback_time') : null,
@@ -141,7 +145,7 @@ final class RequestSheetWriter
 
     /**
      * @param  array<string, mixed>  $row
-     * @return array{source_id: int, reporter_id: ?int, commercial_id: ?int, operational_site_id: ?int}
+     * @return array{source_id: int, reporter_id: ?int, commercial_id: ?int, commercial_partner_id: ?int, operational_site_id: ?int}
      */
     private function references(array $row): array
     {
@@ -149,6 +153,7 @@ final class RequestSheetWriter
             'source_id' => $this->lookups->sourceId($row['source']),
             'reporter_id' => isset($row['reporter']) ? $this->lookups->referentId($row['reporter']) : null,
             'commercial_id' => isset($row['commercial']) ? $this->lookups->referentId($row['commercial']) : null,
+            'commercial_partner_id' => isset($row['partner']) ? $this->lookups->referentId($row['partner']) : null,
             'operational_site_id' => $this->lookups->primarySiteId($this->lookups->userId($row['operator'])),
         ];
     }
@@ -179,6 +184,28 @@ final class RequestSheetWriter
                 residenceCityId: $this->lookups->cityId($row['city'] ?? null),
             ),
             contacts: $contacts,
+            addresses: isset($row['address']) ? [new AddressInput(null, $this->address($row['address']))] : null,
+        );
+    }
+
+    /**
+     * The residence address of a new client; province, region and country come
+     * from its Comune, as the address form fills them.
+     *
+     * @param  array{line1: string, postal_code?: string, city?: string}  $address
+     */
+    private function address(array $address): CreateAddress
+    {
+        $city = isset($address['city']) ? $this->lookups->city($address['city']) : null;
+
+        return new CreateAddress(
+            line1: $address['line1'],
+            postalCode: $address['postal_code'] ?? null,
+            cityId: $city?->id,
+            provinceId: $city?->province_id,
+            stateId: $city?->state_id,
+            countryId: $city?->country_id,
+            isPrimary: true,
         );
     }
 

@@ -200,6 +200,36 @@ it('adds the row as a new offer on the client open opportunity instead of a seco
         ->and($write($second))->toBe(RequestSheetWriter::ALREADY_PRESENT);
 });
 
+it('writes the Partner commerciale, by id when the name is on file twice, and the residence address', function () {
+    Referent::factory()->create(['name' => 'Partner Doppio']);
+    $partner = Referent::factory()->create(['name' => 'Partner Doppio']);
+    $city = City::factory()->create(['name' => 'Comune Test', 'country_code' => 'IT']);
+
+    ($this->write)(($this->row)([
+        'partner' => $partner->id,
+        'city' => 'Comune Test',
+        'address' => ['line1' => 'Via Roma 1', 'postal_code' => '80027', 'city' => 'Comune Test'],
+    ]));
+
+    $card = PersonalData::query()->where('personable_type', 'registry')->with('addresses')->sole();
+    $address = $card->addresses->sole();
+
+    expect(Quote::query()->sole()->commercial_partner_id)->toBe($partner->id)
+        ->and($card->residence_city_id)->toBe($city->id)
+        ->and([$address->line1, $address->postal_code, $address->city_id, $address->province_id, $address->is_primary])
+        ->toBe(['Via Roma 1', '80027', $city->id, $city->province_id, true]);
+});
+
+it('writes the Partner commerciale on an offer added to an open opportunity', function () {
+    $partner = Referent::factory()->create(['name' => 'Partner Test']);
+    $second = requestImportScenario()['category'];
+    ($this->write)(($this->row)());
+
+    app(RequestSheetWriter::class)->write($this->actor, $second, ($this->row)(['product' => null, 'partner' => 'Partner Test']), []);
+
+    expect(Quote::query()->latest('id')->first()->commercial_partner_id)->toBe($partner->id);
+});
+
 it('fails loudly on a name the database does not hold', function () {
     ($this->write)(($this->row)(['operator' => 'Nessuno']));
 })->throws(RuntimeException::class, 'user:Nessuno');
