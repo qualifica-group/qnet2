@@ -18,7 +18,8 @@ namespace Database\Seeders\QualificaCatalog;
  * contacts added to an anagrafica already on file; every email of a cell saved; a
  * "Referente: ..." note stays a note; "Trattativa" -> "In trattativa"; a status
  * missing from the flow -> "Da Richiamare" ("Nuovo Contatto" for Apprendistato) with
- * the sheet's in the notes; doubtful reporters and unknown Comuni only in the notes.
+ * the sheet's in the notes; doubtful reporters and unknown Comuni only in the notes; a real Comune missing
+ * from the cities table (Montesilvano) is added.
  */
 final class ConsultingTemplateRequestCatalogue
 {
@@ -47,6 +48,14 @@ final class ConsultingTemplateRequestCatalogue
         'Patricia Do Bomfim Christovao' => ['city' => 'Melfi', 'primary' => 37, 'remote' => [36]],
         'Michele Saracino' => ['city' => 'Melfi', 'primary' => 37, 'remote' => [36]],
     ];
+
+    /**
+     * Comuni missing from the cities table (user decision 2026-11-28: a real
+     * Comune is added): name => a Comune of the same province.
+     *
+     * @var array<string, string>
+     */
+    public const array MISSING_CITIES = ['Montesilvano' => 'Pescara'];
 
     /** Referent whose name is on file three times: the one the requests already use most. */
     private const int MATTEO_BUSSAGLIA = 2901;
@@ -194,8 +203,7 @@ Segnalatore nel file: Flavia Portaluri'], // r124
         ['operator' => 'Constantin Popa', 'status' => 'In trattativa', 'source' => 'Derivanti da CAF e Segnalazioni', 'category' => 'Gare - Gare', 'company' => 'Saxa Flora Srl', 'contact_person' => ['first' => 'Mauro', 'last' => 'Fortini', 'phones' => ['3484126440']], 'phones' => ['3484126440'], 'email' => 'saxafloor@outlook.it', 'reporter' => 'Domenico Lupo', 'notes' => 'Pacchetto gare - II° Step: SOA in OG2'], // r128
         ['operator' => 'Constantin Popa', 'status' => 'Da Richiamare', 'source' => 'Passaparola', 'category' => 'Istruzione - ISTRUZIONE', 'company' => 'ISC Montalcini Porto S. Elpidio', 'contact_person' => ['first' => 'Lucia', 'last' => 'Vagnoni', 'phones' => ['0734992287']], 'phones' => ['0734992287'], 'email' => 'lucia.vagnoni@iscmontalcini.edu.it', 'city' => 'Porto Sant\'Elpidio', 'reporter' => 'DIDACTA LANCIANO', 'notes' => 'Travel e Supporto DSGA'], // r129
         ['operator' => 'Constantin Popa', 'status' => 'Da Richiamare', 'source' => 'Passaparola', 'category' => 'Istruzione - ISTRUZIONE', 'company' => 'IC Montessori', 'contact_person' => ['first' => 'Tiziana', 'last' => 'Viti', 'phones' => ['3209518937']], 'phones' => ['3209518937'], 'email' => 'dsga@icmontessoriterracinaedu.it', 'city' => 'Terracina', 'reporter' => 'DIDACTA LANCIANO', 'notes' => 'Travel e Supporto DSGA'], // r130
-        ['operator' => 'Constantin Popa', 'status' => 'Da Richiamare', 'source' => 'Passaparola', 'category' => 'Istruzione - ISTRUZIONE', 'company' => 'Istituto Mario dei Fiori Penne', 'contact_person' => ['first' => 'Francesca', 'last' => 'Molinari', 'phones' => ['3456668638']], 'phones' => ['3456668638'], 'email' => 'francescamolinari.fm@gmail.com', 'reporter' => 'DIDACTA LANCIANO', 'notes' => 'Travel e Supporto DSGA
-Comune nel file: Montesilvano'], // r131
+        ['operator' => 'Constantin Popa', 'status' => 'Da Richiamare', 'source' => 'Passaparola', 'category' => 'Istruzione - ISTRUZIONE', 'company' => 'Istituto Mario dei Fiori Penne', 'contact_person' => ['first' => 'Francesca', 'last' => 'Molinari', 'phones' => ['3456668638']], 'phones' => ['3456668638'], 'email' => 'francescamolinari.fm@gmail.com', 'city' => 'Montesilvano', 'reporter' => 'DIDACTA LANCIANO', 'notes' => 'Travel e Supporto DSGA'], // r131
         ['operator' => 'Constantin Popa', 'status' => 'In trattativa', 'source' => 'Social', 'category' => 'SOA - Consulenza', 'extra_categories' => ['SOA - Ente'], 'company' => 'Energy System Srl', 'contact_person' => ['first' => 'Vincenzo', 'last' => 'Patarino', 'phones' => ['3517222511']], 'phones' => ['3517222511'], 'email' => 'vincenzo.patarino@energysystemimpianti.it', 'city' => 'Bergamo', 'notes' => 'SOA - Bergamo - Impresa costituita da + di un anno con fatturato superiore a 250.000€'], // r132
         ['operator' => 'Constantin Popa', 'status' => 'In trattativa', 'source' => 'Derivanti da CAF e Segnalazioni', 'category' => 'Finanza Agevolata - FONDI', 'company' => 'Hacktive Security Srl', 'contact_person' => ['first' => 'Francesco', 'last' => 'Mormile', 'phones' => ['3200679690']], 'phones' => ['3200679690'], 'city' => 'Rome', 'reporter' => 'Domenico Lupo', 'notes' => 'AI - Fondi Interprofessionali (20K) settembre +ISO14001'], // r133
         ['operator' => 'Constantin Popa', 'status' => 'Da Richiamare', 'source' => 'Passaparola', 'category' => 'Istruzione - ISTRUZIONE', 'company' => 'IC Ettore Majiraba', 'contact_person' => ['first' => 'Cristina', 'last' => 'Fracassi', 'phones' => ['3289066549']], 'phones' => ['3289066549'], 'email' => 'cristina.fracassi72@gmail.com', 'city' => 'Avezzano', 'reporter' => 'DIDACTA LANCIANO', 'notes' => 'Travel e Supporto DSGA'], // r134

@@ -5,6 +5,7 @@ use App\Models\City;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\User;
+use Database\Seeders\QualificaFundedTemplateRequestSeeder;
 use Database\Seeders\QualificaSelfFundedTemplateRequestSeeder;
 use Database\Seeders\Support\RequestSheetLookups;
 use Database\Seeders\Support\RequestSheetSeeder;
@@ -74,4 +75,18 @@ it('finds a transfer origin by Sede id where the Comune holds two Sedi', functio
 
     expect($lookups->transferOriginId($first->id))->toBe($first->id)
         ->and(fn () => $lookups->transferOriginId('Comune Doppio'))->toThrow(RuntimeException::class);
+});
+
+it('adds a missing Comune once, in the province of the Comune it sits beside', function () {
+    $sibling = City::factory()->create(['name' => 'Brembilla', 'country_code' => 'IT']);
+    $seeder = app(QualificaFundedTemplateRequestSeeder::class);
+    $prepare = Closure::bind(fn () => $this->addMissingCities(), $seeder, QualificaFundedTemplateRequestSeeder::class);
+
+    $prepare();
+    $prepare();
+
+    $added = City::query()->where('name', 'Val Brembilla')->sole();
+
+    expect([$added->province_id, $added->state_id, $added->country_id, $added->country_code])
+        ->toBe([$sibling->province_id, $sibling->state_id, $sibling->country_id, 'IT']);
 });

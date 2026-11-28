@@ -44,4 +44,9 @@ class QualificaConsultingTemplateRequestSeeder extends RequestSheetSeeder
     {
         return ConsultingTemplateRequestCatalogue::OPERATOR_SITES;
     }
+
+    protected function missingCities(): array
+    {
+        return ConsultingTemplateRequestCatalogue::MISSING_CITIES;
+    }
 }

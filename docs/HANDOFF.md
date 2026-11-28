@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Seeder richieste da Excel strutturati (lotto 2026-11-28): APL + Autofinanziato (committati b5e2e4399) + Consulenza — VERDE, CONSULENZA NON COMMITTATA, SEEDER NON ESEGUITI
+## Seeder richieste da Excel strutturati (lotto 2026-11-28): APL + Autofinanziato (b5e2e4399) + Consulenza (8fc539f08) + Finanziato — VERDE, COMMITTATO, SEEDER ESEGUITI SU QNET2 (10:12-10:14)
 
 - Richiesta utente: come i 6 seeder del 2026-11-07 (motore `database/seeders/Support/RequestSheet*`), per i 4 "Modello import
   trattative - <famiglia>.xlsx" in `~/Downloads/smartsheet da importare` (APL, Autofinanziato, Consulenza, Finanziato).
@@ -60,7 +60,24 @@
 - Report: `~/Downloads/Report_import_trattative_Consulenza_2026-11-28.xlsx` (208 avvertenze, 24 scelte); rigenerati APL e
   Autofinanziato ("Cliente gia' in anagrafica" solo per anagrafiche esistenti PRIMA dell'import).
 - Verifiche: Pest Seeding 344/344, Pint ok. Manuale: nessun impatto.
-- Prossimi passi: Finanziato con lo stesso schema (casi nuovi: chiedere all'utente); alla fine eventuale seeder unico.
+- Quarto e ultimo file FATTO: Finanziato (81 righe, tutte DIL - Lombardia) -> `QualificaCatalog/FundedTemplateRequestCatalogue.php`
+  (GENERATO, 80 righe: r77 doppione di r30 unito nelle note) + `QualificaFundedTemplateRequestSeeder`
+  (`php artisan db:seed --class=QualificaFundedTemplateRequestSeeder`). Prova annullata: 79 create + 1 gia' presente (r56
+  Lumina, richiesta DIL del 16/11), rerun 80 gia' presenti, 0 discrepanze. Decisioni utente 2026-11-28: stati "Attesa_App. APL"
+  e "OK_ App CPI Fissato" -> quelli del flusso; prodotti fuori categoria e corsi solo in nota ("Massaggio decontratturante",
+  "Nail art 1") -> offerta senza prodotto, nota; "Ore complessive" in nota; partner "Andrea Pitruzzella" (2 referenti) solo in
+  nota; comune mancante "Val Brembilla" CREATO dal seeder (`MISSING_CITIES`, provincia/regione/paese di Brembilla), regola
+  utente "se non c'e' e dovrebbe esistere inseriscilo nel DB"; "~NeNe~" -> "Nene". Test RequestSheetSeederSitesTest 6 (+1).
+- Report: `~/Downloads/Report_import_trattative_Finanziato_2026-11-28.xlsx` (107 avvertenze, 19 scelte); gli altri tre rigenerati.
+- Verifiche: Pest Seeding 345/345, Pint ok. Manuale: nessun impatto.
+- I 4 seeder risultano ESEGUITI su qnet2 il 2026-11-28 tra 10:12 e 10:14 (819 offerte = 272+240+200+28+79, Val Brembilla
+  creato alle 10:13:49), prima delle ultime modifiche: prova del seeder unico dopo = tutto "gia' presente", 0 scritture.
+- Dopo il lancio (decisione utente 2026-11-28): "Montesilvano" esiste davvero -> `ConsultingTemplateRequestCatalogue::MISSING_CITIES`
+  (provincia di Pescara) e r131 col Comune. La creazione dei comuni mancanti e' passata nella base
+  (`RequestSheetSeeder::missingCities()`/`addMissingCities()`, usata anche da Finanziato). ATTENZIONE: su qnet2 r131 (Istituto
+  Mario dei Fiori Penne) e' gia' importata con il Comune nelle note; un rilancio crea il comune ma non aggiorna l'anagrafica
+  (riga gia' presente): il Comune va impostato a mano su quella anagrafica.
+- Seeder unico del lotto: `QualificaRequestTemplatesSeeder` (APL, Autofinanziato, Consulenza, Finanziato, idempotente).
 
 ## Cambio di stato massivo degli ODA (spec 0433, 2026-11-27) — COMMITTATO (43dd11f2d)
 

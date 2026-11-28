@@ -2,6 +2,7 @@
 
 namespace Database\Seeders\Support;
 
+use App\Models\City;
 use App\Models\OperationalSite;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -86,6 +87,18 @@ abstract class RequestSheetSeeder extends Seeder
         return [];
     }
 
+    /**
+     * Comuni the rows name but the cities table lacks (user decision 2026-11-28:
+     * a real Comune missing from it is added): name => a Comune of the same
+     * province, whose province, region and country the new one takes.
+     *
+     * @return array<string, string>
+     */
+    protected function missingCities(): array
+    {
+        return [];
+    }
+
     /** Catalogue changes the rows depend on, run before them. */
     protected function prepare(ProductCategory $category): void {}
 
@@ -96,6 +109,7 @@ abstract class RequestSheetSeeder extends Seeder
         $category = $this->lookups->category($this->categoryName());
 
         // Step 2: what the rows point to.
+        $this->addMissingCities();
         $this->prepare($category);
         foreach ($this->operatorSites() as $operator => $sites) {
             $this->assignSites($operator, $sites);
@@ -118,6 +132,19 @@ abstract class RequestSheetSeeder extends Seeder
 
         foreach ($outcomes['refused'] as $line) {
             $this->command?->warn($line);
+        }
+    }
+
+    /** Each missing Comune created once, beside the Comune of its province. */
+    protected function addMissingCities(): void
+    {
+        foreach ($this->missingCities() as $name => $sibling) {
+            $model = $this->lookups->city($sibling);
+
+            City::query()->firstOrCreate(
+                ['country_code' => $model->country_code, 'name' => $name],
+                ['country_id' => $model->country_id, 'state_id' => $model->state_id, 'province_id' => $model->province_id],
+            );
         }
     }
 
