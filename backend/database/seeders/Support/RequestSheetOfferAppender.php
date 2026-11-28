@@ -6,6 +6,7 @@ use App\DataObjects\Quotes\CreateQuoteData;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\Quotes\QuoteRootScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\Quotes\QuoteWorkflowStatusWriter;
 use App\Services\QuoteService;
@@ -25,17 +26,19 @@ final class RequestSheetOfferAppender
         private readonly QuoteService $quotes,
         private readonly QuoteWorkflowResolver $workflows,
         private readonly QuoteWorkflowStatusWriter $statusWriter,
+        private readonly QuoteRootScope $rootScope,
     ) {}
 
     /**
+     * @param  list<ProductCategory>  $categories  the row's categories, under one root category
      * @param  array<string, mixed>  $row
      * @param  array{source_id: int, reporter_id: ?int, commercial_id: ?int, commercial_partner_id: ?int, operational_site_id: ?int}  $refs
      * @param  array<int, int|null>  $managerSlots
      */
-    public function append(User $actor, Opportunity $opportunity, ProductCategory $category, array $row, array $refs, array $managerSlots): void
+    public function append(User $actor, Opportunity $opportunity, array $categories, array $row, array $refs, array $managerSlots): void
     {
-        // Step 1: the row's category among the opportunity's product lines.
-        $this->addProductLine($opportunity, $category);
+        // Step 1: the row's categories among the opportunity's product lines.
+        $this->addProductLines($opportunity, $categories);
 
         // Step 2: the Offerta, born on the default status of its workflow.
         $quote = $this->quotes->create(new CreateQuoteData(
@@ -58,6 +61,8 @@ final class RequestSheetOfferAppender
             managerSlots: $managerSlots,
             promoteManagersToOpportunity: true,
             sourceId: $refs['source_id'],
+            // An offer holds categories of one root only (spec 0411): the row's.
+            rootProductCategoryId: $this->rootScope->rootIdOf($categories[0]->id),
         ), $actor);
 
         // Step 3: the sheet's status, by name, in the workflow THIS offer resolves
@@ -77,11 +82,16 @@ final class RequestSheetOfferAppender
         }
     }
 
-    private function addProductLine(Opportunity $opportunity, ProductCategory $category): void
+    /**
+     * @param  list<ProductCategory>  $categories
+     */
+    private function addProductLines(Opportunity $opportunity, array $categories): void
     {
         $lines = $opportunity->productLines()->pluck('product_category_id')
             ->map(static fn (mixed $id): array => ['product_category_id' => (int) $id])
-            ->push(['product_category_id' => $category->id])
+            ->push(...array_map(static fn (ProductCategory $category): array => ['product_category_id' => $category->id], $categories))
+            ->unique('product_category_id')
+            ->values()
             ->all();
 
         $changed = [];

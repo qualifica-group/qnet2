@@ -2,10 +2,8 @@
 
 namespace Database\Seeders\Support;
 
-use App\DataObjects\PersonalData\CreateContact;
 use App\DataObjects\PersonalData\CreatePersonalData;
 use App\DataObjects\Referents\CreateReferentData;
-use App\DataObjects\Users\ContactInput;
 use App\DataObjects\Users\ProfileData;
 use App\Enums\ContactTypeEnum;
 use App\Enums\PersonalDataTypeEnum;
@@ -145,20 +143,19 @@ final class RequestSheetLookups
     {
         $taxCode = isset($row['tax_code']) ? ContactValueNormalizer::taxCode($row['tax_code']) : null;
         $phones = array_map(static fn (string $phone): string => ContactValueNormalizer::contact(ContactTypeEnum::Phone, $phone), $row['phones']);
-        $email = isset($row['email']) ? ContactValueNormalizer::contact(ContactTypeEnum::Email, $row['email']) : null;
+        $emails = array_map(static fn (string $email): string => ContactValueNormalizer::contact(ContactTypeEnum::Email, $email), self::emailsOf($row));
         $rowWords = $this->nameWords($row['company'] ?? ($row['first'] ?? '').' '.($row['last'] ?? ''));
 
-        if ($phones === [] && $email === null && $taxCode === null) {
+        if ($phones === [] && $emails === [] && $taxCode === null) {
             return $this->registryIdByName($row);
         }
 
         $match = PersonalData::query()
             ->where('personable_type', (new Registry)->getMorphClass())
-            ->where(static function ($query) use ($phones, $email, $taxCode): void {
+            ->where(static function ($query) use ($phones, $emails, $taxCode): void {
                 $query->whereHas('contacts', static fn ($contacts) => $contacts
                     ->where(static fn ($phone) => $phone->where('type', ContactTypeEnum::Phone->value)->whereIn('normalized_value', $phones))
-                    ->when($email !== null, static fn ($either) => $either->orWhere(static fn ($mail) => $mail
-                        ->where('type', ContactTypeEnum::Email->value)->where('normalized_value', $email))));
+                    ->orWhere(static fn ($mail) => $mail->where('type', ContactTypeEnum::Email->value)->whereIn('normalized_value', $emails)));
 
                 if ($taxCode !== null) {
                     $query->orWhere('tax_code', $taxCode);
@@ -170,6 +167,17 @@ final class RequestSheetLookups
                 || array_diff($rowWords, $this->nameWords($card->first_name.' '.$card->last_name.' '.$card->company_name)) === []);
 
         return $match === null ? null : (int) $match->personable_id;
+    }
+
+    /**
+     * The row's emails: `email` holds one, or a list where the sheet cell had several.
+     *
+     * @param  array<string, mixed>  $row
+     * @return list<string>
+     */
+    public static function emailsOf(array $row): array
+    {
+        return array_values((array) ($row['email'] ?? []));
     }
 
     /**
@@ -230,38 +238,6 @@ final class RequestSheetLookups
                 new ProfileData($card),
             );
         }
-    }
-
-    /**
-     * A company's contact person ("Referente Azienda"), created as a new referent
-     * and listed among the company's referents (user decision 2026-11-07). Internal
-     * and with no type, like the referents already linked to client anagrafiche.
-     *
-     * @param  array{first: ?string, last: ?string, title?: string, phones?: list<string>}  $person
-     */
-    public function addContactPerson(User $actor, int $registryId, array $person): void
-    {
-        $registry = Registry::query()->findOrFail($registryId);
-        $name = trim(($person['first'] ?? '').' '.($person['last'] ?? ''));
-
-        // A company already listing a referent of that name keeps it, never a twin.
-        if ($registry->referents()->where('referents.name', $name)->exists()) {
-            return;
-        }
-
-        $contacts = array_map(
-            static fn (string $phone, int $index): ContactInput => new ContactInput(null, new CreateContact(ContactTypeEnum::Phone, $phone, null, $index === 0)),
-            $person['phones'] ?? [],
-            array_keys($person['phones'] ?? []),
-        );
-
-        $referent = $this->referents->create(
-            $actor,
-            new CreateReferentData(null, ReferentContactScopeEnum::Internal->value, $person['title'] ?? null),
-            new ProfileData(new CreatePersonalData(PersonalDataTypeEnum::Individual, $person['first'], $person['last']), $contacts === [] ? null : $contacts),
-        );
-
-        $registry->referents()->syncWithoutDetaching([$referent->id]);
     }
 
     /**

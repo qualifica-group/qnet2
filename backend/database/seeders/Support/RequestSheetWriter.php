@@ -34,7 +34,8 @@ use Illuminate\Support\Facades\DB;
  * same explicit history entry RequestTransferService writes, so the panel shows a
  * completed transfer. Its notifications are not sent: nobody is moving it now.
  * A row may name a Partner commerciale (`partner`) and, for a new client, the
- * residence address (`address`). A company row (`company`) may name its contact
+ * residence address (`address`), the VAT number (`vat_number`) and one or more
+ * emails (`email`, a string or a list). A company row (`company`) may name its contact
  * person, created as a referent of the company; `team` adds other Gestori Account beside the operator. A
  * client that already has an open opportunity gets the row as a new Offerta on it
  * (RequestSheetOfferAppender) instead of a second opportunity the rule refuses.
@@ -56,6 +57,7 @@ final class RequestSheetWriter
         private readonly RegistryOpenOpportunityGuard $openOpportunities,
         private readonly OpportunityProductLineCoverage $coverage,
         private readonly RequestSheetOfferAppender $appender,
+        private readonly RequestSheetContacts $contacts,
     ) {}
 
     /**
@@ -65,8 +67,14 @@ final class RequestSheetWriter
     public function write(User $actor, ProductCategory $category, array $row, array $attributeColumns): string
     {
         return DB::transaction(function () use ($actor, $category, $row, $attributeColumns): string {
-            // Step 1: the client, and the guard against a second run.
+            // Step 1: the client, and the guard against a second run. A row
+            // marked `add_contacts` adds its new phones/emails to a client on file.
             $registryId = $this->lookups->registryId($row);
+            $categories = $this->categoriesOf($category, $row);
+
+            if ($registryId !== null && ($row['add_contacts'] ?? false)) {
+                $this->contacts->addMissingContacts($registryId, $row);
+            }
 
             if ($registryId !== null && $this->lookups->hasRequestOnCategory($registryId, $category->id)) {
                 return self::ALREADY_PRESENT;
@@ -76,17 +84,17 @@ final class RequestSheetWriter
             $open = $this->blockingOpportunity($registryId, $category);
 
             if ($open !== null) {
-                $this->appender->append($actor, $open, $category, $row, $this->references($row), $this->teamSlots($this->lookups->userId($row['operator']), $row['team'] ?? []));
+                $this->appender->append($actor, $open, $categories, $row, $this->references($row), $this->teamSlots($this->lookups->userId($row['operator']), $row['team'] ?? []));
 
                 if (isset($row['contact_person'])) {
-                    $this->lookups->addContactPerson($actor, $registryId, $row['contact_person']);
+                    $this->contacts->addContactPerson($actor, $registryId, $row['contact_person']);
                 }
 
                 return self::APPENDED;
             }
 
             // Step 3: Opportunita + Offerta.
-            $quote = $this->requests->create($actor, $this->requestData($category, $row, $registryId, $attributeColumns))['quote'];
+            $quote = $this->requests->create($actor, $this->requestData($category, $categories, $row, $registryId, $attributeColumns))['quote'];
 
             // Step 4: the transfer the sheet reports as already done.
             if (isset($row['transferred_from'])) {
@@ -95,7 +103,7 @@ final class RequestSheetWriter
 
             // Step 5: the company's contact person, among its referents.
             if (isset($row['contact_person'])) {
-                $this->lookups->addContactPerson($actor, $quote->opportunity->registry_id, $row['contact_person']);
+                $this->contacts->addContactPerson($actor, $quote->opportunity->registry_id, $row['contact_person']);
             }
 
             return self::CREATED;
@@ -103,10 +111,24 @@ final class RequestSheetWriter
     }
 
     /**
+     * The row's category plus the `extra_categories` it names (two "Categoria
+     * Figlio" of one row): product lines of the same opportunity, one Offerta per
+     * root category as RequestCreationService splits them.
+     *
+     * @param  array<string, mixed>  $row
+     * @return list<ProductCategory>
+     */
+    private function categoriesOf(ProductCategory $category, array $row): array
+    {
+        return [$category, ...array_map($this->lookups->category(...), $row['extra_categories'] ?? [])];
+    }
+
+    /**
+     * @param  list<ProductCategory>  $categories
      * @param  array<string, mixed>  $row
      * @param  array<string, string>  $attributeColumns
      */
-    private function requestData(ProductCategory $category, array $row, ?int $registryId, array $attributeColumns): CreateRequestData
+    private function requestData(ProductCategory $category, array $categories, array $row, ?int $registryId, array $attributeColumns): CreateRequestData
     {
         $operatorId = $this->lookups->userId($row['operator']);
         $refs = $this->references($row);
@@ -114,7 +136,7 @@ final class RequestSheetWriter
         return new CreateRequestData(
             registryId: $registryId,
             clientProfile: $registryId === null ? $this->profile($row) : null,
-            productLines: [['product_category_id' => $category->id]],
+            productLines: array_map(static fn (ProductCategory $line): array => ['product_category_id' => $line->id], $categories),
             sourceId: $refs['source_id'],
             reporterId: $refs['reporter_id'],
             commercialId: $refs['commercial_id'],
@@ -169,8 +191,8 @@ final class RequestSheetWriter
             $contacts[] = new ContactInput(null, new CreateContact(ContactTypeEnum::Phone, $phone, null, $index === 0));
         }
 
-        if (isset($row['email'])) {
-            $contacts[] = new ContactInput(null, new CreateContact(ContactTypeEnum::Email, $row['email'], null, true));
+        foreach (RequestSheetLookups::emailsOf($row) as $index => $email) {
+            $contacts[] = new ContactInput(null, new CreateContact(ContactTypeEnum::Email, $email, null, $index === 0));
         }
 
         return new ProfileData(
@@ -180,6 +202,7 @@ final class RequestSheetWriter
                 lastName: $row['last'] ?? null,
                 companyName: $row['company'] ?? null,
                 taxCode: $row['tax_code'] ?? null,
+                vatNumber: $row['vat_number'] ?? null,
                 birthDate: $row['birth_date'] ?? null,
                 residenceCityId: $this->lookups->cityId($row['city'] ?? null),
             ),
@@ -227,9 +250,6 @@ final class RequestSheetWriter
         return $values === [] ? null : $values;
     }
 
-    /**
-     * @return array<int, int|null>
-     */
     /**
      * The Offerta's team: the operator in its slot, plus the other Gestori Account
      * the sheet names (`team`: position => user name, e.g. 5 = Operatore APL). A

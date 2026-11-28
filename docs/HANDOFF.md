@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Seeder richieste da Excel strutturati (lotto 2026-11-28): APL + Autofinanziato — VERDE, NON COMMITTATO, SEEDER NON ESEGUITO
+## Seeder richieste da Excel strutturati (lotto 2026-11-28): APL + Autofinanziato (committati b5e2e4399) + Consulenza — VERDE, CONSULENZA NON COMMITTATA, SEEDER NON ESEGUITI
 
 - Richiesta utente: come i 6 seeder del 2026-11-07 (motore `database/seeders/Support/RequestSheet*`), per i 4 "Modello import
   trattative - <famiglia>.xlsx" in `~/Downloads/smartsheet da importare` (APL, Autofinanziato, Consulenza, Finanziato).
@@ -42,7 +42,25 @@
   `~/Downloads/Report_import_trattative_Autofinanziato_2026-11-28.xlsx` (147 avvertenze, 24 scelte). Ordine di esecuzione
   consigliato: APL poi Autofinanziato (entrambi creano "Gabriele Schirmo" e le sedi se mancano: indipendenti).
 - Verifiche: Pest Seeding 342/342, Pint ok. Manuale: nessun impatto.
-- Prossimi passi: Consulenza, Finanziato con lo stesso schema (casi nuovi: chiedere all'utente); alla fine eventuale seeder unico.
+- Terzo file FATTO: Consulenza (229 righe, aziende; colonne posizionali: due "Categoria Figlio") ->
+  `QualificaCatalog/ConsultingTemplateRequestCatalogue.php` (GENERATO) + `QualificaConsultingTemplateRequestSeeder`
+  (`php artisan db:seed --class=QualificaConsultingTemplateRequestSeeder`). Prova annullata su qnet2: 200 create + 28 offerte
+  aggiunte all'opportunita' della stessa azienda + 1 gia' presente (r14 Licciardi), rerun 229 gia' presenti, 0 discrepanze.
+  Regole utente 2026-11-28: Ragione Sociale -> anagrafica azienda, Nome/Cognome -> suo referente (anche solo nome); senza
+  Ragione Sociale -> persona; P.IVA e CF sull'azienda (10 cifre -> 0 iniziale); seconda "Categoria Figlio" della stessa
+  categoria madre -> stessa opportunita', una offerta (madri diverse -> due offerte, RequestCreationService lo fa gia');
+  un'offerta = una sola categoria madre (offerta aggiunta legata alla madre della riga); stessa Ragione Sociale -> una
+  anagrafica con tutti i contatti delle righe; contatti nuovi aggiunti alle anagrafiche esistenti (`add_contacts`); tutte
+  le email di una cella; "Referente:" nelle note resta nota; "Trattativa" -> "In trattativa"; Apprendistato senza "Da
+  Richiamare" -> "Nuovo Contatto"; segnalatori dubbi e comuni non riconosciuti solo nelle note; 5 operatori con sede nuova.
+- Motore (terzo giro): chiavi riga `extra_categories`, `vat_number`, `email` come lista, `add_contacts`;
+  `RequestSheetOfferAppender` lega l'offerta alla categoria madre (`rootProductCategoryId`); nuova
+  `Support/RequestSheetContacts` (referente dell'azienda + contatti mancanti, tolti da RequestSheetLookups oltre 300 righe);
+  tolto un docblock orfano dal writer. Test: RequestSheetWriterTest 15 (+2). Rifatte le prove APL/Autofinanziato: invariate.
+- Report: `~/Downloads/Report_import_trattative_Consulenza_2026-11-28.xlsx` (208 avvertenze, 24 scelte); rigenerati APL e
+  Autofinanziato ("Cliente gia' in anagrafica" solo per anagrafiche esistenti PRIMA dell'import).
+- Verifiche: Pest Seeding 344/344, Pint ok. Manuale: nessun impatto.
+- Prossimi passi: Finanziato con lo stesso schema (casi nuovi: chiedere all'utente); alla fine eventuale seeder unico.
 
 ## Cambio di stato massivo degli ODA (spec 0433, 2026-11-27) — COMMITTATO (43dd11f2d)
 

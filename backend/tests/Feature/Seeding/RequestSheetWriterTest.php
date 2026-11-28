@@ -230,6 +230,43 @@ it('writes the Partner commerciale on an offer added to an open opportunity', fu
     expect(Quote::query()->latest('id')->first()->commercial_partner_id)->toBe($partner->id);
 });
 
+it('writes a company with its VAT number, every email and two categories of one root on one offer', function () {
+    $root = requestImportScenario()['category'];
+    $child = ProductCategory::factory()->create(['name' => 'Figlio Test', 'parent_id' => $root->id, 'is_selectable' => true, 'is_active' => true]);
+
+    $outcome = app(RequestSheetWriter::class)->write($this->actor, $root, ($this->row)([
+        'first' => null, 'last' => null, 'product' => null, 'company' => 'Edile Test Srl', 'vat_number' => '01234567890',
+        'email' => ['info@edile.example', 'amministrazione@edile.example'], 'extra_categories' => ['Figlio Test'],
+    ]), []);
+
+    $card = PersonalData::query()->where('personable_type', 'registry')->sole();
+    $quote = Quote::query()->sole();
+
+    expect($outcome)->toBe(RequestSheetWriter::CREATED)
+        ->and($card->vat_number)->toBe('01234567890')
+        ->and(Contact::query()->where('contactable_id', $card->id)->where('type', 'email')->pluck('value')->sort()->values()->all())
+        ->toBe(['amministrazione@edile.example', 'info@edile.example'])
+        ->and($quote->root_product_category_id)->toBe($root->id)
+        ->and($quote->opportunity->productLines()->pluck('product_category_id')->sort()->values()->all())
+        ->toBe(collect([$root->id, $child->id])->sort()->values()->all());
+});
+
+it('adds the new contacts to a client on file and binds the added offer to its own root', function () {
+    [$first, $second] = [requestImportScenario()['category'], requestImportScenario()['category']];
+    app(RequestSheetWriter::class)->write($this->actor, $first, ($this->row)(['product' => null, 'phones' => ['3330000001']]), []);
+
+    $outcome = app(RequestSheetWriter::class)->write($this->actor, $second, ($this->row)([
+        'product' => null, 'phones' => ['3330000001', '3339990000'], 'email' => 'nuova@example.com', 'add_contacts' => true,
+    ]), []);
+
+    $card = PersonalData::query()->where('personable_type', 'registry')->sole();
+
+    expect($outcome)->toBe(RequestSheetWriter::APPENDED)
+        ->and(Contact::query()->where('contactable_id', $card->id)->pluck('value')->sort()->values()->all())
+        ->toBe(['3330000001', '3339990000', 'nuova@example.com'])
+        ->and(Quote::query()->latest('id')->first()->root_product_category_id)->toBe($second->id);
+});
+
 it('fails loudly on a name the database does not hold', function () {
     ($this->write)(($this->row)(['operator' => 'Nessuno']));
 })->throws(RuntimeException::class, 'user:Nessuno');
